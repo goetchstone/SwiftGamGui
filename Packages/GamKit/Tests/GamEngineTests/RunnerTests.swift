@@ -97,11 +97,7 @@ struct RunnerTests {
         let run = Task { try await GamRunner(binary: script).runRaw([]) }
         defer { run.cancel() }   // a child never found isn't left sleeping
         let mine = { Set(GamRunner.children.withLock { $0.filter { $0.value == script.path }.keys }) }
-        let clock = SuspendingClock()
-        let deadline = clock.now + .seconds(60)
-        while mine().isEmpty, clock.now < deadline {
-            try await Task.sleep(for: .milliseconds(20))
-        }
+        try await yieldWhile(every: .milliseconds(20)) { mine().isEmpty }
         let pids = mine()
         try #require(pids.count == 1)
         GamRunner.stop(pids)

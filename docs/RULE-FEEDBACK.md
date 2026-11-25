@@ -22,7 +22,17 @@ was worded loosely enough to permit a bad reading, or a failure hit a shape no i
 The most valuable answer is *"only if enforced differently"*: the invariant exists and lives in the
 wrong layer, and moving it (skill → hook → tripwire) needs no text change.
 
-**Last reviewed 2026-11-05** (`improve-rules`, all 38 entries; each edit proposed as its own PR):
+**Last reviewed 2026-11-25** (`improve-rules`: 18 fix commits, 15 failure-log entries and 4 entries since 2026-11-05):
+- **Tests that wait on time or without end** (six fixes: failure log 11-13, 11-14 twice, 11-21, 11-24): known mode, wrong
+  layer. It lived as two `pre-commit` lines, and #196's sweep still missed eight unbounded loops spelled with `Task.sleep`.
+  Moved to a tripwire, `TestWaitsTests`: every wait is `yieldWhile`, and any other pause says on its line why it isn't one.
+- **The other twelve fixes:** not a rules problem. Each ended in its own tripwire (the stricter mock, the binary override's
+  one reader, the guard's own function for a typed count, the regenerated fixtures, the model stub).
+- **Open entries:** 2026-11-05 is closed (`live-verify` reads the log). Next candidates: `pre-commit` item 4 widened from argv to
+  every key a ported reader matches (2026-11-13, `String ==`); a parity fixture for a hostile-input reader built to reach the
+  library's edges (2026-11-13); a read's tests cover what the screen says when it fails or stops short (2026-11-06).
+
+**Reviewed 2026-11-05** (`improve-rules`, all 38 entries; each edit proposed as its own PR):
 - **#11, parity carries GamGUI's defects** (seven entries): parity is a floor; a departure is a listed, tested deviation.
 - **"The mock lies", beyond the mock** (eight entries): GAM's output and exit codes, and the data tests build.
 - **Next candidates, not done:** a loss-preventing check belongs with the write, not a screen (2026-10-28); #1 as "one

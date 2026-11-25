@@ -194,11 +194,7 @@ struct UsageReportTests {
         let clock = SuspendingClock(), started = clock.now
         let usage = app.usage
         let old = Task { await usage.load() }
-        var turns = 0
-        while !usage.isLoading, turns < 100_000 {
-            await Task.yield()
-            turns += 1
-        }
+        try await yieldWhile { !usage.isLoading }
         try #require(usage.isLoading, "the load never started")
         try await connect("example.org", in: app.setup)
         #expect(!usage.isLoading)

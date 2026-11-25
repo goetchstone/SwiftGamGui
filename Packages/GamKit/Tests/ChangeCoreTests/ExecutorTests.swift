@@ -297,7 +297,7 @@ final class ExecutorTests {
             guard calls.value.withLock({ $0 += 1; return $0 }) == 2 else { return }
             await withTaskGroup(of: Void.self) { group in
                 group.addTask { for await _ in seen { break } }
-                group.addTask { try? await Task.sleep(for: .seconds(5)) }
+                group.addTask { try? await Task.sleep(for: .seconds(5)) }  // not a wait: the bound raced against the observer
                 await group.next()
                 group.cancelAll()
             }
@@ -518,7 +518,7 @@ final class ExecutorTests {
         let one = Task { [executor, first] in await executor.run(first, confirmation: confirm) }
         for await _ in started { break }
         let two = Task { [executor, second] in await executor.run(second, confirmation: confirm) }
-        try await Task.sleep(for: .milliseconds(200))
+        try await Task.sleep(for: .milliseconds(200))  // not a wait: time for a write that must not start
         #expect(wrote().isEmpty, "the second write didn't start while the first held the lock")
         releaseGate.yield()
         #expect(await one.value.succeeded)
@@ -603,7 +603,7 @@ final class ExecutorTests {
         let preview = try await held(executor, [clearRecovery()])
         let confirm = confirmed
         let task = Task { [executor, preview] in
-            try? await Task.sleep(for: .milliseconds(100))
+            try? await Task.sleep(for: .milliseconds(100))  // not a wait: cancelled at once, so the run meets a cancelled task
             return await executor.run(preview, confirmation: confirm)
         }
         task.cancel()
@@ -1543,7 +1543,7 @@ final class ExecutorTests {
         let preview = try await held(executor, [clearRecovery()])
         let confirmation = confirmed
         let run = Task { await executor.run(preview, confirmation: confirmation) }
-        while ran().isEmpty { try await Task.sleep(for: .milliseconds(20)) }
+        try await yieldWhile(every: .milliseconds(20)) { ran().isEmpty }
         run.cancel()
         let outcome = await run.value
         #expect(outcome.steps == [.failed(message: Executor.interrupted, kind: nil)])
@@ -1707,7 +1707,7 @@ final class ExecutorTests {
         let preview = try await held(executor, [suspend()])
         let confirm = confirmed
         let task = Task { [executor, preview] in
-            try? await Task.sleep(for: .milliseconds(100))
+            try? await Task.sleep(for: .milliseconds(100))  // not a wait: cancelled at once, so the run meets a cancelled task
             return await executor.run(preview, confirmation: confirm)
         }
         task.cancel()

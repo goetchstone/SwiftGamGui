@@ -105,8 +105,7 @@ final class DomainSwitchStoresTests {
         guard case .idle = compromised.checkState else { Issue.record("\(compromised.checkState)"); return }
         // No preview shows, and none held there runs here: each is dropped, its confirm refused.
         for state in ["\(userChanges.state)", "\(groupChanges.state)", "\(builderChanges.state)"] { #expect(state == "idle") }
-        await Task.yield()
-        for _ in 0..<100 where await executor.heldCount > 0 { try await Task.sleep(for: .milliseconds(10)) }
+        try await yieldWhile(every: .milliseconds(10)) { await executor.heldCount > 0 }
         #expect(await executor.heldCount == 0)
         for held in [heldUser.preview, heldGroup.preview, heldBuilder.preview] {
             #expect(await executor.run(held, confirmation: confirmed).refusal == "That preview has expired or was already run — preview again.")

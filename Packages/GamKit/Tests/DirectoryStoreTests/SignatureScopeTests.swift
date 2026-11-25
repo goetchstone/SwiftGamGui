@@ -400,7 +400,7 @@ final class SignatureScopeTests {
         await changes.previewScope(.company, template: "{name}")
         let pending = try pending(changes)
         let run = Task { await changes.confirm(pending, confirmed) }
-        while (changes.progress?.done ?? 0) < 1 { try await Task.sleep(for: .milliseconds(20)) }
+        try await yieldWhile(every: .milliseconds(20)) { (changes.progress?.done ?? 0) < 1 }
         await changes.stop()
         #expect(changes.progress?.stopping == true)
         await run.value
@@ -458,14 +458,14 @@ final class SignatureScopeTests {
         }, extraEnvironment: ["GAM_MOCK_STATE": state.path])
         let changes = SignatureChanges(executor: executor, setup: setup, directory: directory, runner: slow)
         let preview = Task { await changes.previewScope(.group("sales@example.com"), template: "{name}") }
-        while !FileManager.default.fileExists(atPath: reading.path) { try await Task.sleep(for: .milliseconds(10)) }
+        try await yieldWhile(every: .milliseconds(10)) { !FileManager.default.fileExists(atPath: reading.path) }
         changes.edited()
         await preview.value
         guard case .idle = changes.state else { throw NotPreviewing(state: "\(changes.state)") }
         // A newer preview begun meanwhile is the one shown.
         try FileManager.default.removeItem(at: reading)
         let older = Task { await changes.previewScope(.group("sales@example.com"), template: "{name}") }
-        while !FileManager.default.fileExists(atPath: reading.path) { try await Task.sleep(for: .milliseconds(10)) }
+        try await yieldWhile(every: .milliseconds(10)) { !FileManager.default.fileExists(atPath: reading.path) }
         await changes.previewScope(.orgUnit("/Students"), template: "{email}")
         let newer = try pending(changes)
         await older.value

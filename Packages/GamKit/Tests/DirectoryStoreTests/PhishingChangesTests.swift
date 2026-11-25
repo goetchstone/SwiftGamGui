@@ -487,7 +487,7 @@ final class PhishingChangesTests {
         await changes.previewTrash()
         let pending = try #require(changes.pending)
         await changes.find(Self.pasted)
-        for _ in 0..<100 where await executor.isHeld(pending.id) { try await Task.sleep(for: .milliseconds(10)) }
+        try await yieldWhile(every: .milliseconds(10)) { await executor.isHeld(pending.id) }
         #expect(await executor.isHeld(pending.id) == false && changes.pending == nil)
         await changes.confirm(pending, typed("3"))
         #expect(changes.run == nil && trashCalls().count == 2, "two searches, no trash")

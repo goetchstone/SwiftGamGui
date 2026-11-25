@@ -585,7 +585,7 @@ final class OffboardChangesTests {
         let plan = try await plan(form())
         let id = try #require(plan.preview?.id)
         changes.formChanged(form(days: 9))
-        for _ in 0..<100 where await executor.isHeld(id) { try await Task.sleep(for: .milliseconds(10)) }
+        try await yieldWhile(every: .milliseconds(10)) { await executor.isHeld(id) }
         #expect(await executor.isHeld(id) == false)
         guard case .planned(let shown) = changes.state else { Issue.record("\(changes.state)"); return }
         #expect(shown.preview == nil && shown.form == plan.form, "still shown, only shown")

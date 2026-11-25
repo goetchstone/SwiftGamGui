@@ -371,7 +371,7 @@ final class SheetExportsTests {
         await preview()
         let held = try #require(try pending().preview)
         exports.dismiss()
-        try await Task.sleep(for: .milliseconds(50))
+        try await yieldWhile(every: .milliseconds(10)) { await executor.isHeld(held.id) }
         guard case .idle = exports.state else { Issue.record("\(exports.state)"); return }
         #expect(!(await executor.isHeld(held.id)))
     }

@@ -350,7 +350,7 @@ final class CalendarChangesTests {
         await changes.previewShare(calendarID: Self.team, name: "Team Calendar", target: "allhands@example.com", role: "reader")
         let pending = try pending(changes)
         let run = Task { await changes.confirm(pending, OperatorConfirmation(confirmed: true, typedCount: "13")) }
-        while (changes.progress?.done ?? 0) < 1 { try await Task.sleep(for: .milliseconds(20)) }
+        try await yieldWhile(every: .milliseconds(20)) { (changes.progress?.done ?? 0) < 1 }
         await changes.stop()
         await run.value
         let stopped = try done(changes)
@@ -377,11 +377,11 @@ final class CalendarChangesTests {
         let pending = try pending(changes)
         var seen: [CalendarChanges.Progress] = []
         let run = Task { await changes.confirm(pending, OperatorConfirmation(confirmed: true, typedCount: "13")) }
-        while true {
+        try await yieldWhile(every: .milliseconds(5)) {
             if let progress = changes.progress { seen.append(progress) }
-            if case .done = changes.state { break }
-            if case .problem = changes.state { break }
-            try await Task.sleep(for: .milliseconds(5))
+            if case .done = changes.state { return false }
+            if case .problem = changes.state { return false }
+            return true
         }
         await run.value
         let stopped = try done(changes)
@@ -447,14 +447,14 @@ final class CalendarChangesTests {
                                     prefix: "[ \"$1 $2\" = \"print group-members\" ] && : > '\(reading.path)' && sleep 0.3\n")
         let changes = changes(lookups: AuthenticatedRunner(runner: GamRunner(binary: slow), vault: vault, runtimeDirectory: base))
         let group = Task { await changes.previewShare(calendarID: Self.team, name: "Team Calendar", target: "staff@example.com", role: "reader") }
-        while !FileManager.default.fileExists(atPath: reading.path) { try await Task.sleep(for: .milliseconds(10)) }
+        try await yieldWhile(every: .milliseconds(10)) { !FileManager.default.fileExists(atPath: reading.path) }
         changes.edited()
         await group.value
         guard case .idle = changes.state else { throw NotPreviewing(state: "\(changes.state)") }
         // A newer preview: the slower, older one never replaces it.
         try FileManager.default.removeItem(at: reading)
         let older = Task { await changes.previewShare(calendarID: Self.team, name: "Team Calendar", target: "staff@example.com", role: "reader") }
-        while !FileManager.default.fileExists(atPath: reading.path) { try await Task.sleep(for: .milliseconds(10)) }
+        try await yieldWhile(every: .milliseconds(10)) { !FileManager.default.fileExists(atPath: reading.path) }
         await changes.previewShare(calendarID: Self.team, name: "Team Calendar", target: "dana@example.com", role: "reader")
         let newer = try pending(changes)
         await older.value
