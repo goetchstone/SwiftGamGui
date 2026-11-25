@@ -138,7 +138,23 @@ public struct CommandCatalog: Sendable {
     static let keywordsThatChange: Set = ["todrive", "doit"]
 
     static func changesThings(_ word: String) -> Bool {
-        keywordsThatChange.contains(String(PythonText.lower(word).unicodeScalars.filter { $0 != "_" }))
+        keywordsThatChange.contains(asKeyword(word))
+    }
+
+    /// A slot value GAM would read as a keyword that writes, as GamGUI's `readbuilder.WRITE_KEYWORDS` (#174): a Sheet or a local
+    /// file instead of a read (`todrive`, `targetfolder`, `targetname`, `drivedir`, `downloadfile`, `saveattachments`), or GAM
+    /// replacing itself (`update`, `install`); and `doit`, as `keywordsThatChange`. Values only: these never bar a line's own
+    /// words from promotion beyond `keywordsThatChange`.
+    static let valueKeywordsThatChange: Set = keywordsThatChange.union(
+        ["todrive", "targetfolder", "targetname", "drivedir", "downloadfile", "saveattachments", "update", "install"])
+
+    static func valueChangesThings(_ value: String) -> Bool {
+        valueKeywordsThatChange.contains(asKeyword(PythonText.strip(value)))
+    }
+
+    /// `word` as GAM reads a keyword (GamGUI's `as_keyword`): lowercased, every "_" dropped.
+    static func asKeyword(_ word: String) -> String {
+        String(PythonText.lower(word).unicodeScalars.filter { $0 != "_" })
     }
 
     /// The argv's own keywords, in order, are read-only by the same rule: the first known verb among them is a read verb, and none
@@ -182,12 +198,13 @@ public struct CommandCatalog: Sendable {
 
     /// A grammar line's slots and argv template, as GamGUI's `parse_read_template`: required words become keywords or slots;
     /// optional `[...]` groups are dropped, except a person or a device on its own (kept as an optional `user <value>`) and a
-    /// single optional placeholder (`info user [<UserItem>]`). A fragment of an alternation or a parenthesized group is passed
-    /// over, never guessed at.
+    /// single optional placeholder that names one value (`info user [<UserItem>]`). A `(...)` group, an item marked `*` (it may
+    /// appear zero times) and a `…Selection>` (a run of optional groups) are never a required argument; a fragment of an
+    /// alternation is passed over, never guessed at. As of GamGUI #174.
     static func readTemplate(_ syntax: String) -> ([Slot], [Part]) {
         var words = words(syntax).map(String.init)
         if words.first == "gam" { words.removeFirst() }
-        var slots: [Slot] = [], template: [Part] = [], used: [String: Int] = [:], depth = 0
+        var slots: [Slot] = [], template: [Part] = [], used: [String: Int] = [:], depth = 0, parens = 0
         func add(_ label: String, _ kind: Slot.Kind, required: Bool, placeholder: String) -> String {
             let key = "a\(slots.count)"
             used[label, default: 0] += 1
@@ -197,11 +214,19 @@ public struct CommandCatalog: Sendable {
         }
         for (position, word) in words.enumerated() {
             let opens = word.count { $0 == "[" }, closes = word.count { $0 == "]" }
-            let startDepth = depth
-            depth += opens - closes
+            let startDepth = depth, startParens = parens
+            // GAM's grammar isn't always balanced (`states <CourseStateList>])`): a stray closer never turns the optional groups
+            // after it into required arguments.
+            depth = max(0, depth + opens - closes)
+            parens = max(0, parens + word.count { $0 == "(" } - word.count { $0 == ")" })
             let optional = startDepth > 0 || word.hasPrefix("[")
             let core = PythonText.strip(word, of: [0x5B, 0x5D])   // "[]"
             guard !core.isEmpty else { continue }
+            // `<DriveFileID>|(drivefilename …`: a placeholder whose other alternative opens a group keeps its slot.
+            let placeholderFirst = core.hasPrefix("<") && core.contains("|(")
+            if !optional, startParens > 0 || core.hasSuffix("*") || ((word.contains("(") || word.contains(")")) && !placeholderFirst) {
+                continue
+            }
             let selfContained = word.hasPrefix("[") && word.hasSuffix("]") && opens == 1 && closes == 1
             let isUser = core.contains("UserTypeEntity") || (core == "<UserItem>" && position == 0)
             let isDevice = core.contains("CrOSTypeEntity") && !core.contains("UserTypeEntity")
@@ -211,20 +236,27 @@ public struct CommandCatalog: Sendable {
                 template += optional ? [.optionalPair(key, prefix: isUser ? "user" : "cros")] : [.literal(isUser ? "user" : "cros"), .required(key)]
                 continue
             }
-            if optional, selfContained, !core.contains(")") {
-                if let placeholder = placeholder(in: core) {
+            if optional, selfContained, startDepth == 0, !core.contains(")") {
+                if let placeholder = placeholder(in: core), namesOneValue(placeholder) {
                     template.append(.optional(add(humanized(placeholder), kind(of: placeholder), required: false, placeholder: placeholder)))
                 }
                 continue
             }
-            if optional || word.contains(")") { continue }
+            if optional { continue }
             if let placeholder = placeholder(in: core) {
+                if placeholder.hasSuffix("Selection>") { continue }
                 template.append(.required(add(humanized(placeholder), kind(of: placeholder), required: true, placeholder: placeholder)))
             } else if !core.contains("("), isLiteral(core) {
                 template.append(.literal(String(core.split(separator: "|")[0])))
             }
         }
         return (slots, template)
+    }
+
+    /// A placeholder an operator can type one value into (GamGUI's `(?:Entity|Item|Name|ID)>$`): `<UserItem>`, `<DomainName>`,
+    /// `<ProjectIDEntity>`. Not a keyword construct one argv element can't hold (`<PermissionMatchAction>` is `pma process|skip`).
+    static func namesOneValue(_ placeholder: String) -> Bool {
+        ["Entity>", "Item>", "Name>", "ID>"].contains { placeholder.hasSuffix($0) }
     }
 
     /// The first `<…>` in `word` (GamGUI's `<[^>]+>`).

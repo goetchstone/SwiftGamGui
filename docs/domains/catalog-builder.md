@@ -21,7 +21,7 @@ it) and 11 (parity is a test).
   parsed off the main actor; GAM's words when it fails; a read cut off at the output cap is refused, never shown as whole. Then
   recorded (`ReadAudit`, below), or not shown.
 - `Packages/GamKit/Sources/ChangeCore/ReadAudit.swift`: the read record (plan F1, GamGUI #170's `catalog_read`).
-- `Packages/GamKit/Sources/GamEngine/CuratedCommand.swift`: GamGUI's curated commands (`catalog.py::_curated`), 24 of its 26,
+- `Packages/GamKit/Sources/GamEngine/CuratedCommand.swift`: GamGUI's curated commands (`catalog.py::_curated`), 24 of its 35,
   each with its fields and GamGUI's builder; `built(_:)` is GamGUI's `_assemble` plus this app's form rules; `target(_:)` whom
   it's for.
 - `Packages/GamKit/Sources/Directory/BuilderChanges.swift`: a curated change previewed (held by the executor), confirmed, run
@@ -187,9 +187,11 @@ it) and 11 (parity is a test).
   one is never the default button. Each runs alone: sequences are a later slice.
 - **Risk is GamGUI's, never below ChangeCore's floor** (`WriteAction.minimumRisk`): a random password reset and an alias removed
   are destructive here, as on every other screen. Transfer and suspend are destructive in GamGUI too.
-- **Two of GamGUI's 26 run elsewhere** (`CuratedCommand.elsewhere`): a signature is set on Signatures, which keeps the one it
-  replaces to put back; an account is deleted from its page on Users (Off3), with the delete's own checks (an alias of
-  another account, a Vault hold, secondary calendars, a data transfer still running).
+- **Neither app's Builder sets a signature or deletes an account** (GamGUI dropped both, #149 and #166): a signature is set on
+  Signatures, which keeps the one it replaces to put back; an account is deleted from its page on Users (Off3), with the
+  delete's own checks (an alias of another account, a Vault hold, secondary calendars, a data transfer still running).
+- **GamGUI's newer curated commands aren't here yet** (`CuratedCommandTests.notPorted`): shared drives, org units, rename a
+  user, delete a group, an admin role.
 - **Deliberate differences from GamGUI's Builder**, each where a run would do what wasn't meant: a person, group or address
   field must be one address GAM acts on as given (`GamCommands.isOneAddress`: GAM reads a bare name, `oauthuser` or a list as
   someone else, a group's member is a `<UserTypeEntity>`, and GAM rewrites `uid:a@b`, `id:a@b` and `Name <a@b>` to `a@b`);
@@ -252,7 +254,13 @@ it) and 11 (parity is a test).
   holds them first.
 - **GamGUI's own catalog joins the grammar's continuation lines** (GamGUI #132), not ported here: over it one gloss differs
   (that `info` line reads "Show details for basic …"). The fixture is GamGUI's code run over this repo's first-line catalog,
-  the input the app reads.
+  the input the app reads. `build_command_catalog.py` puts each entry's first line back after GamGUI's parser, so any GamGUI
+  makes this catalog byte for byte (checked at 8f9e766 and 63ef104).
+- **GamGUI #174's read-builder rules are ported** (7.52.05 bump): a required `(...)` group, an item marked `*` and a
+  `…Selection>` are never a required slot (`print events` no longer asks for an `<EventDisplayProperty>`); an optional
+  placeholder becomes a slot only when it names one value (`Entity>`, `Item>`, `Name>`, `ID>`); a stray `]` or `)` never
+  makes what follows required. A value GAM reads as a write keyword is refused: GamGUI's `WRITE_KEYWORDS` (`targetfolder`,
+  `targetname`, `drivedir`, `downloadfile`, `saveattachments`, `update`, `install`, `todrive`) and this app's `doit`.
 
 - **Ask in Plain English's commands are made in one place**, `FinderCatalog`, for the app and the measured samples: two copies
   would let the measurement measure another menu (review 2026-11-21). It joins Assist and GamEngine only; the finder scan

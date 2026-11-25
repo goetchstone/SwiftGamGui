@@ -67,6 +67,8 @@ def main() -> None:
 # markup characters and an ampersand, so the auto-reply's HTML (`autoreply_html`) is held too.
 _SAMPLE = {"target_user": "{key}@example.com", "user": "{key}@example.com", "group": "{key}@example.com",
            "email": "{key}@example.com", "text": "{key} one\nA < B & C"}
+# A text slot that holds an ID GamGUI checks the shape of (GamGUI #187, #188, #189): an ID as its own tests write one.
+_SAMPLE_ID = {"drive_id": "0AFINANCEuk9PVA", "folder_id": "1FOLDERours", "assignment_id": "9170001"}
 
 
 def _curated_entry(command) -> dict:
@@ -81,7 +83,7 @@ def _curated_entry(command) -> dict:
             if slot.kind.value == "choice":
                 values[slot.key] = choice if slot.key == choice_key else (slot.default or slot.choices[0])
             else:
-                values[slot.key] = _SAMPLE[slot.kind.value].format(key=slot.key)
+                values[slot.key] = _SAMPLE_ID.get(slot.key) or _SAMPLE[slot.kind.value].format(key=slot.key)
         return values
 
     cases = [filled()]

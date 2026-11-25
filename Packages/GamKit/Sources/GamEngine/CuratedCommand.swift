@@ -3,7 +3,9 @@
 /// runs from the Builder as a promoted one does; a write is only ever a `GamWrite`, which runs through ChangeCore's preview and
 /// confirm (`BuilderChanges`), never from here.
 ///
-/// Two of GamGUI's 26 run from another screen instead (`elsewhere`). Deliberate differences from GamGUI's form
+/// GamGUI's newer ones (shared drives, org units, rename a user, delete a group, an admin role) aren't here yet
+/// (`CuratedCommandTests.notPorted`). Neither app's Builder sets a signature or deletes an account: Signatures and Users do,
+/// with the checks those need (GamGUI #149, #166). Deliberate differences from GamGUI's form
 /// (`routes/builder.py::_assemble`), each where GAM would otherwise do something the operator didn't type: a person, group or
 /// address field must hold one address GAM acts on as given (`GamCommands.isOneAddress`: GAM reads a bare name, `oauthuser` or a
 /// list as someone else, and rewrites `uid:a@b` or `Name <a@b>` to `a@b`, so a refusal comparing addresses would miss it); an
@@ -115,21 +117,13 @@ public struct CuratedCommand: Sendable, Identifiable {
 }
 
 extension CuratedCommand {
-    /// GamGUI's curated commands this app runs from another screen, and why.
-    public static let elsewhere: [String: String] = [
-        "build.set_signature": "A signature is set on Signatures, which reads the one it replaces and keeps it on this Mac first, so it "
-            + "can be put back.",
-        "build.delete_user": "An account is deleted from its page on Users (Actions, Delete Account…), with the checks a delete needs: an "
-            + "alias of another account, a Vault hold, secondary calendars, a data transfer not finished.",
-    ]
-
     /// Choices GamGUI's form offers that don't run here yet, by command and field, and why.
     public static let notYet: [String: [String: [String: String]]] = [
         "build.search_messages": ["detail": [GamCommands.MessageDetail.headersAndBody.rawValue:
             "Message bodies aren't shown from here, as the Builder's other sensitive reads aren't run: pick Headers or Summary"]],
     ]
 
-    /// GamGUI's curated commands, in its order, but for `elsewhere`.
+    /// GamGUI's curated commands, in its order, but for those not ported yet.
     public static let all: [CuratedCommand] = {
         let delegates = "Gmail - Delegates", forwarding = "Gmail - Forwarding", vacation = "Gmail - Vacation"
         return [

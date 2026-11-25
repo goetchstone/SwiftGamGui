@@ -230,6 +230,14 @@ def full_kwargs(fn, args: tuple, kwargs: dict) -> dict:
 
 
 def strategy_values(strategy) -> list:
+    if getattr(getattr(strategy, "function", None), "__name__", "") == "from_regex":
+        # One character class, sized (GamGUI's drive and role-assignment IDs): its first character, as few times as
+        # it allows. Any other pattern is named here by hand.
+        pattern, = strategy._LazyStrategy__args
+        m = re.fullmatch(r"\[(.)[^\]]*\]\{(\d+),\d+\}", pattern)
+        if not m or not strategy._LazyStrategy__kwargs.get("fullmatch"):
+            raise SystemExit(f"from_regex({pattern!r}) in a Spec: name its value here")
+        return [m.group(1) * int(m.group(2))]
     inner = getattr(strategy, "wrapped_strategy", strategy)
     kind = type(inner).__name__
     if kind == "BooleansStrategy":
@@ -256,11 +264,39 @@ def strategy_values(strategy) -> list:
         return [strategy_values(inner.element_strategy)[:max(1, inner.min_size)]]
     if kind == "FixedDictStrategy":
         return [{k: strategy_values(v)[0] for k, v in inner.mapping.items()}]
+    if kind == "FilteredStrategy":
+        # The first named value every condition keeps (GamGUI's WORD, its nasty text made present; a drive name, not
+        # blank). Hypothesis pushes a one_of's filters into its branches, and a sampled_from keeps them as
+        # transformations; free text has no named value, so only the sampled branches are searched, every element.
+        def named(s):
+            s = getattr(s, "wrapped_strategy", s)
+            kind = type(s).__name__
+            if kind == "OneOfStrategy":
+                return [v for b in s.original_strategies for v in named(b)]
+            if kind == "FilteredStrategy":
+                return [v for v in named(s.filtered_strategy) if all(c(v) for c in s.flat_conditions)]
+            if kind in ("TextStrategy", "LazyStrategy"):
+                return []
+            if kind == "SampledFromStrategy":
+                steps = s._transformations
+                if any(step[0] != "filter" for step in steps):
+                    raise SystemExit("a sampled_from in a Spec maps its values: name the values here")
+                return [e for e in s.elements if all(step[1](e) for step in steps)]
+            return strategy_values(s)
+        kept = named(inner)
+        if not kept:
+            raise SystemExit("a filtered strategy in a Spec keeps none of its values: name the values here")
+        return kept[:1]
+    if kind == "BuildsStrategy":
+        # The target called on each argument's first value (GamGUI #184's update_profile: an organization's title and
+        # department, each one element).
+        return [inner.target(*(strategy_values(a)[0] for a in inner.args),
+                             **{k: strategy_values(v)[0] for k, v in inner.kwargs.items()})]
     if hasattr(inner, "value"):
         return [inner.value]
     if hasattr(inner, "elements"):
         return [list(inner.elements)[0]]
-    raise SystemExit(f"unhandled hypothesis strategy in a Spec: {kind}")
+    raise SystemExit(f"unhandled hypothesis strategy in a Spec: {kind} {inner!r}")
 
 
 def ranges(predicate) -> list:
@@ -682,9 +718,11 @@ def output_fixture(mock: Path, oracle: GamOracle) -> dict:
 
 
 # GamGUI's reads whose GAM shape the mock doesn't model (the first two printed NDJSON, which GAM never prints for them;
-# the org-unit tree, GamGUI #169, is a feature not built here yet): the mock refuses them, and they have no case here.
-# No SwiftGamGui screen reads them yet.
-NOT_MODELLED = {"print_filelist", "print_all_calendars", "print_org_units", "info_group_settings"}
+# the org-unit tree, GamGUI #169, a shared drive's members and its files, GamGUI #185 and #187, are features not built
+# here yet): the mock
+# refuses them, and they have no case here. No SwiftGamGui screen reads them yet.
+NOT_MODELLED = {"print_filelist", "print_all_calendars", "print_org_units", "info_group_settings",
+                "print_drive_members", "print_shared_drive_files"}
 
 
 def _keyed(key: str, name: str):
@@ -3916,8 +3954,13 @@ def main() -> int:
             required = {p.name: (ENUM_ARGS[name, p.name][0] if (name, p.name) in ENUM_ARGS
                                  else ["<" + p.name + ">"] if "Sequence" in str(p.annotation) else "<" + p.name + ">")
                         for p in params if p.default is p.empty}
-            defaults[name] = {"kwargs": {k: jsonable(v) for k, v in required.items()},
-                              "argv": list(originals[name](**required))}
+            try:
+                argv = list(originals[name](**required))
+            except ValueError:
+                # It refuses a call of required arguments alone (update_profile: "nothing to send"), so it has no
+                # default argv to hold; the cases above hold that refusal.
+                continue
+            defaults[name] = {"kwargs": {k: jsonable(v) for k, v in required.items()}, "argv": argv}
 
     # Stable order, no duplicates.
     seen, unique = set(), []

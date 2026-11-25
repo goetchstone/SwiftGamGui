@@ -12,6 +12,8 @@ struct GoldenArgvTests {
     /// A keyword argument as the generator writes it: GamGUI's typed values (`MessageId`, `Phone`) as their fields by name.
     indirect enum Value: Decodable, Equatable, Sendable {
         case string(String), bool(Bool), int(Int), strings([String]), objects([[String: Value]]), object([String: Value]), null
+        /// Any other list (GamGUI #184's organizations: each one's fields as `[name, value]` pairs).
+        case values([Value])
 
         init(from decoder: Decoder) throws {
             let container = try decoder.singleValueContainer()
@@ -21,6 +23,7 @@ struct GoldenArgvTests {
             else if let string = try? container.decode(String.self) { self = .string(string) }
             else if let strings = try? container.decode([String].self) { self = .strings(strings) }
             else if let objects = try? container.decode([[String: Value]].self) { self = .objects(objects) }
+            else if let values = try? container.decode([Value].self) { self = .values(values) }
             else { self = .object(try container.decode([String: Value].self)) }
         }
     }
@@ -143,6 +146,23 @@ struct GoldenArgvTests {
         "remove_license": "A person's licenses from their page (GamGUI #175): not built here yet",
         "info_group_settings": "A group's settings from the Groups board (GamGUI #182): not built here yet; the mock refuses the read",
         "update_group_settings": "A group's settings from the Groups board (GamGUI #182): not built here yet",
+        "set_archived": "Close out a leaver (GamGUI #183, roadmap 4.5): not built here yet",
+        "move_alias": "Close out a leaver (GamGUI #183, roadmap 4.5): not built here yet",
+        "delete_admin_role": "Close out a leaver (GamGUI #183, roadmap 4.5): not built here yet",
+        "update_profile": "Change many people from a CSV (GamGUI #184, roadmap 4.6): not built here yet",
+        "print_drive_members": "A shared drive's members (GamGUI #185, roadmap 4.7): not built here yet; the mock refuses the read",
+        "add_drive_member": "A shared drive's members (GamGUI #185, roadmap 4.7): not built here yet",
+        "set_drive_member_role": "A shared drive's members (GamGUI #185, roadmap 4.7): not built here yet",
+        "remove_drive_member": "A shared drive's members (GamGUI #185, roadmap 4.7): not built here yet",
+        "print_shared_drive_files": "A shared drive's files (GamGUI #187, roadmap 4.7): not built here yet; the mock refuses the read",
+        "print_folder_files": "Move a folder into a shared drive (GamGUI #188, roadmap 4.8): not built here yet",
+        "move_folder_to_shared_drive": "Move a folder into a shared drive (GamGUI #188, roadmap 4.8): not built here yet",
+        "copy_rest_of_folder_to_shared_drive": "Move a folder into a shared drive (GamGUI #188, roadmap 4.8): not built here yet",
+        "rename_user": "Rename a user (GamGUI #189, roadmap 5.1): not built here yet",
+        "delete_group": "Delete a group (GamGUI #189, roadmap 5.1): not built here yet",
+        "create_admin": "Add an admin role (GamGUI #189, roadmap 5.1): not built here yet",
+        "create_shared_drive": "Create a shared drive (GamGUI #189, roadmap 5.1): not built here yet",
+        "rename_shared_drive": "Rename a shared drive (GamGUI #189, roadmap 5.1): not built here yet",
     ]
 
     /// GamGUI's `todrive_args` makes no command, only the words a read ends with to go to a Sheet (`exportToSheet` appends them):

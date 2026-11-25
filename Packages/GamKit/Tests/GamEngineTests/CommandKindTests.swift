@@ -37,7 +37,8 @@ struct CommandKindTests {
         // 7.52.03: v7.52.01...v7.52.03's only Gmail hunk renames exceptions in _showSaveAttachments' Drive upload; neither
         // function is touched.
         // 7.52.04: v7.52.03...v7.52.04 touches neither function (its last hunk is infoDriveFileACLs', ~6,100 lines before).
-        "find_message_copies": ("7.52.04","trash messages without doit: _processMessagesThreads lists and counts, then "
+        // 7.52.05: v7.52.04...v7.52.05 touches neither function (its last hunk is _showAsset's, ~3,700 lines before).
+        "find_message_copies": ("7.52.05","trash messages without doit: _processMessagesThreads lists and counts, then "
             + "continues past every user before a trash call"),
     ]
 

@@ -19,6 +19,9 @@ public struct GamError: Error, Equatable, Sendable {
         /// No free license for another account ("Domain user limit reached", seen live 2026-09-30).
         /// Every later create fails the same way.
         case licenseLimit = "license_limit"
+        /// `noactionifalias` (rename a user, delete a group): the address is an alias, so GAM did nothing rather than act
+        /// on the account or group it points to (verifyUserPrimaryEmail / verifyGroupPrimaryEmail, exit 51). GamGUI #189.
+        case aliasRefused = "alias_refused"
         case notAuthenticated = "not_authenticated"
         case timeout
         case unknown
@@ -29,7 +32,7 @@ public struct GamError: Error, Equatable, Sendable {
         /// best-effort sweep tolerates.
         public static let bySeverity: [Kind] = [
             .authExpired, .notAuthenticated, .scopeMissing, .licenseLimit, .rateLimited, .timeout, .unknown,
-            .permissionDenied, .ownACL, .serviceNotEnabled, .notFound,
+            .permissionDenied, .ownACL, .serviceNotEnabled, .aliasRefused, .notFound,
         ]
 
         /// About the connection, not the one target: every later call in a bulk loop would fail the same
@@ -66,6 +69,8 @@ public struct GamError: Error, Equatable, Sendable {
                 "Your Google Workspace subscription has no free license for another account. Free one "
                     + "(delete or unlicense a departed user's account) or add licenses under Billing in the "
                     + "Admin console, then run it again."
+            case .aliasRefused:
+                "That address is an alias, so nothing was changed. Name the account's or group's own address."
             case .notAuthenticated:
                 "GAM is not set up for this domain yet. Import its credentials on Setup first."
             case .timeout:
@@ -258,6 +263,7 @@ public struct GamError: Error, Equatable, Sendable {
         // Narrow on purpose: GAM's account-wide "Calendar not enabled. Please run …" is a real failure.
         if text.has("service/app not enabled") { return .serviceNotEnabled }
         if text.has("domain user limit reached") { return .licenseLimit }
+        if text.has("not performed: not a primary email address") { return .aliasRefused }
         if text.has("please run", thenLater: "oauth") || text.has("no", thenLater: "credentials")
             || text.has("service account") { return .notAuthenticated }
         return .unknown

@@ -450,8 +450,8 @@ struct WriteRouteTests {
 
     /// Every signature a screen replaces is kept first: Signatures builds its writes in one place, each with its `KeepFirst`,
     /// and onboarding sets one on an account its run makes (which has none to keep) or keeps it first in a later run's retry.
-    /// The executor refuses any other (`signatureNotKept`). The Builder's set_signature is Signatures'
-    /// (`CuratedCommand.elsewhere`); the demo's audit only names one.
+    /// The executor refuses any other (`signatureNotKept`). The Builder sets none (as GamGUI's, since its #166); the demo's
+    /// audit only names one.
     @Test func everySignatureAScreenReplacesIsKeptFirst() throws {
         let setting = "GamCommands.setSignature("
         #expect(try Self.files(in: "Packages/GamKit/Sources", matching: [setting])

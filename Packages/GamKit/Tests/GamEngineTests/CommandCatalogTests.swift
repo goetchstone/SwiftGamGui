@@ -136,19 +136,20 @@ struct CommandCatalogTests {
         #expect(try GamCommands.catalogRead(catalog.commands.last!, values: [:]).argv == ["print", "users"], "an optional group is dropped")
     }
 
-    /// A value is never GAM's `todrive` or `doit`, however written: a read whose required field sits where GAM reads options
-    /// (`print events <EventDisplayProperty>*`) would otherwise upload its result to the admin's Drive (review 2026-10-28). A value
-    /// is trimmed as Python trims, the separator characters too.
+    /// A value is never a keyword GAM reads as a write, however written: `todrive` (a Sheet in the admin's Drive, review
+    /// 2026-10-28), `doit`, and GamGUI #174's set (a local file, GAM replacing itself). A required field can sit where GAM reads
+    /// options. A value is trimmed as Python trims, the separator characters too.
     @Test func aValueIsNeverAKeywordThatWrites() throws {
-        let events = try #require(Self.catalog.commands.first { $0.runnable && $0.syntax.contains("print events") && $0.slots.contains { $0.placeholder == "<EventDisplayProperty>" } })
-        let property = try #require(events.slots.first { $0.placeholder == "<EventDisplayProperty>" })
-        var values = Dictionary(uniqueKeysWithValues: events.slots.map { ($0.key, "c@example.com") })
-        for keyword in ["todrive", " ToDrive ", "to_drive", "DOIT", "do_it"] {
-            values[property.key] = keyword
-            #expect(throws: GamCommands.Invalid.self, "\(keyword)") { try GamCommands.catalogRead(events, values: values) }
+        let read = try #require(Self.catalog.commands.first { $0.runnable && $0.slots.contains { $0.required && $0.kind == .text } })
+        let field = try #require(read.slots.first { $0.required && $0.kind == .text })
+        var values = Dictionary(uniqueKeysWithValues: read.slots.map { ($0.key, "c@example.com") })
+        for keyword in ["todrive", " ToDrive ", "to_drive", "DOIT", "do_it", "targetfolder", "target_name", "DriveDir", "downloadfile",
+                        "saveattachments", "update", " Install "] {
+            values[field.key] = keyword
+            #expect(throws: GamCommands.Invalid.self, "\(keyword)") { try GamCommands.catalogRead(read, values: values) }
         }
-        values[property.key] = "alwaysincludeemail"
-        #expect(try GamCommands.catalogRead(events, values: values).argv.contains("alwaysincludeemail"))
+        values[field.key] = "alwaysincludeemail"
+        #expect(try GamCommands.catalogRead(read, values: values).argv.contains("alwaysincludeemail"))
         let user = try #require(Self.catalog.commands.first { $0.runnable && $0.slots.first?.kind == .targetUser && $0.slots.first?.required == true })
         #expect(try GamCommands.catalogRead(user, values: ["a0": "\u{1F}bob@example.com\u{1C}"]).argv.contains("bob@example.com"))
     }

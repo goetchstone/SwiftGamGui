@@ -1024,7 +1024,7 @@ public enum GamCommands {
         if let missing = command.slots.first(where: { $0.required && value($0.key).isEmpty }) {
             throw .argument("Fill in \(missing.label)")
         }
-        if let keyword = command.slots.first(where: { CommandCatalog.changesThings(value($0.key)) }) {
+        if let keyword = command.slots.first(where: { CommandCatalog.valueChangesThings(value($0.key)) }) {
             throw .argument("\(keyword.label) can't be “\(value(keyword.key))”: GAM reads that as a keyword that changes things, and the Builder only reads")
         }
         var argv: [String] = []
