@@ -139,7 +139,7 @@ final class BuilderChangesTests {
             #expect(BuilderChanges.risk(curated) == max(gamgui, write.action.minimumRisk), "\(expected.id)")
             #expect(WriteStep(write, target: "x", summary: "", risk: BuilderChanges.risk(curated)).risk == BuilderChanges.risk(curated))
         }
-        #expect(writes == 18)
+        #expect(writes == 21)
     }
 
     /// A read isn't held (the Builder runs it), and the form's refusals are said before anything is held.
@@ -301,5 +301,40 @@ final class BuilderChangesTests {
         let before = calls().count
         await changes.confirm(held, OperatorConfirmation(confirmed: true))
         #expect(problem == "Type confirm to run this destructive bulk change." && calls().count == before)
+    }
+
+    // MARK: the closed list (roadmap 5.1, GamGUI's `tests/test_closed_list_writes.py`)
+
+    private func runHeld() async throws -> BuilderChanges.State {
+        let pending = try pending()
+        await changes.confirm(pending, OperatorConfirmation(confirmed: true))
+        return changes.state
+    }
+
+    @Test func renamingTheConnectedAdminIsRefused() async throws {
+        try await connect()
+        await changes.preview(try command("build.rename_user"), values: ["email": "admin@example.com", "new_email": "boss@example.com"])
+        #expect(problem?.contains("admin@example.com") == true, "a rename cuts the connected admin off")
+    }
+
+    @Test func aRenameAndADeleteRunAsHeldAndAnAliasIsRefusedInWords() async throws {
+        try await connect()
+        try FileManager.default.createDirectory(at: scratch.appending(path: "mock-state"), withIntermediateDirectories: true)
+        await changes.preview(try command("build.rename_user"), values: ["email": "carol@example.com", "new_email": "carol.clark@example.com"])
+        guard case .done = try await runHeld() else { Issue.record("\(changes.state)"); return }
+        #expect(calls().contains(["update", "user", "carol@example.com", "primaryemail", "carol.clark@example.com", "noactionifalias"]))
+        await changes.preview(try command("build.delete_group"), values: ["group": "everyone@example.com"])
+        guard case .problem(let why) = try await runHeld() else { Issue.record("\(changes.state)"); return }
+        #expect(why.contains(GamError.Kind.aliasRefused.remediation))
+    }
+
+    @Test func anAdminRoleGamDoesntConfirmReadsAsUnconfirmed() async throws {
+        try await connect()
+        try FileManager.default.createDirectory(at: scratch.appending(path: "mock-state"), withIntermediateDirectories: true)
+        try Data().write(to: scratch.appending(path: "mock-state/admin_internal_error"))
+        await changes.preview(try command("build.create_admin"), values: ["email": "dana@example.com", "role": "_HELP_DESK_ADMIN_ROLE", "org_unit": ""])
+        guard case .problem(let why) = try await runHeld() else { Issue.record("\(changes.state)"); return }
+        #expect(why.contains("may not have happened"))
+        #expect(throws: GamCommands.Invalid.self) { try GamCommands.createAdmin(email: "dana@example.com", role: "_SEED_ADMIN_ROLE", orgUnit: "//") }
     }
 }
