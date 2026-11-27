@@ -59,7 +59,7 @@ public struct MessageCopies: Sendable, Equatable {
 
     /// The exit codes GAM's per-user printers set here (ACTION_FAILED_RC, ACTION_NOT_PERFORMED_RC,
     /// NO_ENTITIES_FOUND_RC, SERVICE_NOT_APPLICABLE_RC), and 0 when none set one. Any other is the command failing.
-    static let perUserExitCodes: Set<Int32> = [0, 50, 51, 60, 73]
+    public static let perUserExitCodes: Set<Int32> = [0, 50, 51, 60, 73]
 
     /// The answer didn't come back whole: some users weren't reported, or GAM's output passed the runner's cap.
     /// A mailbox's read that exited 0 with nothing where GAM's "none found" is 60: GAM skips a refused token without a word

@@ -110,6 +110,8 @@ On 2026-11-05 the operator said most of what's built has run, without listing it
 
 ### Not run
 - Signatures (new 2026-11-13): a group's members read before a signature preview.
+- Reports' Forwarding & mail delegates (new 2026-11-27, roadmap 3.2): both domain-wide reads; check the counts against
+  the Admin console on the first run. GamGUI's hasn't run either.
 - Calendars (new 2026-11-13): find an event by title or days (each day as an instant with its offset); one event read again
   before its delete (a deleted one read back `cancelled`); a group's members read before a share; a calendar's data owner
   (`calendars <c> print settings fields id,dataowner formatjson`) before its delete.
