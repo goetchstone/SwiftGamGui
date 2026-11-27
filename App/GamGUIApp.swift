@@ -220,6 +220,7 @@ struct ContentView: View {
                     UsersView(setup: services.setup, directory: services.directory, changes: services.userChanges,
                               access: services.userAccess, searches: services.mailboxSearches, chromeProfiles: services.chromeProfiles, personDevices: services.personDevices, drafts: services.siriDrafts, calendarReads: services.calendarReads,
                               classroom: services.classroom,
+                              departments: services.departmentForMany, groups: services.groups,
                               requested: $usersPerson,
                               openSignatures: { email in
                                   signaturesPerson = email
