@@ -23,6 +23,10 @@ struct UsersView: View {
     let calendarReads: CalendarReads
     /// A person's Classroom classes, read from their page when asked (the Profile tab).
     let classroom: ClassroomReads
+    /// Department for Many… (roadmap 2.1): one department for a group's members or pasted addresses.
+    let departments: DepartmentForMany
+    /// The groups Department for Many… chooses from.
+    let groups: GroupStore
     /// A person another screen asked to open (Reports' Show in Users), cleared once their page is open.
     @Binding var requested: String?
     /// Opens Signatures for a person (the Mail tab's "Change Signature…").
@@ -45,6 +49,7 @@ struct UsersView: View {
     @Environment(\.appearsActive) private var appearsActive
     @State private var sortOrder = [KeyPathComparator(\GamUser.fullName, comparator: .localizedStandard)]
     @State private var selection: GamUser.ID?
+    @State private var settingDepartments = false
 
     var body: some View {
         content
@@ -70,6 +75,15 @@ struct UsersView: View {
                     .disabled(directory.isLoading || setup.active == nil)
                     .accessibilityIdentifier("users.load")
                 }
+                ToolbarItem {
+                    Button("Department for Many\u{2026}", systemImage: "person.3") { settingDepartments = true }
+                        .help("Set one department for a group's members or a list of addresses")
+                        .disabled(directory.users == nil)
+                }
+            }
+            .sheet(isPresented: $settingDepartments) {
+                DepartmentForManySheet(model: departments, groups: groups) { settingDepartments = false }
+                    .interactiveDismissDisabled(departments.isBusy)
             }
     }
 
@@ -159,9 +173,14 @@ struct UsersView: View {
         AccessibilityNotification.Announcement(text).post()
     }
 
-    /// Debug builds: `SWIFTGAMGUI_SELECT` opens that person's page, for the snapshot of it.
+    /// Debug builds: `SWIFTGAMGUI_SELECT` opens that person's page, for the snapshot of it; `SWIFTGAMGUI_TAB=department` (or
+    /// `department-review`) opens Department for Many… instead.
     private func selectForSnapshot() {
         #if DEBUG
+        if directory.users != nil, ProcessInfo.processInfo.environment["SWIFTGAMGUI_TAB"]?.hasPrefix("department") == true {
+            settingDepartments = true
+            return
+        }
         guard selection == nil, let email = ProcessInfo.processInfo.environment["SWIFTGAMGUI_SELECT"],
               let user = directory.users?.first(where: { $0.primaryEmail == email }) else { return }
         selection = user.id
