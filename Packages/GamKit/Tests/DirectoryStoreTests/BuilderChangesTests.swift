@@ -302,4 +302,22 @@ final class BuilderChangesTests {
         await changes.confirm(held, OperatorConfirmation(confirmed: true))
         #expect(problem == "Type confirm to run this destructive bulk change." && calls().count == before)
     }
+
+    /// Roadmap 5.3 (GamGUI's `test_the_export_downloads_the_previewed_steps_and_is_audited`): the held steps, never what was
+    /// queued since; audited as `sequence_export` before the file is given; the preview still runs after.
+    @Test func theExportIsTheHeldStepsAndIsAudited() async throws {
+        try await connect()
+        let add = try command("build.add_group_member")
+        changes.addToSequence(add, values: member)
+        await changes.previewSequence()
+        let held = try pending()
+        let file = try await changes.exportSequence(held).get()
+        #expect(file.contains("\ngam update group sales@example.com add member carol@example.com\n"))
+        let record = try #require(AuditLog.records(at: auditURL).first { $0["action"]?.string == "sequence_export" })
+        #expect(record["extra"]?.object?["steps"] == .number("1"))
+        await changes.confirm(held, OperatorConfirmation(confirmed: true))
+        guard case .done = changes.state else { Issue.record("\(changes.state)"); return }
+        let after = await changes.exportSequence(held)
+        guard case .failure = after else { Issue.record("a run preview exported after it ran"); return }
+    }
 }
