@@ -169,6 +169,8 @@ for spec in home:home users:users groups:groups setup:setup jobs:home::jobs \
             offboard-classes:offboard:alice@example.com:plan \
             builder:builder:print+users narrow-builder:builder:print+users::smallest \
             builder-change:builder:build.add_group_member:fill builder-confirm:builder:build.add_group_member:preview \
+            builder-sequence:builder:build.add_group_member:sequence \
+            narrow-builder-sequence:builder:build.add_group_member:sequence:smallest \
             narrow-builder-change:builder:build.add_group_member:fill:smallest \
             builder-sheet:builder:build.print_delegates:sheet builder-sheet-result:builder:build.print_delegates:sheet-result \
             narrow-builder-sheet:builder:build.print_delegates:sheet:smallest \

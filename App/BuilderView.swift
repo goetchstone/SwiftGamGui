@@ -35,6 +35,7 @@ struct BuilderView: View {
     /// as its page opens (`requested`), then let go, so reopening the page later never undoes the operator's own edits.
     /// Nothing runs from it. `draftedPage` changes with each draft, so a page already open takes a new one.
     @State private var asking = false
+    @State private var sequencing = false
     @State private var drafted: FinderDraft?
     @State private var draftedPage = ""
 
@@ -121,10 +122,16 @@ struct BuilderView: View {
                 .help("Show one area's commands")
                 Toggle("Runnable Only", systemImage: "play.circle", isOn: $runnableOnly)
                     .help("Show only the commands that run from here")
+                Button("Sequence (\(changes.sequence.count))", systemImage: "list.number") { sequencing = true }
+                    .help("The changes added with Add to Sequence: reorder them, then preview and run them in order")
                 Button("Ask in Plain English…", systemImage: "text.bubble") { asking = true }
                     .disabled({ if case .success? = catalog { false } else { true } }())
                     .help("Describe what to see or change; the on-device model picks a command and fills it in. Nothing runs.")
             }
+        }
+        .sheet(isPresented: $sequencing) {
+            BuilderSequenceSheet(changes: changes) { sequencing = false }
+                .interactiveDismissDisabled(changes.isBusy && changes.concernsSequence)
         }
         .sheet(isPresented: $asking) {
             if case .success(let loaded)? = catalog {
@@ -139,6 +146,7 @@ struct BuilderView: View {
             if catalog == nil {
                 catalog = await Task.detached(priority: .userInitiated) { Self.load() }.value
                 #if DEBUG
+                if ProcessInfo.processInfo.environment["SWIFTGAMGUI_TAB"] == "sequence" { sequencing = true }
                 // Snapshots: a curated command by its id, or the first runnable command whose grammar starts with the words given,
                 // `+` between them.
                 if let wanted = ProcessInfo.processInfo.environment["SWIFTGAMGUI_SELECT"], case .success(let loaded)? = catalog {
@@ -616,6 +624,8 @@ private struct CuratedDetail: View {
             HStack {
                 if command.reads {
                     ReadStatus(reading: reading)
+                } else if let refused = changes.sequenceRefusal {
+                    Label(refused, systemImage: "exclamationmark.triangle.fill").symbolRenderingMode(.multicolor)
                 } else if let outcome {
                     Label(outcome.text, systemImage: outcome.failed ? "exclamationmark.triangle.fill" : "checkmark.circle.fill")
                         .symbolRenderingMode(.multicolor).textSelection(.enabled)
@@ -628,6 +638,10 @@ private struct CuratedDetail: View {
                         .help(setup.active == nil ? "Connect a domain on Setup first" : "Run this read on the connected domain")
                         .accessibilityHint("Runs the command shown on the connected domain. It only reads.")
                 } else {
+                    Button("Add to Sequence") { changes.addToSequence(command, values: values) }
+                        .disabled(changes.isBusy || !ready)
+                        .help("Adds this change as the sequence's next step, to preview and run with the rest")
+                        .accessibilityHint("Nothing runs until the sequence is previewed and confirmed.")
                     Button("Preview…", action: preview)
                         .keyboardShortcut("r")
                         .disabled(changes.isBusy || !ready || setup.active == nil)
@@ -656,7 +670,7 @@ private struct CuratedDetail: View {
         #if DEBUG
         let environment = ProcessInfo.processInfo.environment
         guard environment["SWIFTGAMGUI_DEMO"] == "1", directory.users != nil, !debugApplied, let tab = environment["SWIFTGAMGUI_TAB"],
-              ["fill", "preview", "sheet", "sheet-result"].contains(tab) else { return }
+              ["fill", "preview", "sheet", "sheet-result", "sequence"].contains(tab) else { return }
         debugApplied = true
         for field in command.fields {
             switch field.kind {
@@ -668,6 +682,15 @@ private struct CuratedDetail: View {
             }
         }
         if tab == "preview" { preview() }
+        // The sequence sheet's review: this change for carol, then for dana, held, never run (the sheet opens from the toolbar).
+        if tab == "sequence" {
+            changes.addToSequence(command, values: values)
+            if let member = command.fields.first(where: { $0.kind == .user || $0.kind == .targetUser }) {
+                values[member.key] = "dana@example.com"
+            }
+            changes.addToSequence(command, values: values)
+            Task { await changes.previewSequence() }
+        }
         // A read's table to a Sheet: the read runs against the mock, then its export is previewed (`exportForSnapshot`).
         if tab == "sheet" || tab == "sheet-result" { run() }
         #endif

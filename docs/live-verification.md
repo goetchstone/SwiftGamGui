@@ -66,7 +66,8 @@ Dates are 2026, and the last time the command ran from any screen.
 - **Not run:** copies in Spam, several emails in one preview (Pull All).
 
 ### Builder
-- **Not run:** any change from this screen (the log marks a Builder run, and has none).
+- **Not run:** any change from this screen (the log marks a Builder run, and has none), nor a sequence (new 2026-11-27,
+  roadmap 2.5; each step is one of the changes below, held and run together).
   - **B3:** the changes that ran from other screens: add or remove a delegate, auto-reply on and off, add or remove a group
     member, title and department, sign out, suspend, reset password, forwarding off, the Drive and Calendar transfer.
   - **B4:** the changes that haven't run in either app: add a forwarding address, forward on, create or remove an alias,
