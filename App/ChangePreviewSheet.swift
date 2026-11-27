@@ -1545,6 +1545,64 @@ struct DepartmentForManyReview: View {
     }
 }
 
+/// Hires from a CSV's review (roadmap 2.3, GamGUI's `_onboard_bulk_preview.html`): the tally, each row left out and why, each
+/// hire's steps, the commands, and the one button that runs exactly this. Shown inside `HiresFromCSVSheet`.
+struct HiresFromCSVReview: View {
+    let pending: HiresFromCSV.Pending
+    let model: HiresFromCSV
+
+    var body: some View {
+        let n = pending.hires.count
+        Section {
+            Text("\(n) hire\(n == 1 ? "" : "s"): " + pending.perRole.map { "\($0.count) \($0.role)" }.joined(separator: ", ") + ".")
+            if pending.creates > 0 {
+                Text("\(pending.creates) account\(pending.creates == 1 ? "" : "s") created: \(pending.notifies) emailed by GAM to the "
+                     + "row's notify address, \(pending.sheets) on the sign-in sheet here.")
+            }
+            ForEach(pending.preview.decision.warnings, id: \.self) { warning in
+                Label(warning, systemImage: "exclamationmark.triangle.fill").symbolRenderingMode(.multicolor)
+            }
+        } header: {
+            Text(pending.preview.title).accessibilityAddTraits(.isHeader)
+        }
+        if !pending.errors.isEmpty {
+            Section("Left out (\(pending.errors.count))") {
+                ForEach(pending.errors, id: \.self) { Label($0, systemImage: "xmark.circle").foregroundStyle(.secondary) }
+            }
+        }
+        Section("Each hire") {
+            ForEach(pending.hires) { hire in
+                let plan = hire.plan
+                DisclosureGroup {
+                    ForEach(plan.rows) { Text($0.label).font(.callout) }
+                    ForEach(plan.warnings, id: \.self) { Label($0, systemImage: "exclamationmark.triangle.fill").font(.callout) }
+                } label: {
+                    Text("\(plan.name) \u{B7} \(plan.role.name) \u{B7} \(plan.rows.count) step\(plan.rows.count == 1 ? "" : "s")"
+                         + (plan.creates ? " \u{B7} new account" : ""))
+                }
+            }
+            DisclosureGroup("Show \(pending.preview.steps.count) commands") {
+                Text(pending.preview.steps.map(\.commandLine).joined(separator: "\n"))
+                    .font(.caption.monospaced())
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        Section {
+            Text("Runs exactly these hires, one step at a time, in the jobs tray with Stop. A failed account skips that hire's other "
+                 + "steps only. Choose the file again for a newer one.")
+                .font(.callout).foregroundStyle(.secondary)
+            // Not the default button: Return alone creates nobody.
+            Button("Onboard \(n) Hire\(n == 1 ? "" : "s")") {
+                let pending = pending, model = model
+                Task { await model.confirm(pending, OperatorConfirmation(confirmed: true)) }
+            }
+            .keyboardShortcut(.return, modifiers: .command)
+            .accessibilityHint("Runs exactly the hires shown, once. Command-Return does the same.")
+        }
+    }
+}
+
 /// The Builder's sequence (GamGUI's `_sequence.html`, roadmap 2.5): the changes added with Add to Sequence, in the order they run,
 /// each movable up or down or removable; Preview holds them all as one change. Its review shows every step's command and what to
 /// know, asks the word `confirm` typed when the guard does (ten steps with a destructive one), and runs exactly that, once, in

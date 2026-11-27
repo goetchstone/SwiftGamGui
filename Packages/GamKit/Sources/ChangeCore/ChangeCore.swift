@@ -110,6 +110,20 @@ public struct WriteStep: Sendable {
     /// What a held task's list id element says until the run knows the id. `list` is the step's index.
     public static func listIDPlaceholder(_ list: Int) -> String { "\u{2039}task list id from step \(list + 1)\u{203A}" }
 
+    /// The same step placed `offset` steps later in a longer preview (several hires held as one): every index it names
+    /// (`requires`, `newAccountFrom`, a task's list and the placeholder its argv carries) moves with it. The argv is the
+    /// builder's again, never edited.
+    public func shifted(by offset: Int) -> WriteStep {
+        guard offset != 0 else { return self }
+        let listed = listedTask.map { ListedTask(list: $0.list + offset, assignee: $0.assignee, title: $0.title, notes: $0.notes) }
+        let write = listed.map {
+            GamCommands.createTask(assignee: $0.assignee, taskListID: Self.listIDPlaceholder($0.list), title: $0.title, notes: $0.notes)
+        } ?? self.write
+        return WriteStep(write, target: target, summary: rawSummary, risk: risk, requires: requires.map { $0 + offset },
+                         about: about, secrets: secrets, timeout: timeout, newAccountFrom: newAccountFrom.map { $0 + offset },
+                         tolerating: tolerating, listedTask: listed, keepFirst: keepFirst)
+    }
+
     /// The same step, running `write` (a listed task with its list's id put in).
     func running(_ write: GamWrite) -> WriteStep {
         WriteStep(write, target: target, summary: rawSummary, risk: risk, requires: requires, about: about, secrets: secrets,

@@ -338,7 +338,8 @@ public final class OnboardChanges {
         }
         let afterCreate = creates ? [0] : []
         if creates, let password {
-            add(WriteStep(password.createUser(email: email, firstName: names.first, lastName: names.last, orgUnit: role.orgUnit),
+            add(WriteStep(password.createUser(email: email, firstName: names.first, lastName: names.last, orgUnit: role.orgUnit,
+                                              notify: PythonText.strip(hire.notify)),
                           target: email, summary: "Create the Google account \(email)", secrets: [password.secret], timeout: timeout),
                 .account, "Create the Google account \(email)")
         }
