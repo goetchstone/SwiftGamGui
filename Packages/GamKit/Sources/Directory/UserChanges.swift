@@ -213,6 +213,54 @@ public final class UserChanges {
     /// first. At the confirm all of it is read again: the same account, no hold or calendar or transfer since, and a read that answered
     /// at the preview must answer now. The executor holds the rest for every delete: the exact address typed (`Guard`), never an alias
     /// of another account, never the admin this app is connected as. Never from Siri or a model: the screen only (invariant 10).
+    /// Move a person to another org unit (roadmap 4.2, GamGUI's `/users/ou/preview`): the tree and their account read again
+    /// now; a unit the tree doesn't hold, or the one they're in, is refused; a record without their unit is unread, never "in
+    /// /". The account's primary address is held, so an alias moves the account it belongs to. Settings follow the unit.
+    public func previewMoveOrgUnit(_ user: GamUser, to orgUnit: String, access: UserAccess) async {
+        guard !isBusy else { return }
+        let asked = user.primaryEmail, to = PythonText.strip(orgUnit)
+        subject = asked
+        guard let tenant = access.tenant else {
+            state = .problem("Connect a domain on Setup first.")
+            return
+        }
+        state = .checking("Reading the org units and \(asked)'s account again…")
+        let paths = await access.orgUnits(in: tenant.domain)
+        let current: GamUser
+        do {
+            current = try await access.account(asked, in: tenant.domain, fields: ["primaryEmail", "orgUnitPath"])
+        } catch {
+            state = .problem("Couldn't read the org units or their account again, so nothing is offered. "
+                             + ((error as? UserAccess.Problem)?.summary ?? "Try again."))
+            return
+        }
+        guard case .success(let units) = paths else {
+            if case .failure(let problem) = paths {
+                state = .problem("Couldn't read the org units or their account again, so nothing is offered. \(problem.summary)")
+            }
+            return
+        }
+        let address = PythonText.strip(current.primaryEmail), was = PythonText.strip(current.record["orgUnitPath"]?.string ?? "")
+        guard !address.isEmpty, was.hasPrefix("/") else {
+            state = .problem("Couldn't read which org unit \(asked) is in, so nothing is offered. Try again.")
+            return
+        }
+        guard units.contains(to) else {
+            state = .problem("“\(to)” isn't an org unit here: pick one from the list.")
+            return
+        }
+        guard was != to else {
+            state = .problem("\(address) is already in \(to).")
+            return
+        }
+        state = .idle   // the reads are done: `hold` holds only while nothing is busy
+        let step = WriteStep(GamCommands.moveUserToOrgUnit(orgUnit: to, email: address), target: address,
+                             summary: "Move \(address) from \(was) to \(to)", about: ["org_unit": to])
+        await hold(step, title: "Move \(address) to \(to)", confirmLabel: "Move", email: address, confirmStep: true,
+                   warning: "Settings and policies follow the org unit: what applies to \(address) changes from \(was)'s to \(to)'s.",
+                   expecting: tenant, patch: { $0.with(orgUnitPath: to) })
+    }
+
     public func previewDeleteAccount(_ user: GamUser, access: UserAccess) async {
         guard !isBusy else { return }
         let email = user.primaryEmail

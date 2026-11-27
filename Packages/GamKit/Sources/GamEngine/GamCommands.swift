@@ -550,6 +550,34 @@ public enum GamCommands {
     /// The apps people have given access to their account (9119-9128; _printShowTokens): every account but the suspended
     /// ones (GAM's default, all users), or one person's. CSV `user,clientId,displayText,anonymous,nativeApp,userKey,scopes`,
     /// the scopes space-joined (csv_output_field_delimiter's default). A refusal is ClientAPIAccessDeniedExit, exit 12.
+    // MARK: org units (roadmap 4.2, GamGUI #169)
+
+    /// The org unit tree (`print orgs ... fields <OrgUnitFieldNameList>`): plain CSV, no formatjson; the root is never a row.
+    public static func printOrgUnits() -> GamRead {
+        GamRead(["print", "orgs", "fields", "orgunitpath,name,description"])
+    }
+
+    /// `update org <OrgUnitItem> move <UserTypeEntity>` (doUpdateOrgs): GAM resolves the unit first and refuses one it can't
+    /// find before touching anyone. The screens offer only paths the tree read just returned.
+    public static func moveUserToOrgUnit(orgUnit: String, email: String) -> GamWrite {
+        GamWrite(["update", "org", orgUnit, "move", "user", email], action: .moveOrgUnit)
+    }
+
+    /// `create org <OrgUnitPath> [description <String>]` (doCreateOrg): no `buildpath`, so a mistyped parent is refused.
+    public static func createOrgUnit(path: String, description: String = "") -> GamWrite {
+        GamWrite(["create", "org", path] + (description.isEmpty ? [] : ["description", description]), action: .createOrgUnit)
+    }
+
+    /// `update org <OrgUnitItem> name <String>`: its path changes with its name, and so do its children's.
+    public static func renameOrgUnit(orgUnit: String, name: String) -> GamWrite {
+        GamWrite(["update", "org", orgUnit, "name", name], action: .renameOrgUnit)
+    }
+
+    /// `delete org <OrgUnitItem>`: Google refuses a unit that still holds people, devices or units.
+    public static func deleteOrgUnit(orgUnit: String) -> GamWrite {
+        GamWrite(["delete", "org", orgUnit], action: .deleteOrgUnit)
+    }
+
     public static func printTokens(user: String? = nil) throws -> GamRead {
         guard user.map(isOneAddress) ?? true else { throw Invalid.argument("“\(user ?? "")” isn't one email address") }
         return GamRead((user.map { ["user", $0] } ?? []) + ["print", "tokens"])

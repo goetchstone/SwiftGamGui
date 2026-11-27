@@ -139,7 +139,7 @@ final class BuilderChangesTests {
             #expect(BuilderChanges.risk(curated) == max(gamgui, write.action.minimumRisk), "\(expected.id)")
             #expect(WriteStep(write, target: "x", summary: "", risk: BuilderChanges.risk(curated)).risk == BuilderChanges.risk(curated))
         }
-        #expect(writes == 18)
+        #expect(writes == 21)
     }
 
     /// A read isn't held (the Builder runs it), and the form's refusals are said before anything is held.

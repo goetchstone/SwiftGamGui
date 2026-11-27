@@ -124,6 +124,13 @@ extension GamUser {
     /// reload (GamGUI's `patch_user`). The record itself is patched and read again, so every field comes
     /// from one place: GAM's `organization … primary` sets the primary organization's title and
     /// department together.
+    /// The same user in another org unit (roadmap 4.2): the cache patched after a move GAM accepted.
+    public func with(orgUnitPath: String) -> GamUser {
+        var record = record
+        record["orgUnitPath"] = .string(orgUnitPath)
+        return GamUser(record: record)
+    }
+
     public func with(title: String? = nil, department: String? = nil, suspended: Bool? = nil, phones: [Phone]? = nil) -> GamUser {
         var record = record
         if let suspended { record["suspended"] = .bool(suspended) }

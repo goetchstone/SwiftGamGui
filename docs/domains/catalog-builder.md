@@ -190,8 +190,10 @@ it) and 11 (parity is a test).
 - **Neither app's Builder sets a signature or deletes an account** (GamGUI dropped both, #149 and #166): a signature is set on
   Signatures, which keeps the one it replaces to put back; an account is deleted from its page on Users (Off3), with the
   delete's own checks (an alias of another account, a Vault hold, secondary calendars, a data transfer still running).
-- **GamGUI's newer curated commands aren't here yet** (`CuratedCommandTests.notPorted`): shared drives, org units, rename a
-  user, delete a group, an admin role.
+- **Org units** (roadmap 4.2): create, rename and delete an org unit are curated (GamGUI #169); a slot naming the root
+  (`/`, `root`, empty) is refused (`CuratedCommand.orgUnit`), never the whole organization's. Delete is destructive.
+- **GamGUI's newer curated commands not here yet** (`CuratedCommandTests.notPorted`): shared drives, rename a user, delete a
+  group, an admin role.
 - **Deliberate differences from GamGUI's Builder**, each where a run would do what wasn't meant: a person, group or address
   field must be one address GAM acts on as given (`GamCommands.isOneAddress`: GAM reads a bare name, `oauthuser` or a list as
   someone else, a group's member is a `<UserTypeEntity>`, and GAM rewrites `uid:a@b`, `id:a@b` and `Name <a@b>` to `a@b`);
