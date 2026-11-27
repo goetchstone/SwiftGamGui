@@ -507,3 +507,11 @@ Found here, true of GamGUI too; to be fixed there from a GamGUI-rooted session, 
   mock's CSV (which changes `gam_output.json`: regenerate it).
 - **GamGUI's log beside this one** (design doc §11): a source picker, the path read by descriptor, labelled
   read-only.
+
+## No 2SV / No recovery → a reminder email (roadmap 3.3, 2026-11-27)
+GamGUI's #157. The two cards carry **Email Them a Reminder…** (`ReminderSheet` in `App/ChangePreviewSheet.swift`, model
+`Directory/BucketReminders.swift`): a subject and message starting from GamGUI's `REMINDERS`; Preview reads the directory again
+and holds the bucket's people in address order with that exact text (an edit drops the preview); Send runs one `sendemail` a
+person through the executor, a confirm always and the count typed past 25. The text is escaped with its line breaks kept
+(`BucketReminders.html`, GamGUI's `reminder_html`, with `PythonText.splitlines`). Held to `BucketRemindersTests`. Not run live.
+Still to come in 3.3: Suspended → remove the licence, with 4.3.

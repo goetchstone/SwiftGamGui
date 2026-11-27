@@ -1602,3 +1602,116 @@ struct HiresFromCSVReview: View {
         }
     }
 }
+
+/// No 2SV / No recovery → Email Them a Reminder… (roadmap 3.3, GamGUI's reminder card): the subject and message, starting from
+/// the bucket's own words; Preview reads the directory again and lists who gets it; Send sends exactly that text to exactly
+/// those people, once, with the count typed past 25. The operator's text is sent escaped, never as markup.
+struct ReminderSheet: View {
+    let key: String
+    let model: BucketReminders
+    let close: () -> Void
+    @State private var subject = ""
+    @State private var message = ""
+    @State private var typedCount = ""
+    @State private var started = false
+
+    var body: some View {
+        Form {
+            switch model.key == key ? model.state : .idle {
+            case .previewing(let pending):
+                Section {
+                    Text("Sends “\(pending.subject)” to \(pending.count) \(pending.count == 1 ? "person" : "people"), read again just now, "
+                         + "from the admin this app is connected as.")
+                } header: {
+                    Text(pending.preview.title).accessibilityAddTraits(.isHeader)
+                }
+                Section("Who gets it") {
+                    ForEach(pending.people.prefix(BucketReminders.shown)) { person in
+                        Text("\(person.fullName) \u{2014} \(person.primaryEmail)").accessibilityElement(children: .combine)
+                    }
+                    if pending.count > BucketReminders.shown {
+                        Text("\u{2026} and \(pending.count - BucketReminders.shown) more.").foregroundStyle(.secondary)
+                    }
+                }
+                Section {
+                    if pending.needsCount {
+                        TextField("Number of people", text: $typedCount, prompt: Text(verbatim: String(pending.count)))
+                            .accessibilityLabel("Type the number of people, \(pending.count), to confirm")
+                            .onChange(of: typedCount) { model.typingChanged() }
+                    }
+                    if let problem = model.typedProblem {
+                        Label(problem, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.red)
+                    }
+                    Button("Send \(pending.count) Reminder\(pending.count == 1 ? "" : "s")") {
+                        let pending = pending, model = model, typed = typedCount
+                        Task { await model.confirm(pending, OperatorConfirmation(confirmed: true, typedCount: pending.needsCount ? typed : "")) }
+                    }
+                    .keyboardShortcut(.return, modifiers: .command)
+                    .accessibilityHint("Sends exactly this text to exactly these people, once.")
+                }
+            case .running:
+                Section {
+                    HStack { ProgressView().controlSize(.small); Text("Sending the reminders\u{2026}") }
+                        .accessibilityElement(children: .combine)
+                    Button("Stop After This One") { Task { await model.stop() } }
+                }
+            case .done(let words), .problem(let words):
+                compose
+                Section { Text(words).textSelection(.enabled) }
+            case .checking:
+                compose
+                Section {
+                    HStack { ProgressView().controlSize(.small); Text("Reading the directory again\u{2026}") }
+                        .accessibilityElement(children: .combine)
+                }
+            case .idle:
+                compose
+            }
+        }
+        .formStyle(.grouped)
+        .frame(minWidth: 520, minHeight: 440)
+        .onAppear {
+            guard !started, let start = BucketReminders.reminders[key] else { return }
+            started = true
+            subject = start.subject
+            message = start.message
+        }
+        .onChange(of: subject) { model.dismiss() }
+        .onChange(of: message) { model.dismiss() }
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+                Button(isReviewing ? "Back" : "Done") {
+                    let back = isReviewing
+                    model.dismiss()
+                    if !back { close() }
+                }
+                .disabled(model.isBusy)
+            }
+            if !isReviewing {
+                ToolbarItem(placement: .primaryAction) {
+                    Button("Preview") { Task { await model.preview(key: key, subject: subject, message: message) } }
+                        .disabled(model.isBusy)
+                }
+            }
+        }
+    }
+
+    private var isReviewing: Bool {
+        guard model.key == key, case .previewing = model.state else { return false }
+        return true
+    }
+
+    @ViewBuilder private var compose: some View {
+        Section {
+            TextField("Subject", text: $subject)
+            TextEditor(text: $message)
+                .frame(minHeight: 160)
+                .accessibilityLabel("Message")
+        } header: {
+            Text("Email them a reminder").accessibilityAddTraits(.isHeader)
+        } footer: {
+            Text("The fix is theirs to make. Your words are sent as written, from the admin this app is connected as; nothing you type "
+                 + "becomes formatting.")
+        }
+    }
+}

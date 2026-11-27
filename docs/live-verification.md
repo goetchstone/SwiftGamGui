@@ -69,6 +69,10 @@ Dates are 2026, and the last time the command ran from any screen.
 - **Ran:** trash an email from each mailbox that has it (10-23). A copy in Trash hasn't been looked at in Gmail yet.
 - **Not run:** copies in Spam, several emails in one preview (Pull All).
 
+### Reports
+- **Not run:** No 2SV / No recovery reminder emails (new 2026-11-27, roadmap 3.3; the same `sendemail` as onboarding's
+  welcome email, which ran).
+
 ### Builder
 - **Not run:** any change from this screen (the log marks a Builder run, and has none).
   - **B3:** the changes that ran from other screens: add or remove a delegate, auto-reply on and off, add or remove a group
