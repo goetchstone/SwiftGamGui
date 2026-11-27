@@ -69,7 +69,7 @@ it) and 11 (parity is a test).
 - **Every read run here is recorded** (plan F1, GamGUI #170), once it ends, ok or failed, in the audit log the
   executor writes: `read`, whom it was about (`target`: a catalog command's first person or group given, `Command.target`, as
   GamGUI's `_assemble`; a curated read's `CuratedCommand.target`; else "(command)"), the masked argv, `ok`, and in `extra` the
-  catalog id (`command`), `origin` (`builder`: this app has no sequences, GamGUI's other origin), the domain, and `rows` when GAM
+  catalog id (`command`), `origin` (`builder`; GamGUI's other, `sequence`, records a read run in a sequence, and this app's sequences hold changes only), the domain, and `rows` when GAM
   printed a table (`CatalogResult.tableRows`, GamGUI's `table_records`: a header alone is 0; words or nothing have none) or
   `error` (GAM's words). Never the output. A read the log can't record isn't shown, as GamGUI's isn't. Audit shows them (runbook
   audit-reports.md). **A read the app quits during leaves no record**: the app stops GAM and exits before the read resumes to
@@ -184,7 +184,15 @@ it) and 11 (parity is a test).
   picker, GamGUI's words to insert under a query), the exact command as typed, and Run (a read, run as above) or Preview… (a
   change). A change is held by the executor and shown on its sheet: the summary, the command as GAM gets it (masked as the
   audit keeps it), a warning, how much it can hurt; Run is always a click (GamGUI's `confirm_step=True`), and a destructive
-  one is never the default button. Each runs alone: sequences are a later slice.
+  one is never the default button.
+- **Sequences** (roadmap 2.5, 2026-11-27; GamGUI's `/builder/sequence/*`): Add to Sequence on a change's page builds and checks
+  it as Preview… does and appends it (at most `maxSequenceSteps`, GamGUI's 25); the toolbar's Sequence (N) lists them, up, down,
+  remove, Clear. Preview holds them all as one change (`BuilderChanges.previewSequence`): a confirm always; the guard counts
+  steps as GamGUI's does, so ten with a destructive one need `confirm` typed. A step added, moved or removed drops the preview.
+  The run is the executor's, in order, each step once, a failure not stopping the rest; Stop ends it after the step in flight.
+  Each step's outcome is listed after. **Deviations:** reads aren't added (GamGUI runs a read step and keeps only whether it
+  ran; here a read runs from its own page and shows its table), and a failure every later step would share (sign-in expired,
+  a scope missing) stops the run, as every other many-step run here does. Held to `BuilderChangesTests`.
 - **Risk is GamGUI's, never below ChangeCore's floor** (`WriteAction.minimumRisk`): a random password reset and an alias removed
   are destructive here, as on every other screen. Transfer and suspend are destructive in GamGUI too.
 - **Neither app's Builder sets a signature or deletes an account** (GamGUI dropped both, #149 and #166): a signature is set on
@@ -283,7 +291,7 @@ them), and the real model on demand, `SWIFTGAMGUI_MODEL=1 swift test --package-p
 B4 in docs/live-verification.md).
 
 ## Not built yet (later slices)
-- Sequences, with Stop (GamGUI's `MAX_SEQUENCE_STEPS` 25, the typed word at ten with a destructive step); External Only (needs the
+- External Only (needs the
   tenant's domains, as Who it reached has); a click on an address in a result for its curated follow-ups (GamGUI's
   `ROW_ACTIONS`).
 - The curated "List a shared drive's files" read (plan §8): new to both apps, its argv checked against the grammar and run once

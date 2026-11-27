@@ -507,3 +507,16 @@ Found here, true of GamGUI too; to be fixed there from a GamGUI-rooted session, 
   mock's CSV (which changes `gam_output.json`: regenerate it).
 - **GamGUI's log beside this one** (design doc §11): a source picker, the path read by descriptor, labelled
   read-only.
+
+## Forwarding & mail delegates (roadmap 3.2, 2026-11-27)
+GamGUI's #154. Reports → Access → Forwarding & mail delegates (`App/MailReviewView.swift`, `Directory/MailReviewRead.swift`,
+`UserAccess.mailReview`, pure `GamEngine/MailReview.swift`): `all users print forward enabledonly` and `all users print delegates
+shownames`, neither with `formatjson`. Read only when asked, kept per tenant and generation (a switch mid-read keeps nothing).
+- **Every account GAM listed is accounted for** (`MailReview.accountFor`, GamGUI's `account_for`): each "Getting … for <u>"
+  is read, a "User: <u>, …" warning is unread with fixed words (Gmail off, or couldn't read), and the rest of "Got N Users" were
+  skipped without a word (a refused token). "None" is said only of accounts read.
+- Exit codes are GAM's per-user ones (`MessageCopies.perUserExitCodes`); any other, no announced account, no table, or output
+  past the runner's cap is a problem, never "none".
+- Not covered, and the panel says so: Gmail filters that forward. Each row opens the person.
+- The mock answers as GamGUI's does (ported): Gmail off by `nogmail/<u>` (exit 73), a silent skip by `quiet/<u>`.
+- Held to `MailReviewTests` and `MailReviewReadTests`. Not run live.

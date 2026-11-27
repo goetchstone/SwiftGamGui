@@ -550,6 +550,22 @@ public enum GamCommands {
     /// The apps people have given access to their account (9119-9128; _printShowTokens): every account but the suspended
     /// ones (GAM's default, all users), or one person's. CSV `user,clientId,displayText,anonymous,nativeApp,userKey,scopes`,
     /// the scopes space-joined (csv_output_field_delimiter's default). A refusal is ClientAPIAccessDeniedExit, exit 12.
+    /// Reports' mail review (roadmap 3.2, GamGUI's `all_users_print_forward`): every active account's forwarding that is on
+    /// (grammar `<UserTypeEntity> print forward [enabledonly]`). No formatjson: CSV `User,forwardEnabled,forwardTo,disposition`,
+    /// each account announced on stderr, which is how a skipped one is told apart (`MailReview.accountFor`).
+    public static func allUsersPrintForward() -> GamRead {
+        GamRead(["all", "users", "print", "forward", "enabledonly"])
+    }
+
+    /// Every active account's mail delegates (`<UserTypeEntity> print delegates [shownames]`). No formatjson: CSV
+    /// `User,delegateName,delegateAddress,delegationStatus`, each account announced ("Getting all Delegates for <u>").
+    public static func allUsersPrintDelegates() -> GamRead {
+        GamRead(["all", "users", "print", "delegates", "shownames"])
+    }
+
+    /// The apps people have given access to their account (9119-9128; _printShowTokens): every account but the suspended
+    /// ones (GAM's default, all users), or one person's. CSV `user,clientId,displayText,anonymous,nativeApp,userKey,scopes`,
+    /// the scopes space-joined (csv_output_field_delimiter's default). A refusal is ClientAPIAccessDeniedExit, exit 12.
     // MARK: org units (roadmap 4.2, GamGUI #169)
 
     /// The org unit tree (`print orgs ... fields <OrgUnitFieldNameList>`): plain CSV, no formatjson; the root is never a row.
