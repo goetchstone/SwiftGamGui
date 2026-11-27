@@ -257,7 +257,7 @@ struct ContentView: View {
                         .navigationTitle("Signatures")
                 case .onboard:
                     OnboardView(setup: services.setup, directory: services.directory, changes: services.onboardChanges,
-                                roles: services.onboardRoles, templates: services.signatureTemplates, groups: services.groups,
+                                roles: services.onboardRoles, hires: services.hiresFromCSV, templates: services.signatureTemplates, groups: services.groups,
                                 hasGam: services.executor != nil)
                         .navigationTitle("Onboard")
                 case .offboard:

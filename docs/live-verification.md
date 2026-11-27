@@ -47,6 +47,8 @@ Dates are 2026, and the last time the command ran from any screen.
   email, and the wait for a new account. Google refused the signature at first (exit 73, Gmail not ready); the wait's
   first round, 20 s later, set it. The welcome email's line breaks haven't been looked at in the received mail yet.
 - **Not run:** subscribe to a calendar (GamGUI has run its command).
+- **Not run:** hires from a CSV (new 2026-11-27, roadmap 2.3), including a create with `notify` (GAM emails the sign-in).
+  Each row is the one-hire plan above; GamGUI's bulk page hasn't run live either.
 
 ### Offboard
 - **Ran:** the whole 12-step routine, three times (last 11-03): reset the password, clear recovery, sign out, forwarding

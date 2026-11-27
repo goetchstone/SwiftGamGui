@@ -2,6 +2,7 @@ import ChangeCore
 import Directory
 import GamEngine
 import Setup
+import Stores
 import SwiftUI
 
 /// Onboard: one new hire through one preview. The form (GamGUI's `onboarding.html`) picks one of this app's
@@ -14,10 +15,13 @@ struct OnboardView: View {
     let directory: DirectoryStore
     let changes: OnboardChanges
     let roles: OnboardRoles
+    /// From a CSV… (roadmap 2.3).
+    let hires: HiresFromCSV
     let templates: SignatureTemplates
     let groups: GroupStore
     let hasGam: Bool
     @State private var editingRoles = false
+    @State private var fromCSV = false
     /// Debug snapshots only: what the role editor opens on.
     @State private var rolesStart: OnboardRolesSheet.Selection?
     @SceneStorage("onboard.role") private var roleName = ""
@@ -122,6 +126,12 @@ struct OnboardView: View {
             HStack {
                 Text("Role")
                 Spacer()
+                Button("From a CSV\u{2026}") { fromCSV = true }
+                    .help("Onboard many hires at once from a spreadsheet's CSV")
+                    .sheet(isPresented: $fromCSV) {
+                        HiresFromCSVSheet(model: hires, roles: roles, templates: templates) { fromCSV = false }
+                            .interactiveDismissDisabled(hires.isBusy || !hires.credentials.isEmpty)
+                    }
                 Button("Edit Roles\u{2026}") { editingRoles = true }
                     .help("Add, change or delete the roles a new hire can have")
             }
@@ -205,6 +215,19 @@ struct OnboardView: View {
         debugApplied = true
         if let role = environment["SWIFTGAMGUI_SELECT"] { roleName = role }
         guard let tab = environment["SWIFTGAMGUI_TAB"] else { return }
+        // From a CSV…, empty (`csv`) or reviewing GamGUI's template file with a row left out (`csv-review`): held, never run.
+        if tab.hasPrefix("csv") {
+            fromCSV = true
+            if tab == "csv-review" {
+                let roles = roles, templates = templates, hires = hires
+                Task {
+                    await hires.preview(Array((HireCSV.template + "Nobody,Pat Doe,pat@example.com,,,no,,,no,\n").utf8),
+                                        roles: HiresFromCSV.Roles(role: { roles.role(named: $0) }, signature: { templates.body($0) },
+                                                                  welcome: { roles.welcome(named: $0) }))
+                }
+            }
+            return
+        }
         if tab == "roles" || tab == "welcome" {
             rolesStart = tab == "welcome" ? .welcome(Onboarding.defaultWelcome) : nil
             editingRoles = true

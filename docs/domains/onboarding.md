@@ -108,6 +108,29 @@ including `thePlanIsGamGUIsOrderAndGates` against `provision_hire`'s own calls);
   before a switch ("Finishing setup for <hire>", left half done: `waitForGoogle`, `SwitchStops`), and a switch during the
   run itself starts no wait on the new domain: the executor parks nothing, and the waiting steps are said stopped.
 
+## Hires from a CSV (roadmap 2.3, 2026-11-27)
+
+GamGUI's `/onboarding/bulk` (`parse_hire_csv`, `resolve_hires`, `tally_hires`, `_run_bulk_onboard`). Onboard → **From a
+CSV…** (`App/HiresFromCSVView.swift`, model `Directory/HiresFromCSV.swift`, reader `Stores/HireCSV.swift`).
+- **Reading:** Python's `excel` dialect through `RosterCSV` (the roster import's strict port of the csv module), a BOM
+  dropped, CRLF read; not `GamOutput`'s reader, which is GAM's dialect. GamGUI's rules and words: headers stripped and any
+  case, blank rows skipped, a role and an email or assignee needed, an address checked, a duplicate email (any case)
+  refused, `_truthy` for the flags. Over 1 MB, or a CSV error (a field past 131,072 characters), refuses the whole file.
+  **Deviation:** a file that isn't UTF-8 is refused; GamGUI decodes with replacement characters.
+- **One preview for all:** each row is planned by `OnboardChanges.plan`, exactly as the form plans one hire, after the
+  form's own refusals (`OnboardChanges.refusal`) and GamGUI's role checks; each hire's steps follow the last's
+  (`WriteStep.shifted(by:)` moves `requires`, `newAccountFrom` and a task's list placeholder). A failed create skips that
+  hire's steps only. The CSV's `notify` column goes to GAM (`notify … notifypassword`); the form never sends one.
+- **Stops:** Stop after the step in flight, or at once during a wait for Google; an account-wide failure stops the run.
+  **Deviations:** that stop applies to any step (GamGUI stops only on a create's failure), and after "no licence left"
+  later creates still try and fail (GamGUI skips them untried). Neither writes more than GamGUI would.
+- **Passwords:** a created account without `notify` gets a sign-in card in the sheet (`HireCredentialCards`, the
+  only reader of the password text there), held fifteen minutes or until each card's Done; the sheet can't close
+  until then, and a new preview is refused while one is held.
+- **Waiting for Google:** after the run, what a new account wasn't ready for is retried on GamGUI's waits
+  (`Executor.retry`), unless the run stopped. What still waits is said not done.
+- Held to `HireCSVTests` (GamGUI's parse cases) and `HiresFromCSVTests` (strict mock).
+
 ## ChangeCore for onboarding (D3)
 - **a, b: `.waiting` and `newAccountFrom`.** A step may wait only if it's in
   `WriteAction.canWaitForNewAccount` and names an earlier `createUser` step it requires (else

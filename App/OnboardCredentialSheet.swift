@@ -31,6 +31,22 @@ struct OnboardCredentialCard: View {
 
 }
 
+/// Hires from a CSV's sign-in sheet (GamGUI's bulk credentials): one card for each account created without a `notify` address,
+/// held fifteen minutes or until each is Done.
+struct HireCredentialCards: View {
+    let model: HiresFromCSV
+
+    var body: some View {
+        ForEach(model.credentials) { card in
+            SignInCard(details: SignInDetails(
+                name: card.name, email: card.email, orgUnit: card.orgUnit, password: card.password,
+                unsure: card.unsure ? "The create didn't finish in time; the account may exist \u{2014} check Users before handing this out." : nil,
+                signature: nil, header: "Account created \u{2014} \(card.email)"),
+                done: { model.doneWith(card.id) })
+        }
+    }
+}
+
 /// What a sign-in card shows: a new account's (onboarding) or an existing person's after Set Temporary Password.
 struct SignInDetails {
     let name: String
