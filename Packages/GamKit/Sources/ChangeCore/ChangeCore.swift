@@ -650,6 +650,35 @@ public actor Executor {
         order.removeAll { $0 == id }
     }
 
+    // MARK: exporting a sequence (roadmap 5.3)
+
+    /// A held preview's steps as a batch file (GamGUI's `/builder/sequence/export.txt`): the steps it holds, never what is queued
+    /// now, and the preview stays held so its Run still works. The file runs outside the guard and the audit, so the export is
+    /// audited first (`sequence_export`, each step's command and argv); a record that can't be written writes no file. `labels`
+    /// name each step in the file. Refused, in words, for a preview gone or expired, or a step `SequenceExport` refuses.
+    public func exportBatch(_ id: UUID, labels: [String]) -> Result<String, ExportRefusal> {
+        guard let preview = held[id], now() - preview.createdAt <= Self.previewLifetime else { return .failure(ExportRefusal(Self.expired)) }
+        guard labels.count == preview.steps.count else { return .failure(ExportRefusal("The sequence's steps changed: preview it again.")) }
+        let steps = zip(preview.steps, labels).map { (label: $1, argv: $0.write.argv) }
+        if let why = SequenceExport.whyNot(steps) { return .failure(ExportRefusal(why)) }
+        guard let file = SequenceExport.file(steps) else { return .failure(ExportRefusal("The sequence can't be written.")) }
+        let commands = preview.steps.map { JSONValue.string($0.about["command"] ?? "") }
+        let argvs = steps.map { JSONValue.array($0.argv.map(JSONValue.string)) }
+        do {
+            _ = try audit.record("sequence_export", target: "sequence", ok: true,
+                                 extra: ["steps": .number(String(steps.count)), "commands": .array(commands), "argvs": .array(argvs)],
+                                 domain: preview.domain.name)
+        } catch {
+            return .failure(ExportRefusal("The export couldn't be recorded in the audit log, so the file wasn't written."))
+        }
+        return .success(file)
+    }
+
+    public struct ExportRefusal: Error, Sendable, Equatable {
+        public let message: String
+        init(_ message: String) { self.message = message }
+    }
+
     // MARK: running
 
     static let expired = "That preview has expired or was already run — preview again."

@@ -2,6 +2,7 @@ import ChangeCore
 import Directory
 import GamEngine
 import SwiftUI
+import UniformTypeIdentifiers
 
 extension UserChanges {
     /// The preview a sheet shows, while one is held.
@@ -1663,6 +1664,9 @@ struct HiresFromCSVReview: View {
 struct BuilderSequenceSheet: View {
     let changes: BuilderChanges
     let close: () -> Void
+    /// What the last export said, in words.
+    @State private var exported: String?
+    @Environment(SavedFiles.self) private var savedFiles: SavedFiles?
     @State private var word = ""
     @State private var stopAsked = false
 
@@ -1807,6 +1811,40 @@ struct BuilderSequenceSheet: View {
             .keyboardShortcut(.return, modifiers: .command)
             .disabled(decision.requiresTypedConfirmation && word.trimmingCharacters(in: .whitespaces).lowercased() != Guard.typedWord)
             .accessibilityHint("Runs exactly these steps, once, in order.")
+        }
+        Section {
+            Button("Export as a Batch File\u{2026}") { export(pending) }
+                .accessibilityHint("Saves these steps as a file GAM can run on its own. Nothing runs here.")
+            if let exported { Text(exported).font(.callout).textSelection(.enabled) }
+        } footer: {
+            Text("The file runs outside this app: no preview, no confirmation, no audit record when it runs. The export itself is "
+                 + "recorded in Audit. A step that sets a password can't be exported.")
+        }
+    }
+
+    /// Saves the held steps as a batch file through a save panel (roadmap 5.3), recorded in Files.
+    private func export(_ pending: BuilderChanges.Pending) {
+        let changes = changes
+        Task {
+            switch await changes.exportSequence(pending) {
+            case .failure(let why):
+                exported = why.words
+            case .success(let file):
+                let panel = NSSavePanel()
+                panel.nameFieldStringValue = "gamgui-sequence.txt"
+                panel.allowedContentTypes = [.plainText]
+                guard panel.runModal() == .OK, let url = panel.url else {
+                    exported = "Not saved. The export is still recorded in Audit."
+                    return
+                }
+                do {
+                    try Data(file.utf8).write(to: url, options: .atomic)
+                    savedFiles?.record(url, what: "Builder sequence batch file")
+                    exported = "Saved \(url.lastPathComponent). Read every line before you run it."
+                } catch {
+                    exported = "Couldn't save the file: \(error.localizedDescription)"
+                }
+            }
         }
     }
 }
