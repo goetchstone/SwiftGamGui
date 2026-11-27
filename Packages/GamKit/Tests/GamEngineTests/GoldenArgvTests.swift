@@ -236,6 +236,8 @@ struct GoldenArgvTests {
         "set_signature": { try GamCommands.setSignature(email: $0.string("email"), signature: $0.string("signature"), html: $0.flag("html")) },
         "show_signature": { try GamCommands.showSignature(email: $0.string("email")) },
         "print_signature": { try GamCommands.printSignature(email: $0.string("email")) },
+        "print_signatures_from_stdin": { _ in GamCommands.printSignaturesFromStdin() },
+        "set_signatures_csv": { _ in GamCommands.setSignaturesCSV() },
         "add_delegate": { try GamCommands.addDelegate(email: $0.string("email"), delegate: $0.string("delegate")) },
         "remove_delegate": { try GamCommands.removeDelegate(email: $0.string("email"), delegate: $0.string("delegate")) },
         "print_delegates": { try GamCommands.printDelegates(email: $0.string("email")) },

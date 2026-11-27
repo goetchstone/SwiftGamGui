@@ -145,6 +145,32 @@ ChangeCore.
   - group membership compares addresses in any case (GamGUI exactly; Google prints both lowercased);
   - an empty scope is a problem banner, not a preview with no Apply.
 
+## One GAM call, opt-in (roadmap 5.4, GamGUI #193; ported 2026-11-27)
+
+The per-person run stays the default (its live count and Stop). A scope preview of more than one person, not a retry, also
+holds `Pending.fast`: **its own held preview** of one `setSignaturesCSV` step (GamGUI posts its one token with `fast=1`; here
+a confirm runs only what was held, so there are two, and confirming either discards the other). The sheet's **Faster: all N
+in one GAM call** runs it (`confirmFast`), after a dialog: it can't be stopped.
+
+- **Rows** (`GamEngine/SignaturesFast.swift`, a port of `core/signatures_fast.py`): `csv - columndelimiter , quotechar "
+  noescapechar true gam user ~User signature ~signature html`, the rows on GAM's standard input (`GamWrite.input`), never
+  in the argv or the audit. Each body as sent: `\r\n`/`\r` → `\n`, non-ASCII as `&#N;`. `Tests/Fixtures/signatures_fast.csv`
+  is GamGUI's bytes; `SignaturesFastTests` matches them.
+- **Refused** (`refusal`), so the whole run stays per person, said on the sheet: an empty body (an empty cell would clear
+  theirs), a GAM file keyword, a NUL, an address with `,` `"` or a line break, a body of 131072 or more scalars as sent
+  (Python's csv field limit, which GAM never raises: one longer cell ends the whole read). GamGUI fails just those people
+  and runs the rest; here the operator's typed count stays the people it names.
+- **Kept first** (`KeepFirst.signatures`): the executor reads everyone with `file - print signature` (the addresses on
+  stdin) and keeps each body **as sent**. Deviation: **anyone unread and nobody is written** (GamGUI writes those read): the
+  held rows go whole or not at all; each is failed for a per-person Retry. A domain switch during the read stops it before
+  the write (GamGUI's review finding). `keepHolds` checks the rows (argv and input bytes) are the kept people's.
+- **Guard:** `WriteStep.changes` counts one change per person, so the typed count and hard cap are the people's.
+- **Result:** GAM's csv parent takes no child's exit code, so only `User: <u>, Signature: <u>, Set` counts
+  (`SignaturesFast.updated`, `GamWrite.noted`'s `set`, in the audit). Anyone else is failed (`notSaid`) with a per-person
+  Retry. Audited once as `set_signatures_fast` with `count` and `set`.
+- The reader takes GAM's `Getting Signatures for` (plural, `Ent.SIGNATURE`'s entity word) and GamGUI's singular.
+- Not run live yet.
+
 ## The screen (S1c): Signatures, and the Users Mail tab's card
 - **Signatures** (sidebar, SF Symbol `signature`): Person (a menu of active people; type to jump),
   Preview (Current and New, 260 pt tall, side by side while each has 380 pt and one above the other in a
