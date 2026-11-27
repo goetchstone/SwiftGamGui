@@ -190,6 +190,8 @@ for spec in home:home users:users groups:groups setup:setup jobs:home::jobs \
             reports-stranded:reports:run.old_report:stranded \
             narrow-audit:audit:::smallest audit-domain:audit:example.org narrow-audit-domain:audit:example.org::smallest \
             onboard:onboard:Salesperson:create onboard-result:onboard:Salesperson:result \
+            onboard-csv:onboard:Salesperson:csv onboard-csv-review:onboard:Salesperson:csv-review \
+            narrow-onboard-csv-review:onboard:Salesperson:csv-review:smallest \
             narrow-onboard:onboard:Salesperson:create:smallest \
             onboard-roles:onboard:Salesperson:roles narrow-onboard-roles:onboard:Salesperson:roles:smallest \
             onboard-welcome:onboard:Salesperson:welcome \

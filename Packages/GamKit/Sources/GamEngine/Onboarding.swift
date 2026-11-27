@@ -396,9 +396,12 @@ public struct Hire: Sendable, Equatable {
     public var last: String
     /// GamGUI's `send_welcome`: the role's welcome email goes to the hire's address, last.
     public var sendWelcome: Bool
+    /// GamGUI's CSV `notify` column: GAM emails a created account's sign-in details there (`notify … notifypassword`), and the
+    /// password goes on no sheet. Blank (the form's only value): the password is on the sign-in card.
+    public var notify: String
 
     public init(name: String = "", email: String = "", manager: String = "", assignee: String = "", createAccount: Bool = false,
-                first: String = "", last: String = "", sendWelcome: Bool = false) {
+                first: String = "", last: String = "", sendWelcome: Bool = false, notify: String = "") {
         self.name = name
         self.email = email
         self.manager = manager
@@ -407,6 +410,7 @@ public struct Hire: Sendable, Equatable {
         self.first = first
         self.last = last
         self.sendWelcome = sendWelcome
+        self.notify = notify
     }
 }
 
@@ -451,11 +455,11 @@ public struct TemporaryPassword: Sendable, CustomStringConvertible, CustomDebugS
     /// The text, for the sign-in card and nothing else.
     public var shownOnTheSheet: String { text }
 
-    /// GamGUI's create for a new hire: `create_user(…, change_password=True, org_unit=cfg.org_unit or None)`,
-    /// through the builder, with this password as its one element.
-    package func createUser(email: String, firstName: String, lastName: String, orgUnit: String) -> GamWrite {
+    /// GamGUI's create for a new hire: `create_user(…, change_password=True, org_unit=cfg.org_unit or None, notify=…)`,
+    /// through the builder, with this password as its one element (twice with `notify`: GAM's `notifypassword` too).
+    package func createUser(email: String, firstName: String, lastName: String, orgUnit: String, notify: String = "") -> GamWrite {
         GamCommands.createUser(email: email, firstName: firstName, lastName: lastName, password: text, changePassword: true,
-                               orgUnit: orgUnit)
+                               orgUnit: orgUnit, notify: notify)
     }
 
     /// An existing person's password set to this one, changed by them at their next sign-in (Set Temporary Password…),
