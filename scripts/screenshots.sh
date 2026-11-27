@@ -176,7 +176,7 @@ for spec in home:home users:users groups:groups setup:setup jobs:home::jobs \
             narrow-builder-change:builder:build.add_group_member:fill:smallest \
             builder-sheet:builder:build.print_delegates:sheet builder-sheet-result:builder:build.print_delegates:sheet-result \
             narrow-builder-sheet:builder:build.print_delegates:sheet:smallest \
-            reports:reports reports-usage:reports:usage reports-apps:reports:apps::1100x940 audit:audit \
+            reports:reports reports-usage:reports:usage reports-apps:reports:apps::1100x940 reports-mail:reports:mail::1100x940 audit:audit \
             files:files narrow-files:files:::smallest \
             narrow-reports:reports:::smallest narrow-reports-usage:reports:usage::smallest narrow-reports-apps:reports:apps::smallest \
             reports-named:reports:named.licenses::1100x940 narrow-reports-named:reports:named.alerts::smallest \
