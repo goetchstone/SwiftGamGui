@@ -24,6 +24,8 @@ struct ReportsView: View {
     let suspend: InactiveSuspend
     /// Suspended → Remove Their Licenses… (roadmap 3.3, 4.3).
     let suspendedLicenses: SuspendedLicenses
+    /// No 2SV / No recovery's reminder email (roadmap 3.3).
+    let reminders: BucketReminders
     /// The audit runs' schedules on the connected domain (plan F7a): when each is due, and what it keeps.
     let schedules: RunSchedules
     /// An audit run another screen asked to open (Home's due runs), by its key.
@@ -352,7 +354,7 @@ struct ReportsView: View {
         case .report(let key):
             if let reports = directory.reports {
                 if let report = reports.first(where: { $0.key == key }) {
-                    ReportPeople(report: report, selection: $person, open: openPerson, licenses: suspendedLicenses)
+                    ReportPeople(report: report, selection: $person, open: openPerson, licenses: suspendedLicenses, reminders: reminders)
                 }
             } else {
                 directoryStatus
@@ -524,6 +526,9 @@ private struct ReportPeople: View {
     /// Suspended's Remove Their Licenses…; nil for the other reports.
     var licenses: SuspendedLicenses? = nil
     @State private var removingLicenses = false
+    /// No 2SV and No recovery's Email Them a Reminder… (roadmap 3.3); nil for the other reports.
+    var reminders: BucketReminders? = nil
+    @State private var reminding = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -537,6 +542,14 @@ private struct ReportPeople: View {
                         .sheet(isPresented: $removingLicenses) {
                             SuspendedLicensesSheet(model: licenses) { removingLicenses = false }
                                 .interactiveDismissDisabled(licenses.isBusy)
+                        }
+                }
+                if let reminders, BucketReminders.reminders[report.key] != nil, !report.users.isEmpty {
+                    Button("Email Them a Reminder\u{2026}") { reminding = true }
+                        .accessibilityHint("Writes a reminder to everyone on this list. The list is read again and shown before anything is sent.")
+                        .sheet(isPresented: $reminding) {
+                            ReminderSheet(key: report.key, model: reminders) { reminding = false }
+                                .interactiveDismissDisabled(reminders.isBusy)
                         }
                 }
             }
