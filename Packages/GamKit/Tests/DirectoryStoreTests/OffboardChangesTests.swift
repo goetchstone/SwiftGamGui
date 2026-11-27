@@ -141,7 +141,7 @@ final class OffboardChangesTests {
         let plan = try await plan(form(" CAROL@example.com ", "Alice@Example.com"))
         #expect(lines(plan).first == "gam update user carol@example.com password random changepassword off")
         #expect(lines(plan).contains("gam user carol@example.com add delegate alice@example.com"))
-        #expect(plan.leaver.primaryEmail == "carol@example.com" && plan.manager.primaryEmail == "alice@example.com")
+        #expect(plan.leaver.primaryEmail == "carol@example.com" && plan.manager?.primaryEmail == "alice@example.com")
     }
 
     /// `test_offboard_preview_warns_but_does_not_block`.
@@ -409,7 +409,9 @@ final class OffboardChangesTests {
     /// nothing left to run. And the invitee must be one address.
     @Test func theFormsOwnRefusalsComeFirst() async throws {
         try await connect()
-        #expect(try await blocked(form("carol@example.com", "  ")) == "Enter both the departing user and the manager email.")
+        #expect(try await blocked(form("  ", "alice@example.com")) == "Enter the departing user's email.")
+        #expect(try await blocked(form("carol@example.com", "  "))
+                == "Enter the manager: “Set delegate”, “Auto-reply”, “Transfer Drive & Calendar”, “Manager reminder” need one. Or leave them out.")
         #expect(try await blocked(form(done: [.transfer], notApplicable: [.transfer]))
                 == "“Transfer Drive & Calendar” is ticked both as already done and as doesn't apply — pick one.")
         #expect(try await blocked(form(done: [.password, .revoke, .forward], notApplicable: Set(Offboarding.optionalSteps)))
@@ -533,6 +535,97 @@ final class OffboardChangesTests {
     }
 
     /// What the mock wrote: everything but the reads (`print`, `info`, `show`).
+    // MARK: offboarding options (roadmap 3.4, GamGUI #158-#161)
+
+    /// `test_transfer_options`: the default sends the routine's argv byte for byte; a recipient and services change only the
+    /// transfer, Drive's privacy only with Drive.
+    @Test func theTransferTakesARecipientAndServices() async throws {
+        try await connect()
+        let routine = try await plan(form())
+        var options = form()
+        options.recipient = "dana@example.com"
+        options.services = ["calendar", "lookerstudio"]
+        let changed = try await plan(options)
+        func transfer(_ plan: OffboardChanges.Plan) -> String? {
+            plan.rows.first { $0.key == .transfer }.flatMap { if case .runs(let line) = $0.status { line } else { nil } }
+        }
+        #expect(transfer(routine) == "gam create datatransfer carol@example.com drive,calendar alice@example.com all")
+        #expect(transfer(changed) == "gam create datatransfer carol@example.com calendar,lookerstudio dana@example.com")
+        #expect(changed.recipient?.primaryEmail == "dana@example.com" && changed.manager?.primaryEmail == "alice@example.com")
+        #expect(changed.rows.filter { ![.transfer, .reminder].contains($0.key) }.map(\.status)
+                == routine.rows.filter { ![.transfer, .reminder].contains($0.key) }.map(\.status),
+                "only the transfer changes, and the reminder's words about it")
+        #expect(changed.rows.first { $0.key == .reminder }.map { "\($0.status)" }?.contains("Calendar & Looker Studio transferred to dana@example.com") == true)
+        options.services = []
+        #expect(try await blocked(options) == "The transfer moves nothing: pick Drive, Calendar or Looker Studio, or leave the transfer out.")
+        options.services = ["drive"]
+        options.recipient = "carol@example.com"
+        #expect(try await blocked(options).contains("transfer recipient are the same account"))
+    }
+
+    /// `test_release_resources`: Calendar only, refused without it; the mock refuses it as GAM does.
+    @Test func releasingRoomsNeedsCalendar() async throws {
+        try await connect()
+        var options = form()
+        options.releaseResources = true
+        let plan = try await plan(options)
+        #expect(plan.rows.first { $0.key == .transfer }.map { "\($0.status)" }?.contains("all release_resources") == true)
+        options.services = ["drive"]
+        #expect(try await blocked(options) == "Releasing the rooms their events booked is part of the Calendar transfer: tick Calendar too.")
+    }
+
+    /// `test_autoreply_end`: a day after today and within ten years, held as that date; left out with the auto-reply.
+    @Test func theAutoReplyCanStopOnADay() async throws {
+        try await connect()
+        let today = try #require(Offboarding.Day(year: 2026, month: 6, day: 23), "the suite's clock")
+        let tomorrow = try today.adding(days: 1).iso
+        var options = form()
+        options.autoreplyEnd = tomorrow
+        let plan = try await plan(options)
+        #expect(plan.rows.first { $0.key == .vacation }.map { "\($0.status)" }?.contains("end \(tomorrow)") == true)
+        options.autoreplyEnd = today.iso
+        #expect(try await blocked(options) == "The auto-reply's end has to be after today: Google switches it off at the start of that day.")
+        options.autoreplyEnd = "2026-13-40"
+        #expect(try await blocked(options).hasSuffix("isn't a date: pick one, or leave it empty for no end."))
+        options.autoreplyEnd = try today.adding(days: 3654).iso
+        #expect(try await blocked(options).contains("more than ten years away"))
+        options.notApplicable = [.vacation]
+        _ = try await self.plan(options)
+    }
+
+    /// Review of #210: an end day that was tomorrow at the preview and is today by the run refuses the run, writing nothing.
+    @Test func anEndDayThatIsTodayByTheRunRunsNothing() async throws {
+        try await connect()
+        let today = try #require(Offboarding.Day(year: 2026, month: 6, day: 23), "the suite's clock")
+        var options = form()
+        options.autoreplyEnd = try today.adding(days: 1).iso
+        let plan = try await plan(options)
+        let before = writes().count
+        clock.advance(86_400)
+        await changes.confirm(plan, typed("carol@example.com"))
+        #expect(writes().count == before)
+    }
+
+    /// Review of #210: a recipient nothing uses (the transfer left out, no hand-over) isn't checked or shown.
+    @Test func aRecipientNothingUsesIsIgnored() async throws {
+        try await connect()
+        var options = form(notApplicable: [.transfer, .reminder])
+        options.recipient = "nobody@example.com"
+        let plan = try await plan(options)
+        #expect(plan.recipient == nil)
+    }
+
+    /// `test_manager_optional`: with nothing that acts on the manager running, none is needed and nobody is named.
+    @Test func noManagerWhenNoStepNeedsOne() async throws {
+        try await connect()
+        var options = form("carol@example.com", "", notApplicable: [.delegate, .vacation, .reminder])
+        options.recipient = "dana@example.com"
+        let plan = try await plan(options)
+        #expect(plan.manager == nil && plan.recipient?.primaryEmail == "dana@example.com")
+        options.recipient = ""
+        #expect(try await blocked(options) == "Enter the manager: “Transfer Drive & Calendar” needs one. Or leave it out.")
+    }
+
     private func writes() -> [String] {
         ran().filter { !["print", "info", "show"].contains($0.first ?? "") && !($0.count > 2 && ["print", "info", "show"].contains($0[2])) }
             .map { GamCommandLine.text($0, masked: ArgvRedaction.redact($0)) }

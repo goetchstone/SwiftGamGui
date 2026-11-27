@@ -332,3 +332,18 @@ Users → a person → Actions → **Delete Account…** (`UserChanges.previewDe
   (`UserChanges.deleted`): it can be restored for 20 days, with Undelete Account in Builder or in the Admin console, except what Vault's
   retention rules were keeping.
 - **Not run on a real account yet:** its first run is on a real leaver.
+
+## Offboarding options (roadmap 3.4, 2026-11-27; GamGUI #158-#161)
+- **Recipient** (`Form.recipient`): the transfer and the secondary-calendars hand-over go to them instead of the manager,
+  checked in the directory as the manager is (`checkAddresses(recipient:)`) and read again just before the run. Empty is the
+  manager.
+- **Services** (`Offboarding.serviceChoices`): Drive, Calendar, Looker Studio, one `<DataTransferServiceList>` element in that
+  order; Drive's privacy level only with Drive. The default sends the routine's argv byte for byte.
+- **Release the rooms their events booked** (`release_resources`, a bare word in the grammar): Calendar only, refused without
+  it at the preview, by the step builder and by the mock. The mock had read it as taking a Boolean, which would have refused
+  the bare word both apps send; it now follows the grammar and GamGUI's mock.
+- **The auto-reply's end** (`Form.autoreplyEnd`, YYYY-MM-DD): after today, within ten years (`autoreplyEndProblem`); held as
+  that date to the run; ignored when the auto-reply doesn't run.
+- **The manager is optional** when no running step acts on one (`needsManager`): otherwise the preview names the steps that do.
+- Templates keep the services and the room release (file version 3); versions 1 and 2 read as Drive and Calendar.
+- Held to `OffboardChangesTests` (options) and `OffboardTemplateStoreTests`. Not run live.

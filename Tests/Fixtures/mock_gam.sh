@@ -4192,7 +4192,15 @@ if { [ "${1:-}" = "create" ] || [ "${1:-}" = "add" ]; } && { [ "${2:-}" = "datat
           *) usage_error "No data transfer application for key PRIVACY_LEVEL" ;;
         esac
         shift ;;
-      releaseresources|release_resources) need_value $# "Boolean"; need_bool "$2"; shift 2 ;;
+      # RELEASE_RESOURCES is a Calendar parameter, a bare word in the grammar (`[release_resources]`): refused the same way
+      # when Calendar isn't listed (GamGUI #160). This mock once read it as taking a Boolean, which would refuse the bare
+      # word both apps send.
+      release_resources)
+        case ",$svcs," in
+          *,calendar,*) ;;
+          *) usage_error "No data transfer application for key RELEASE_RESOURCES" ;;
+        esac
+        shift ;;
       *) invalid_arg "$1" ;;
     esac
   done

@@ -60,6 +60,8 @@ Dates are 2026, and the last time the command ran from any screen.
   time and the run tolerates it: a calendar's owner can't be removed from their own calendar.
 - **Not run:** hand over secondary calendars, remove filters that forward.
 
+- **Not run:** the options (new 2026-11-27, roadmap 3.4): another recipient, Looker Studio, releasing rooms, the auto-reply's
+  end day, no manager. GamGUI's haven't run either.
 ### Incident
 - **Ran:** the lock (10-19): reset the password, sign out, forwarding off, IMAP and POP off, clear recovery.
 - **Not run:** delete filters, remove a delegate from this screen (Users' command, which ran), remove a send-as address,

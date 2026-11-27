@@ -68,10 +68,11 @@ struct OffboardTemplateStoreTests {
         try store.save("Contractor", mine)
         let text = String(decoding: try #require(bytes(file)), as: UTF8.self)
         let parsed = try #require(JSONValue.parse(text))
-        #expect(parsed["version"]?.int == 2)
+        #expect(parsed["version"]?.int == 3)
         #expect(parsed["default"] == .null, "deleting the default left none")
         let saved = try #require(parsed["templates"]?["Contractor"]?.object)
-        #expect(saved.keys.sorted() == ["add", "days", "invitee", "leave_out", "message", "subject"])
+        #expect(saved.keys.sorted() == ["add", "days", "invitee", "leave_out", "message", "release_resources", "services", "subject"])
+        #expect(saved["services"] == .array([.string("drive"), .string("calendar")]) && saved["release_resources"] == .bool(false))
         #expect(saved["leave_out"] == .array([.string("calacls"), .string("reminder")]))
         #expect(saved["add"] == .array([.string("clear_recovery"), .string("hide_from_directory")]))
         #expect(try OffboardTemplateStore(root: root).template("Contractor") == mine)
@@ -139,8 +140,23 @@ struct OffboardTemplateStoreTests {
         try store.save("B", Self.mine)
         let written = try #require(bytes(file))
         let parsed = try #require(JSONValue.parse(String(decoding: written, as: UTF8.self)))
-        #expect(parsed["version"]?.int == 2 && parsed["templates"]?["A"]?["add"] == .array([]))
+        #expect(parsed["version"]?.int == 3 && parsed["templates"]?["A"]?["add"] == .array([]))
         #expect(try OffboardTemplateStore(root: root).template("A") == a)
+    }
+
+    /// Version 3 (roadmap 3.4) keeps what the transfer moves and whether it releases rooms; a version 2 file reads as the
+    /// routine's Drive and Calendar, releasing nothing.
+    @Test func versionThreeKeepsTheTransfersOptions() throws {
+        var store = try OffboardTemplateStore(root: root)
+        var mine = Self.mine
+        mine.services = ["calendar", "lookerstudio"]
+        mine.releaseResources = true
+        try store.save("Rooms", mine)
+        #expect(try OffboardTemplateStore(root: root).template("Rooms") == mine)
+        let v2 = #"{"version": 2, "default": null, "templates": {"A": {"leave_out": [], "add": [], "subject": "s", "message": "m", "days": 30, "invitee": ""}}}"#
+        try Data(v2.utf8).write(to: file)
+        let old = try #require(try OffboardTemplateStore(root: root).template("A"))
+        #expect(old.services == Offboarding.defaultServices && !old.releaseResources)
     }
 
     /// A file this format can't read is moved aside whole and the starters shown, never saved over: whatever it
@@ -152,7 +168,10 @@ struct OffboardTemplateStoreTests {
         }
         let bad: [(String, [UInt8])] = [
             ("not JSON", Array("{not json".utf8)),
-            ("a later version", Array(#"{"version": 3, "default": null, "templates": {}}"#.utf8)),
+            ("a later version", Array(#"{"version": 4, "default": null, "templates": {}}"#.utf8)),
+            ("version 3 without services", file(#""A": \#(template)"#, version: 3)),
+            ("version 3 moving nothing", file(#""A": {"leave_out": [], "add": [], "subject": "s", "message": "m", "days": 30, "invitee": "", "services": [], "release_resources": false}"#, version: 3)),
+            ("version 3 releasing rooms without Calendar", file(#""A": {"leave_out": [], "add": [], "subject": "s", "message": "m", "days": 30, "invitee": "", "services": ["drive"], "release_resources": true}"#, version: 3)),
             ("version 1 with an add list", file(#""A": {"leave_out": [], "add": [], "subject": "s", "message": "m", "days": 30, "invitee": ""}"#,
                                                     version: 1)),
             ("version 2 without add", file(#""A": {"leave_out": [], "subject": "s", "message": "m", "days": 30, "invitee": ""}"#)),
