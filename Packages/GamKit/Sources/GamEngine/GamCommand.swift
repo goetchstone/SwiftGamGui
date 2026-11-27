@@ -46,6 +46,16 @@ public struct GamWrite: GamCommand {
             let wanted = argv.last?.split(separator: ",").count ?? 0
             let deleted = output.split(whereSeparator: \.isNewline).count { $0.contains(", Deleted") }
             return deleted >= wanted ? nil : "GAM deleted \(deleted) of \(wanted) messages and said nothing about the rest. Check the account again."
+        case .createAdmin:
+            // `create admin` exits 0 with no line when Google answers internalError: the role may or may not have been given.
+            return output.contains("Admin Role Assignment: ") ? nil
+                : "GAM exited without saying it did this, so it may not have happened. List their roles (`print admins user`) to see whether it was given."
+        case .deleteGroup:
+            return argv.count > 2 && PythonText.lower(output).contains("group: \(PythonText.lower(argv[2])),") ? nil
+                : "GAM exited without saying it did this, so it may not have happened. Look for the group on Groups."
+        case .renameUser:
+            return argv.count > 2 && PythonText.lower(output).contains("user: \(PythonText.lower(argv[2])),") ? nil
+                : "GAM exited without saying it did this, so it may not have happened. Look the person up on Users."
         case .exportToSheet:
             // An exit 0 that printed no link is no answer: whether a Sheet was made can't be told (plan F4, GamGUI's `verify`).
             return SheetExport.sheetURL(output).isEmpty ? SheetExport.noLink : nil
@@ -75,7 +85,9 @@ public struct GamWrite: GamCommand {
     /// the admin this app signs in as, any of them signs the app out with no way back from here: ChangeCore refuses that.
     public var cutsOff: String? {
         switch action {
-        case .deleteUser, .suspendUser, .resetPassword, .setPassword: argv[2]
+        // A new primary address (roadmap 5.1): whether the token and the service account's sign-in as that address outlive a
+        // rename isn't proven, so it counts.
+        case .deleteUser, .suspendUser, .resetPassword, .setPassword, .renameUser: argv[2]
         case .signOutUser, .deprovisionUser: argv[1]
         default: nil
         }
@@ -100,6 +112,8 @@ public enum WriteAction: String, Sendable, CaseIterable {
     case updatePhones
     /// Org units (roadmap 4.2, GamGUI #169).
     case moveOrgUnit, createOrgUnit, renameOrgUnit, deleteOrgUnit
+    /// The closed list of Builder writes (roadmap 5.1, GamGUI #189).
+    case renameUser, deleteGroup, createAdmin
     /// A read's table to a new Google Sheet in the connected admin's Drive (plan F4): named as GamGUI's record names it, so both
     /// apps' logs read alike and Files finds either's.
     case exportToSheet = "export_to_sheet"

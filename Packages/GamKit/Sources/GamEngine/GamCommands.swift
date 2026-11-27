@@ -594,6 +594,44 @@ public enum GamCommands {
         GamWrite(["delete", "org", orgUnit], action: .deleteOrgUnit)
     }
 
+    // MARK: the closed list of Builder writes (roadmap 5.1, GamGUI #189)
+
+    /// `update user <u> primaryemail <new> noactionifalias`: an alias is refused by GAM (51) rather than rename its owner; a new
+    /// name `vfe` is GAM's "make one up", refused here.
+    public static func renameUser(email: String, newEmail: String) throws -> GamWrite {
+        guard isOneAddress(email), isOneAddress(newEmail) else {
+            throw Invalid.argument("the account and its new address are each one full email address")
+        }
+        if PythonText.lower(String(newEmail.split(separator: "@", maxSplits: 1).first ?? "")) == "vfe" {
+            throw Invalid.argument("GAM reads a new address named vfe@ as “make one up”: choose another name")
+        }
+        if PythonText.lower(PythonText.strip(newEmail)) == PythonText.lower(PythonText.strip(email)) {
+            throw Invalid.argument("that is the address the account has now")
+        }
+        return GamWrite(["update", "user", email, "primaryemail", newEmail, "noactionifalias"], action: .renameUser)
+    }
+
+    /// `create admin <holder> <role> customer|org_unit <unit>`: the role by its name as Google keeps it (an `id:`/`uid:` prefix
+    /// would skip GAM's check); no org unit is the whole organization, and the top-level unit by any spelling is refused.
+    public static func createAdmin(email: String, role: String, orgUnit: String = "") throws -> GamWrite {
+        guard isOneAddress(email) else { throw Invalid.argument("'\(email)' isn't one email address") }
+        let lower = PythonText.lower(role)
+        if PythonText.strip(role).isEmpty || role != PythonText.strip(role) || lower.hasPrefix("id:") || lower.hasPrefix("uid:") {
+            throw Invalid.argument("name the role as Google has it, such as _HELP_DESK_ADMIN_ROLE (`print adminroles` lists them)")
+        }
+        let unit = PythonText.strip(orgUnit)
+        if !orgUnit.isEmpty, unit.unicodeScalars.allSatisfy({ $0 == "/" }) || PythonText.lower(unit) == "root" {
+            throw Invalid.argument("That is the top-level org unit: leave the org unit blank for the whole organization.")
+        }
+        return GamWrite(["create", "admin", email, role] + (orgUnit.isEmpty ? ["customer"] : ["org_unit", orgUnit]), action: .createAdmin)
+    }
+
+    /// `delete group <g> noactionifalias`: an alias is refused (51) rather than delete the group behind it; one address.
+    public static func deleteGroup(group: String) throws -> GamWrite {
+        guard isOneAddress(group) else { throw Invalid.argument("'\(group)' isn't one group address") }
+        return GamWrite(["delete", "group", group, "noactionifalias"], action: .deleteGroup)
+    }
+
     public static func printTokens(user: String? = nil) throws -> GamRead {
         guard user.map(isOneAddress) ?? true else { throw Invalid.argument("“\(user ?? "")” isn't one email address") }
         return GamRead((user.map { ["user", $0] } ?? []) + ["print", "tokens"])

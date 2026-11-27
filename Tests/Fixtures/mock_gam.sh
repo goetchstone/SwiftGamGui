@@ -3321,6 +3321,104 @@ if { [ "${1:-}" = "create" ] || [ "${1:-}" = "add" ]; } && [ "${2:-}" = "user" ]
   exit 0
 fi
 
+# Ported from GamGUI's mock (#189): create admin, rename a user, delete a group.
+# Until GamGUI #169's org-unit handlers land here (roadmap 4.2): `create admin ... org_unit` resolves the unit as GAM does.
+if ! command -v org_path >/dev/null 2>&1; then
+org_path() {  # getOrgUnitItem: `root` is the top-level unit, anything else is made absolute
+  case "$1" in root) printf '/' ;; /*) printf '%s' "$1" ;; *) printf '/%s' "$1" ;; esac
+}
+fi
+if ! command -v is_org_unit >/dev/null 2>&1; then
+is_org_unit() { [ "$1" = "/" ] || org_units | grep -qxF -- "$1"; }
+fi
+# `gam create admin <EmailAddress> <RoleItem> customer|(org_unit <OrgUnitItem>)` (roadmap 5.1; doCreateAdmin, getRoleId at
+# the 7.52.05 tag), in GAM's order: the holder (a user, else a group; neither ends the command, entityDoesNotExistExit, 56),
+# the role by its name as roles.list gives it, without case (one it doesn't have is a usage error listing the names, 2),
+# then the scope (an org unit it can't find ends it too, 56). Google refuses a role the holder has at that scope (Duplicate)
+# and Super Admin over one org unit (invalid), both entityActionFailedWarning, 50. GAM_MOCK_STATE/admin_internal_error is
+# Google's internalError, which GAM passes over: exit 0, no word, whether or not it was given. Under GAM_MOCK_STATE each
+# grant is kept in admins_created and a second is Duplicate. Wording approximate.
+if [ "${1:-}" = "create" ] && [ "${2:-}" = "admin" ]; then
+  { [ $# -eq 5 ] && [ "$5" = customer ]; } || { [ $# -eq 6 ] && [ "$5" = org_unit ]; } \
+    || not_modelled "create admin other than <holder> <role> customer|org_unit <unit>"
+  holder=$(lower "$3")
+  if known_user "$holder"; then kind=User; elif is_group "$holder"; then kind=Group; else does_not_exist_exit "User" "$holder"; fi
+  role_names="_groups_admin_role|_help_desk_admin_role|_seed_admin_role|_user_management_admin_role"
+  case "$(lower "$4")" in
+    _groups_admin_role|_help_desk_admin_role|_seed_admin_role|_user_management_admin_role) ;;
+    *) invalid_choice "$4" "$role_names" ;;
+  esac
+  scope=CUSTOMER
+  if [ "$5" = org_unit ]; then
+    unit=$(org_path "$6")
+    is_org_unit "$unit" || does_not_exist_exit "Organizational Unit" "$6"
+    scope="ORG_UNIT $unit"
+    if [ "$(lower "$4")" = _seed_admin_role ]; then
+      printf 'Administrator: %s, Create Failed: Invalid Input: scope type\n' "$3" 1>&2; exit 50
+    fi
+  fi
+  grant="$holder	$(lower "$4")	$scope"
+  if { [ "$holder" = alice@example.com ] && [ "$(lower "$4")" = _seed_admin_role ] && [ "$scope" = CUSTOMER ]; } \
+     || { [ -n "${GAM_MOCK_STATE:-}" ] && grep -qxF -- "$grant" "$GAM_MOCK_STATE/admins_created" 2>/dev/null; }; then
+    printf 'Administrator: %s, Admin Role: %s, Create Failed: Duplicate\n' "$3" "$4" 1>&2; exit 50
+  fi
+  if [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/admin_internal_error" ]; then exit 0; fi
+  [ -z "${GAM_MOCK_STATE:-}" ] || printf '%s\n' "$grant" >> "$GAM_MOCK_STATE/admins_created"
+  printf 'Admin Role Assignment: 9170100, Created: %s %s, Admin Role %s, Scope %s\n' "$kind" "$3" "$4" "$scope"
+  exit 0
+fi
+# `gam update user <UserItem> primaryemail <EmailAddress> noactionifalias` (roadmap 5.1; updateUsers and
+# verifyUserPrimaryEmail at the 7.52.05 tag). Only the app's shape. noactionifalias reads the account first: an address no
+# account has (a group's too: it is users.get) is entityUnknownWarning (56), one that is an alias is "Not Performed" (51) and nothing changes. A new address
+# someone holds (a user, a user's alias, a group, one renamed to earlier in this state, an *exists* address) is Google's
+# duplicate, caught as entityActionFailedWarning naming both addresses: ACTION_FAILED_RC (50), not 57 as a create is. A
+# new address outside the tenant's domains is Google's refusal, 50 too. Under GAM_MOCK_STATE renamed.tsv keeps each rename,
+# and the old address then reads as the new one's alias. Wording approximate (Act/Msg strings aren't in the source read).
+renamed_to() { [ -n "${GAM_MOCK_STATE:-}" ] && awk -F '\t' -v a="$1" '$1 == a { n = $2 } END { if (n) print n; else exit 1 }' "$GAM_MOCK_STATE/renamed.tsv" 2>/dev/null; }
+renamed_from() { [ -n "${GAM_MOCK_STATE:-}" ] && awk -F '\t' -v a="$1" '$2 == a { f = 1 } END { exit !f }' "$GAM_MOCK_STATE/renamed.tsv" 2>/dev/null; }
+if [ "${1:-}" = "update" ] && [ "${2:-}" = "user" ] && [ "$(lower "${4:-}")" = "primaryemail" ]; then
+  { [ $# -eq 6 ] && [ "$6" = noactionifalias ]; } || not_modelled "update user <u> primaryemail <new> without noactionifalias last"
+  old=$(lower "$3"); new=$(lower "$5")
+  if renamed_to "$old" >/dev/null; then held="User Alias: $old"
+  elif renamed_from "$old"; then held="User: $old"
+  else held=$(duplicate_of "$old"); fi
+  case "$held" in
+    "User: "*) ;;
+    "User Alias: "*) printf 'User: %s, Update Not Performed: Not a primary email address\n' "$old" 1>&2; exit 51 ;;
+    *) does_not_exist "User" "$old" ;;
+  esac
+  taken=$(duplicate_of "$new")
+  if [ -n "$taken" ] || renamed_from "$new" || renamed_to "$new" >/dev/null; then
+    printf 'User: %s, User: %s, Update Failed: Entity already exists.\n' "$old" "$new" 1>&2; exit 50
+  fi
+  case "${new#*@}" in
+    example.com|example.net|alias.example.net) ;;
+    *) printf 'User: %s, User: %s, Update Failed: Domain not found.\n' "$old" "$new" 1>&2; exit 50 ;;
+  esac
+  [ -z "${GAM_MOCK_STATE:-}" ] || printf '%s\t%s\n' "$old" "$new" >> "$GAM_MOCK_STATE/renamed.tsv"
+  echo "User: $old, Updated"
+  exit 0
+fi
+# `gam delete group <GroupEntity> noactionifalias` (roadmap 5.1; doDeleteGroups, verifyGroupPrimaryEmail at the 7.52.05
+# tag). Only the app's shape: one address, the flag after it. GAM splits the entity on commas and spaces and acts on each,
+# so the mock refuses either rather than delete one. noactionifalias reads the group first: everyone@ is all hands'
+# alias (made up), "Not Performed" (51), nothing deleted; an address that is no group is entityUnknownWarning (56). Under
+# GAM_MOCK_STATE a deleted group stays gone: groups_deleted lists it. Wording approximate.
+if [ "${1:-}" = "delete" ] && { [ "${2:-}" = "group" ] || [ "${2:-}" = "groups" ]; }; then
+  { [ $# -eq 4 ] && [ "$4" = noactionifalias ]; } || not_modelled "delete group other than <group> noactionifalias"
+  case "$3" in *,*|*" "*|"") not_modelled "delete group with a list of groups" ;; esac
+  group=$(lower "$3")
+  if [ "$group" = everyone@example.com ]; then
+    printf 'Group: %s, Delete Not Performed: Not a primary email address\n' "$group" 1>&2; exit 51
+  fi
+  if ! is_group "$group" || { [ -n "${GAM_MOCK_STATE:-}" ] && grep -qxF -- "$group" "$GAM_MOCK_STATE/groups_deleted" 2>/dev/null; }; then
+    does_not_exist "Group" "$group"
+  fi
+  [ -z "${GAM_MOCK_STATE:-}" ] || printf '%s\n' "$group" >> "$GAM_MOCK_STATE/groups_deleted"
+  echo "Group: $group, Deleted"
+  exit 0
+fi
+
 # `gam update user <email> <UserAttribute>*` -> organization / suspended / password random.
 if [ "${1:-}" = "update" ] && [ "${2:-}" = "user" ]; then
   [ -n "${3:-}" ] || missing_arg "UserItem"

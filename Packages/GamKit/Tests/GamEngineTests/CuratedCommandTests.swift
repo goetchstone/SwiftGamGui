@@ -48,9 +48,6 @@ struct CuratedCommandTests {
         "build.shared_drive_files": "A shared drive's files (GamGUI #187, roadmap 4.7): not built here yet",
         "build.move_folder_to_shared_drive": "Move a folder into a shared drive (GamGUI #188, roadmap 4.8): not built here yet",
         "build.copy_rest_of_folder_to_shared_drive": "Move a folder into a shared drive (GamGUI #188, roadmap 4.8): not built here yet",
-        "build.delete_group": "Delete a group (GamGUI #189, roadmap 5.1): not built here yet",
-        "build.rename_user": "Rename a user (GamGUI #189, roadmap 5.1): not built here yet",
-        "build.create_admin": "Add an admin role (GamGUI #189, roadmap 5.1): not built here yet",
     ]
 
     /// GamGUI's commands in its order, each here or not ported yet, said why; and no other.

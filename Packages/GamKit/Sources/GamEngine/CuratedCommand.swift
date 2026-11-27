@@ -269,6 +269,13 @@ extension CuratedCommand {
                            "Create a new Google Group; optionally set its display name and description.") { v in
                 .write(GamCommands.createGroup(email: v("email"), name: v("name"), description: v("description")))
             },
+            // Destructive (roadmap 5.1): members, settings, aliases and the archive go with it.
+            CuratedCommand("build.delete_group", "Groups", "", "Delete a group", .destructive, [field("group", "Group", .group)],
+                           "gam delete group <group> noactionifalias",
+                           "Delete a group, with its members list, settings, aliases and conversations. Named by its own address: GAM "
+                           + "refuses one of its aliases rather than delete the group behind it.") { v in
+                .write(try GamCommands.deleteGroup(group: v("group")))
+            },
             // Org units (roadmap 4.2, GamGUI #169): moving people is on Users; these shape the tree.
             CuratedCommand("build.create_org_unit", "Organizational Units", "", "Create an org unit", .change,
                            [field("path", "Path", .text, placeholder: "/Sales/East"),
@@ -316,6 +323,26 @@ extension CuratedCommand {
             },
             // Handed-over ownership can't be taken back by a second transfer (docs/domains/offboarding.md). Drive names its privacy
             // level so every file moves, private and shared, as offboarding does; GAM refuses a level for calendar alone.
+            // Destructive (roadmap 5.1): the address they sign in with changes, and anything that knows them by it breaks.
+            CuratedCommand("build.rename_user", "Users", "", "Rename a user (change their address)", .destructive,
+                           [person("email", "User (their address now)"), field("new_email", "New address", .email)],
+                           "gam update user <email> primaryemail <new address> noactionifalias",
+                           "Change a user's primary address. They sign in with the new one, and Google keeps the old one as an alias so "
+                           + "mail to it still arrives. Google refuses an address someone already has. Named by their address now: GAM "
+                           + "refuses an alias rather than rename the account behind it.") { v in
+                .write(try GamCommands.renameUser(email: v("email"), newEmail: v("new_email")))
+            },
+            // Destructive (roadmap 5.1): an admin role takes effect at once, up to the whole domain's (_SEED_ADMIN_ROLE).
+            CuratedCommand("build.create_admin", "Administrators", "", "Add an admin role", .destructive,
+                           [person("email", "User or group"), field("role", "Role", .text, placeholder: "_HELP_DESK_ADMIN_ROLE"),
+                            field("org_unit", "Org unit", .text, required: false, placeholder: "/Sales (blank: the whole organization)")],
+                           "gam create admin <email> <role> customer|org_unit <org unit>",
+                           "Give a user or group an admin role, over the whole organization or one org unit, in effect at once. The role "
+                           + "is its name as Google keeps it: built-in roles read like _HELP_DESK_ADMIN_ROLE, and _SEED_ADMIN_ROLE is Super "
+                           + "Admin. An alias counts as the account or group it belongs to. `print adminroles` lists every name. GAM prints the assignment's ID. Taking a role back isn't offered "
+                           + "here: use the Admin console, or Close Out for a leaver.") { v in
+                .write(try GamCommands.createAdmin(email: v("email"), role: v("role"), orgUnit: v("org_unit")))
+            },
             CuratedCommand("build.transfer_data", "Data Transfers", "", "Transfer Drive/Calendar ownership", .destructive,
                            [person("old_owner", "From user"),
                             field("service", "Service", .choice, choices: transferServices, default: "drive"),

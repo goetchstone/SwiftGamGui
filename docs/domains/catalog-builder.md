@@ -302,3 +302,10 @@ B4 in docs/live-verification.md).
 - Sensitive reads' export (`sensitive_export`): with the sensitive reads themselves, when the operator asks.
 - The first live Sheet export, on the operator's yes (plan F4): the mock's upload lines are read from GAM's source, never seen
   live. Files doesn't list an incident report's folder or a roster hand-over ZIP.
+
+## The closed list of writes (roadmap 5.1, 2026-11-27; GamGUI #189)
+Rename a user (`update user <u> primaryemail <new> noactionifalias`), delete a group (`delete group <g> noactionifalias`) and add
+an admin role (`create admin <holder> <role> customer|org_unit <unit>`), each destructive and curated. `noactionifalias` makes GAM
+refuse an alias (51), said as `alias_refused`; a rename is a cut-off (`GamWrite.cutsOff`), so the connected admin is refused; a
+run that exits 0 without GAM's own line reads as unconfirmed (`GamWrite.notDone`). Create and rename a shared drive follow once
+the Shared Drives screen (4.7) is in. Held to `BuilderChangesTests`. Not run live.
