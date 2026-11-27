@@ -550,6 +550,53 @@ public enum GamCommands {
     /// The apps people have given access to their account (9119-9128; _printShowTokens): every account but the suspended
     /// ones (GAM's default, all users), or one person's. CSV `user,clientId,displayText,anonymous,nativeApp,userKey,scopes`,
     /// the scopes space-joined (csv_output_field_delimiter's default). A refusal is ClientAPIAccessDeniedExit, exit 12.
+    // MARK: shared drive members (roadmap 4.7, GamGUI #185, #187)
+
+    /// One shared drive's members: `print drivefileacls shareddriveid <id> formatjson`, as the admin. A read drive is exactly one
+    /// row, `Owner,id,JSON`, even with none; a drive GAM passed over is no row at all (unknown, never "no members").
+    public static func printDriveMembers(driveID: String) throws -> GamRead {
+        guard SharedDrives.isItemID(driveID) else { throw Invalid.argument("'\(driveID)' isn't a shared drive ID") }
+        return GamRead(["print", "drivefileacls", "shareddriveid", driveID, "formatjson"])
+    }
+
+    /// `create drivefileacl shareddriveid <id> user|group <address> role <role>`: no sendemail; the member one full address.
+    public static func addDriveMember(driveID: String, kind: String, email: String, role: String) throws -> GamWrite {
+        guard SharedDrives.isItemID(driveID) else { throw Invalid.argument("'\(driveID)' isn't a shared drive ID") }
+        guard SharedDrives.memberTypes.contains(kind) else { throw Invalid.argument("'\(kind)' isn't a member type: user, group") }
+        guard SharedDrives.gamWord.contains(where: { $0.word == role }) else { throw Invalid.argument("'\(role)' isn't a shared drive role") }
+        guard isOneAddress(email) else { throw Invalid.argument("'\(email)' isn't one email address") }
+        return GamWrite(["create", "drivefileacl", "shareddriveid", driveID, kind, email, "role", role], action: .addDriveMember)
+    }
+
+    /// `update drivefileacl shareddriveid <id> id:<permission ID> role <role>`: the member by permission ID, never an address
+    /// (that would send GAM to a second lookup that can fail on its own).
+    public static func setDriveMemberRole(driveID: String, permissionID: String, role: String) throws -> GamWrite {
+        guard SharedDrives.isItemID(driveID), SharedDrives.isItemID(permissionID) else {
+            throw Invalid.argument("a shared drive ID and a permission ID are letters, digits, - and _")
+        }
+        guard SharedDrives.gamWord.contains(where: { $0.word == role }) else { throw Invalid.argument("'\(role)' isn't a shared drive role") }
+        return GamWrite(["update", "drivefileacl", "shareddriveid", driveID, "id:\(permissionID)", "role", role], action: .setDriveMemberRole)
+    }
+
+    /// `delete drivefileacl shareddriveid <id> id:<permission ID>`.
+    public static func removeDriveMember(driveID: String, permissionID: String) throws -> GamWrite {
+        guard SharedDrives.isItemID(driveID), SharedDrives.isItemID(permissionID) else {
+            throw Invalid.argument("a shared drive ID and a permission ID are letters, digits, - and _")
+        }
+        return GamWrite(["delete", "drivefileacl", "shareddriveid", driveID, "id:\(permissionID)"], action: .removeDriveMember)
+    }
+
+    /// A shared drive's files, read as one of its members (`<user> print filelist select shareddriveid <id> showownedby any`):
+    /// GAM keeps only the person's own files unless told otherwise, and a shared drive's are owned by no one.
+    public static func printSharedDriveFiles(email: String, driveID: String) throws -> GamRead {
+        guard isOneAddress(email) else { throw Invalid.argument("'\(email)' isn't one email address") }
+        guard SharedDrives.isItemID(driveID) else {
+            throw Invalid.argument("a shared drive ID is letters, digits, - and _ (Shared drives lists each drive's)")
+        }
+        return GamRead(["user", email, "print", "filelist", "select", "shareddriveid", driveID, "showownedby", "any",
+                        "fields", SharedDrives.fileFields.joined(separator: ","), "formatjson"])
+    }
+
     public static func printTokens(user: String? = nil) throws -> GamRead {
         guard user.map(isOneAddress) ?? true else { throw Invalid.argument("“\(user ?? "")” isn't one email address") }
         return GamRead((user.map { ["user", $0] } ?? []) + ["print", "tokens"])

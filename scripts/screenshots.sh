@@ -108,7 +108,7 @@ status=0
 # Phishing opens empty, then with the mock's phishing email found by its Message-ID, then (tab `recipients`) who its
 # sender sent it to, (`confirm`) the confirm sheet over the copies, and (`result`) a finished run (made up: nothing runs);
 # then Pull All: three emails at once (commas between them), two that mailboxes have and one none has, and their confirm.
-for spec in home:home users:users groups:groups setup:setup jobs:home::jobs \
+for spec in home:home users:users groups:groups drives:shareddrives setup:setup jobs:home::jobs \
             home-scheduled:home::scheduled narrow-home-scheduled:home::scheduled:smallest \
             domain:home::domain domain-warning:home::domain-warning narrow-domain:home:::smallest \
             person-profile:users:alice@example.com:profile person-groups:users:alice@example.com:groups \

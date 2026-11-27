@@ -46,6 +46,12 @@ public struct GamWrite: GamCommand {
             let wanted = argv.last?.split(separator: ",").count ?? 0
             let deleted = output.split(whereSeparator: \.isNewline).count { $0.contains(", Deleted") }
             return deleted >= wanted ? nil : "GAM deleted \(deleted) of \(wanted) messages and said nothing about the rest. Check the account again."
+        case .addDriveMember, .setDriveMemberRole, .removeDriveMember:
+            // GAM exits 0 without a word when Google refuses its token (createDriveFileACL and kin skip the admin): only its
+            // "Drive File/Folder ID: <drive>, Permission ID: " line says the change was made (GamGUI's `drive_acl_done`).
+            guard argv.count > 3 else { return Self.saidNothing }
+            return output.contains("Drive File/Folder ID: \(argv[3]), Permission ID: ") ? nil
+                : "GAM exited without saying it did this, so it may not have happened. Show the drive's members again."
         case .exportToSheet:
             // An exit 0 that printed no link is no answer: whether a Sheet was made can't be told (plan F4, GamGUI's `verify`).
             return SheetExport.sheetURL(output).isEmpty ? SheetExport.noLink : nil
@@ -98,6 +104,8 @@ public enum WriteAction: String, Sendable, CaseIterable {
     case trashMessage, deleteMessages, setPassword
     case blockDeviceUser, deleteDeviceUser
     case updatePhones
+    /// A shared drive's members (roadmap 4.7, GamGUI #185).
+    case addDriveMember, setDriveMemberRole, removeDriveMember
     /// A read's table to a new Google Sheet in the connected admin's Drive (plan F4): named as GamGUI's record names it, so both
     /// apps' logs read alike and Files finds either's.
     case exportToSheet = "export_to_sheet"

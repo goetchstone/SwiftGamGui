@@ -86,6 +86,8 @@ struct AppServices {
     let runSchedules: RunSchedules
     /// Inactive users' Suspend these…: the directory read again, one previewed write through the executor.
     let inactiveSuspend: InactiveSuspend
+    /// Shared drives and their members (roadmap 4.7).
+    let sharedDrives: SharedDriveChanges
     /// Users' Department for Many…: one department for a group's members or pasted addresses, each previewed write through the executor.
     let departmentForMany: DepartmentForMany
     /// Onboard's From a CSV…: every row's hire held as one preview through the executor.
@@ -231,6 +233,7 @@ struct AppServices {
                            auditRuns: auditRuns,
                            runSchedules: runSchedules,
                            inactiveSuspend: InactiveSuspend(executor: executor, setup: setup, directory: directory),
+                           sharedDrives: SharedDriveChanges(executor: executor, setup: setup, access: UserAccess(setup: setup, runner: runner)),
                            departmentForMany: DepartmentForMany(executor: executor, setup: setup, directory: directory, runner: runner),
                            hiresFromCSV: HiresFromCSV(executor: executor, setup: setup, directory: directory),
                            auditURL: auditURL, savedFiles: savedFiles, lockVault: { await vault.lock() })

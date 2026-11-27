@@ -26,6 +26,7 @@ Dates are 2026, and the last time the command ran from any screen.
 - **Ran:** add people as members (11-13), remove a member (10-13).
 - **Not run:** add people as managers or owners.
 
+- **Not run:** a shared drive's members, add, change, remove; a shared drive's files in the Builder (new 2026-11-27, roadmap 4.7).
 ### Calendars
 - **Not run:** anything from this screen: share a calendar with a person, put it in their list, remove someone's access.
   Sharing a person's own calendar ran from Users.

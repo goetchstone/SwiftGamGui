@@ -188,3 +188,14 @@ models, held to `gam_models.json`), and `WriteRouteTests` (only `ChangePreviewSh
   a mock handler that fails as GAM does, and a live proof.
 - **Another group field in the list:** add it to `GamChoices.groupListFields` only with GamGUI (argv
   parity), then model it in the mock's `print groups`.
+
+## Shared drives (roadmap 4.7, 2026-11-27; GamGUI #185, #187)
+The Shared Drives screen (`App/SharedDrivesView.swift`, `Directory/SharedDriveChanges.swift`, `GamEngine/SharedDrives.swift`):
+every drive (`print shareddrives`; exit 60 with titles is none, exit 0 with no row is unread), a drive's members read fresh
+when picked (`print drivefileacls shareddriveid <id> formatjson`, exactly one row or unread). Add a person or group with a role,
+change a role, remove one: each previewed, the members read once more just before the run, and a change since stops it. The
+last manager is never removed or demoted. A member is named by permission ID (`id:<id>`). GAM exits 0 without a word when
+Google refuses its token, so a drive write counts as done only when GAM printed its "Drive File/Folder ID: <id>, Permission
+ID:" line (`GamWrite.notDone`). The Builder's curated "List a shared drive's files" reads as a member, `showownedby any`.
+The mock answers all of it as GamGUI's does (ported). Held to `SharedDriveChangesTests`. Not run live (a throwaway drive first).
+Still to come: the warning on the delete and Close Out about drives a leaver manages alone (#186).

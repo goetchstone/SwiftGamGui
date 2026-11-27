@@ -233,6 +233,15 @@ extension CuratedCommand {
                            "Search a user's Drive by a Drive query — by name, type, owner, sharing, or modified date…") { v in
                 .read(GamCommands.printFileList(email: v("email"), query: v("query")))
             },
+            // A shared drive's files (roadmap 4.7, GamGUI #187), read as one of its members.
+            CuratedCommand("build.shared_drive_files", "Shared Drives", "", "List a shared drive's files", .read,
+                           [person("email", "A member of the drive"),
+                            field("drive_id", "Shared drive ID", .text, placeholder: "0AB\u{2026}Uk9PVA (Shared drives lists each one's)")],
+                           "gam user <email> print filelist select shareddriveid <SharedDriveID> showownedby any",
+                           "Every file in a shared drive, read as one of its members: who changed each last and when. "
+                           + "Someone who isn't a member gets Google's refusal.") { v in
+                .read(try GamCommands.printSharedDriveFiles(email: v("email"), driveID: PythonText.strip(v("drive_id"))))
+            },
             CuratedCommand("build.print_forwarding", "Users", forwarding, "List forwarding addresses", .read, [person()],
                            "gam user <email> print forwardingaddresses", "Show the addresses this user may forward mail to.") { v in
                 .read(GamCommands.printForwardingAddresses(email: v("email")))

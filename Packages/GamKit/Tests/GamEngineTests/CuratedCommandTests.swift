@@ -45,7 +45,6 @@ struct CuratedCommandTests {
     static let notPorted: [String: String] = [
         "build.create_shared_drive": "Create a shared drive (GamGUI #189, roadmap 5.1): not built here yet",
         "build.rename_shared_drive": "Rename a shared drive (GamGUI #189, roadmap 5.1): not built here yet",
-        "build.shared_drive_files": "A shared drive's files (GamGUI #187, roadmap 4.7): not built here yet",
         "build.move_folder_to_shared_drive": "Move a folder into a shared drive (GamGUI #188, roadmap 4.8): not built here yet",
         "build.copy_rest_of_folder_to_shared_drive": "Move a folder into a shared drive (GamGUI #188, roadmap 4.8): not built here yet",
         "build.delete_group": "Delete a group (GamGUI #189, roadmap 5.1): not built here yet",
