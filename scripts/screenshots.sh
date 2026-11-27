@@ -114,7 +114,7 @@ for spec in home:home users:users groups:groups setup:setup jobs:home::jobs \
             person-profile:users:alice@example.com:profile person-groups:users:alice@example.com:groups \
             person-mail:users:alice@example.com:mail person-security:users:alice@example.com:security \
             group-sales:groups:sales@example.com group-sales-add:groups:sales@example.com:add \
-            group-sales-remove:groups:sales@example.com:remove \
+            group-sales-remove:groups:sales@example.com:remove group-sales-remove-many:groups:sales@example.com:remove-many \
             signatures:signatures signatures-alice:signatures:alice@example.com::1100x940:Classic \
             offboard:offboard:carol@example.com offboard-plan:offboard:carol@example.com:plan \
             offboard-confirm:offboard:carol@example.com:confirm offboard-result:offboard:carol@example.com:result \
