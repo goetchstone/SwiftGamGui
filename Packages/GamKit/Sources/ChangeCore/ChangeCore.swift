@@ -204,7 +204,7 @@ extension WriteAction {
         switch self {
         case .deleteUser, .suspendUser, .removeCalendar, .deleteEvent, .createDataTransfer, .deprovisionUser,
              .resetPassword, .removeAllCalendarACLs, .deleteAlias, .clearRecovery, .transferCalendarOwnership, .deleteFilters,
-             .trashMessage, .deleteSendAs, .deleteMessages, .setPassword, .deleteDeviceUser:
+             .trashMessage, .deleteSendAs, .deleteMessages, .setPassword, .deleteDeviceUser, .renameUser, .deleteGroup, .createAdmin:
             .destructive
         default:
             .low
