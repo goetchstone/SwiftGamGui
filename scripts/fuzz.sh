@@ -17,7 +17,7 @@ mkdir -p "$out"
 swiftc -swift-version 6 -sanitize=fuzzer,address -parse-as-library -package-name gamfuzz -module-name GamFuzz \
   Fuzz/GamFuzz.swift \
   "$engine"/Address.swift "$engine"/CommandCatalog.swift "$engine"/CommandGloss.swift "$engine"/GamChoices.swift "$engine"/GamCommand.swift "$engine"/GamCommands.swift \
-  "$engine"/GamError.swift "$engine"/GamOutput.swift "$engine"/JSONValue.swift "$engine"/PythonText.swift "$engine"/SheetExport.swift \
+  "$engine"/GamError.swift "$engine"/GamOutput.swift "$engine"/JSONValue.swift "$engine"/PythonText.swift "$engine"/SheetExport.swift "$engine"/SignaturesFast.swift \
   -o "$out/gamfuzz"
 for arg in "$@"; do
   case "$arg" in -*) ;; *) exec "$out/gamfuzz" -dict=Fuzz/gam.dict "$@" ;; esac   # a crash file: reproduce it

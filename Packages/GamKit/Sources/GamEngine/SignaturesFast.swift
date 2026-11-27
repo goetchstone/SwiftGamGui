@@ -34,18 +34,6 @@ public enum SignaturesFast {
         return out
     }
 
-    /// GamGUI's `refusal`: why one person's row can't go through `gam csv`, or nil.
-    public static func refusal(email: String, body: String) -> String? {
-        if PythonText.strip(body).isEmpty { return "An empty signature: GAM's csv would clear theirs. Use the per-person run to clear one." }
-        if Signature.readAsKeyword(body) != nil { return "GAM would read this signature as a file to load. Change the text." }
-        if asSent(body).unicodeScalars.count >= fieldLimit { return "Too long for GAM's csv in one go. Set this one with the per-person run." }
-        if body.unicodeScalars.contains("\0") || !email.unicodeScalars.allSatisfy(\.isASCII)
-            || email.unicodeScalars.contains(where: { ",\"\r\n".unicodeScalars.contains($0) }) {
-            return "This can't be written as one row of GAM's csv."
-        }
-        return nil
-    }
-
     private static func field(_ text: String) -> String { "\"" + text.replacingOccurrences(of: "\"", with: "\"\"") + "\"" }
 
     /// GamGUI's `rows_csv`: a `User,signature` header, then each row as sent, every field quoted, `"` doubled, `\n` between rows.
