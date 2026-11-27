@@ -113,6 +113,59 @@ public enum Offboarding {
 
     /// One transfer, one argv element: a second same-user transfer 409s while the first runs.
     public static let transferServices = "drive,calendar"
+
+    // MARK: offboarding options (roadmap 3.4, GamGUI #158-#161)
+
+    /// What the transfer can move (`<DataTransferService>`), in the order it's always sent, and its name in words (GamGUI's
+    /// `SERVICE_CHOICES`). Drive and Calendar by default: the default routine sends the same argv, byte for byte.
+    public static let serviceChoices: [(key: String, name: String)] = [("drive", "Drive"), ("calendar", "Calendar"),
+                                                                       ("lookerstudio", "Looker Studio")]
+    public static let defaultServices: Set<String> = ["drive", "calendar"]
+
+    /// GamGUI's `transfer_services`: `chosen` as one `<DataTransferServiceList>` element, in `serviceChoices` order.
+    public static func transferServices(_ chosen: Set<String>) throws -> String {
+        guard !chosen.isEmpty else { throw Invalid.notOptional("pick at least one service to transfer, or leave the transfer out") }
+        if let unknown = chosen.subtracting(serviceChoices.map(\.key)).sorted().first {
+            throw Invalid.notOptional("'\(unknown)' isn't a service the transfer moves")
+        }
+        return serviceChoices.filter { chosen.contains($0.key) }.map(\.key).joined(separator: ",")
+    }
+
+    /// GamGUI's `services_named`: "Drive & Calendar", "Drive, Calendar & Looker Studio".
+    public static func servicesNamed(_ chosen: Set<String>) -> String {
+        let names = serviceChoices.filter { chosen.contains($0.key) }.map(\.name)
+        return names.count < 3 ? names.joined(separator: " & ") : names.dropLast().joined(separator: ", ") + " & " + names.last!
+    }
+
+    /// GamGUI's `AUTOREPLY_END_MAX_DAYS`: ten years, against a typo in the year.
+    public static let autoreplyEndMaxDays = 3653
+
+    /// GamGUI's `autoreply_end_problem`: why `value` can't end the auto-reply, in words; nil for empty (no end) or a good
+    /// YYYY-MM-DD after today and within ten years. GAM sends the start of that day, so today's would switch it off as set.
+    public static func autoreplyEndProblem(_ value: String, today: Day) -> String? {
+        let value = PythonText.strip(value)
+        guard !value.isEmpty else { return nil }
+        let notADate = "The auto-reply's end “\(value)” isn't a date: pick one, or leave it empty for no end."
+        guard value.unicodeScalars.count == 10, let end = Day(iso: value) else { return notADate }
+        if end.iso <= today.iso { return "The auto-reply's end has to be after today: Google switches it off at the start of that day." }
+        if let far = try? today.adding(days: autoreplyEndMaxDays), end.iso > far.iso {
+            return "The auto-reply's end is more than ten years away: check the year, or leave it empty for no end."
+        }
+        return nil
+    }
+
+    /// GamGUI's `needs_manager`: the steps that will run and act on the manager, by name, in run order (the delegate, the
+    /// auto-reply, the reminder, and the transfer and the secondary-calendars hand-over when nobody else takes them). Empty:
+    /// this offboarding needs no manager.
+    public static func needsManager(done: Set<Step>, notApplicable: Set<Step>, added: Set<Step>, recipient: String) -> [String] {
+        let skipped = done.union(notApplicable)
+        var keys = Set([Step.delegate, .vacation, .reminder].filter { !skipped.contains($0) })
+        if PythonText.strip(recipient).isEmpty {
+            if !skipped.contains(.transfer) { keys.insert(.transfer) }
+            if added.contains(.secondaryCalendars), !done.contains(.secondaryCalendars) { keys.insert(.secondaryCalendars) }
+        }
+        return Step.allCases.filter(keys.contains).map(\.name)
+    }
     /// Every Drive file the leaver owns, private and shared: left to the API's default, files they had
     /// shared might stay behind, and be lost when the account is deleted.
     public static let transferPrivacy = GamCommands.TransferPrivacy.all
@@ -178,6 +231,8 @@ public enum Offboarding {
     public struct AddressCheck: Sendable {
         public var user: GamUser?
         public var manager: GamUser?
+        /// The transfer's recipient when it isn't the manager (roadmap 3.4).
+        public var recipient: GamUser?
         public var errors: [String] = []
         public var warnings: [String] = []
     }
@@ -187,8 +242,8 @@ public enum Offboarding {
     /// so is an alias (the sweep matches ACLs by primary address), the same person twice (GAM refuses a
     /// transfer to oneself), and the admin the app is connected as (revoking it deletes the app's own token
     /// mid-run). An admin role, or a suspended leaver or manager, is a warning.
-    public static func checkAddresses(_ directory: [GamUser], user: String, manager: String, connectedAdmin: String = "")
-        -> AddressCheck
+    public static func checkAddresses(_ directory: [GamUser], user: String, manager: String, connectedAdmin: String = "",
+                                      recipient: String = "") -> AddressCheck
     {
         // Python dicts: a later record with the same key replaces an earlier one.
         var byEmail: [[Unicode.Scalar]: GamUser] = [:], byAlias: [[Unicode.Scalar]: GamUser] = [:]
@@ -211,11 +266,24 @@ public enum Offboarding {
         // No manager is looked up when none is given (GamGUI #161): nobody is named. OffboardChanges still refuses a run
         // without one, since every routine here hands the leaver on to the manager.
         check.manager = PythonText.strip(manager).isEmpty ? nil : find(manager, "manager")
+        // A transfer recipient other than the manager is checked as the manager is (GamGUI #158).
+        let recipient = PythonText.strip(recipient)
+        if !recipient.isEmpty, key(recipient) != key(PythonText.strip(manager)) {
+            check.recipient = find(recipient, "transfer recipient")
+        }
         if let leaver = check.user, !connectedAdmin.isEmpty, key(leaver.primaryEmail) == key(connectedAdmin) {
             check.errors.append("GamGUI is connected as \(leaver.primaryEmail), so it can't offboard that account: "
                 + "revoking its access would delete GamGUI's own authorization partway through. "
                 + "Run the offboarding from another admin's GamGUI setup.")
             return check
+        }
+        if let leaver = check.user, let taker = check.recipient, key(leaver.primaryEmail) == key(taker.primaryEmail) {
+            check.errors.append("The departing user and the transfer recipient are the same account — GAM refuses a "
+                + "transfer to oneself. Enter who takes over the files, or leave it empty for the manager.")
+            return check
+        }
+        if let taker = check.recipient, taker.suspended {
+            check.warnings.append("The transfer recipient \(taker.primaryEmail) is suspended — the transfer will likely fail.")
         }
         if let leaver = check.user, let manager = check.manager, key(leaver.primaryEmail) == key(manager.primaryEmail) {
             check.errors.append("The departing user and the manager are the same account — enter the manager "
@@ -271,7 +339,9 @@ public enum Offboarding {
     public static func steps(user: String, manager: String, subject: String, message: String, days: Int, today: Day,
                              notify: String = "", employeeName: String = "", managerContact: String = "",
                              notApplicable: Set<Step> = [], adding: Set<Step> = [],
-                             ownedCalendars: [UserCalendar] = [], forwardingFilters: [MailFilter] = []) throws -> [Planned] {
+                             ownedCalendars: [UserCalendar] = [], forwardingFilters: [MailFilter] = [],
+                             recipient: String = "", services: Set<String> = defaultServices, releaseResources: Bool = false,
+                             autoreplyEnd: String = "") throws -> [Planned] {
         guard notApplicable.isSubset(of: optionalSteps) else {
             throw Invalid.notOptional("only \(optionalSteps.map(\.rawValue).joined(separator: ", ")) can be left out; "
                 + "the reset, the sign-out and forwarding off always run")
@@ -285,12 +355,21 @@ public enum Offboarding {
         guard !adding.contains(.forwardingFilters) || !forwardingFilters.isEmpty else {
             throw Invalid.notAddable("forwarding_filters needs the filters to remove")
         }
+        // Who takes the transfer and the secondary calendars ("" is the manager), what moves, and the Drive privacy level,
+        // sent only with Drive (GAM refuses it otherwise; GamGUI #158). Releasing rooms is a Calendar parameter (#160).
+        let to = PythonText.strip(recipient).isEmpty ? manager : PythonText.strip(recipient)
+        let serviceList = try transferServices(services)
+        if releaseResources, !services.contains("calendar") {
+            throw Invalid.notOptional("releasing the rooms their events booked is part of the Calendar transfer: transfer Calendar too")
+        }
+        let routineTransfer = to == manager && services == defaultServices
+        let moving = servicesNamed(services)
         let filterDelete = adding.contains(.forwardingFilters)
             ? try GamCommands.deleteFilters(email: user, filterIDs: forwardingFilters.map(\.id)) : nil
         let targets = forwardingFilters.map(\.forward).reduce(into: [String]()) { if !$0.contains($1) { $0.append($1) } }
         // Built only when added: it needs the calendars, and refuses an empty list.
         let handOver = adding.contains(.secondaryCalendars)
-            ? try GamCommands.transferCalendarOwnership(calendarIDs: ownedCalendars.map(\.calendarID), to: manager) : nil
+            ? try GamCommands.transferCalendarOwnership(calendarIDs: ownedCalendars.map(\.calendarID), to: to) : nil
         let employee = employeeName.isEmpty ? user : employeeName
         let contact = managerContact.isEmpty ? manager : managerContact
         let subject = fillAutoreply(subject, employee: employee, manager: contact)
@@ -298,7 +377,8 @@ public enum Offboarding {
         let body = HTMLText.autoreplyHTML(message)   // what's sent; the summary shows `message`
         let due = try today.adding(days: days), end = try due.adding(days: 1)
         let reminderSummary = "Offboarding \(user): confirm with IT whether to delete the account"
-        let moved = notApplicable.contains(.transfer) ? "nothing transferred" : "data + calendars transferred to \(manager)"
+        let moved = notApplicable.contains(.transfer) ? "nothing transferred"
+            : routineTransfer ? "data + calendars transferred to \(manager)" : "\(moving) transferred to \(to)"
         let reminderDescription = "\(user) was offboarded on \(today.iso) (password reset; \(moved)). When you're sure it's "
             + "safe, tell IT to delete the account."
         let sweepMinutes = minutes(GamRunner.domainWideTimeout)
@@ -334,13 +414,17 @@ public enum Offboarding {
              GamCommands.popOff(email: user)),
             (.delegate, "Set delegate", "Give \(manager) delegate access to \(user)'s mailbox",
              GamCommands.addDelegate(email: user, delegate: manager)),
-            (.vacation, "Set auto-responder", "Auto-reply — “\(subject)”: \(message)",
-             GamCommands.setVacation(email: user, subject: subject, message: body)),
-            (.transfer, "Transfer Drive & Calendar ownership",
-             "Transfer \(user)'s Drive/Docs (private and shared files) and calendars to \(manager)",
-             GamCommands.createDataTransfer(oldOwner: user, service: transferServices, newOwner: manager, privacy: transferPrivacy)),
+            (.vacation, "Set auto-responder",
+             "Auto-reply — “\(subject)”: \(message)" + (autoreplyEnd.isEmpty ? "" : " (until \(autoreplyEnd))"),
+             GamCommands.setVacation(email: user, subject: subject, message: body, end: autoreplyEnd)),
+            (.transfer, services == defaultServices ? "Transfer Drive & Calendar ownership" : "Transfer \(moving) ownership",
+             (routineTransfer ? "Transfer \(user)'s Drive/Docs (private and shared files) and calendars to \(manager)"
+                : "Transfer \(user)'s \(moving) to \(to)" + (services.contains("drive") ? " (private and shared Drive files)" : ""))
+                + (releaseResources ? "; the rooms and resources their events booked are released" : ""),
+             GamCommands.createDataTransfer(oldOwner: user, service: serviceList, newOwner: to,
+                                            privacy: services.contains("drive") ? transferPrivacy : nil, releaseResources: releaseResources)),
             (.secondaryCalendars, Step.secondaryCalendars.name,
-             "Make \(manager) the owner of \(user)'s secondary calendars (\(ownedCalendars.map { "“\($0.label)”" }.joined(separator: ", "))), "
+             "Make \(to) the owner of \(user)'s secondary calendars (\(ownedCalendars.map { "“\($0.label)”" }.joined(separator: ", "))), "
                 + "so deleting the account doesn't delete them. GAM checks each with the admin's own access first: one the admin "
                 + "can't see fails “Not Found” and is handed over in the Admin console",
              handOver),
@@ -564,9 +648,16 @@ public enum Offboarding {
         public var days: Int
         /// Also invited to the reminder (IT or HR); empty for nobody.
         public var invitee: String
+        /// What the transfer moves (GamGUI's file version 3); older files read as Drive and Calendar.
+        public var services: Set<String>
+        /// Free the rooms their events booked (Calendar only, GamGUI #160).
+        public var releaseResources: Bool
 
         public init(leftOut: Set<Step> = [], added: Set<Step> = [], subject: String = Offboarding.defaultSubject,
-                    message: String = Offboarding.defaultMessage, days: Int = 30, invitee: String = "") {
+                    message: String = Offboarding.defaultMessage, days: Int = 30, invitee: String = "",
+                    services: Set<String> = Offboarding.defaultServices, releaseResources: Bool = false) {
+            self.services = services
+            self.releaseResources = releaseResources
             self.leftOut = leftOut
             self.added = added
             self.subject = subject
@@ -593,6 +684,15 @@ public enum Offboarding {
             let invitee = PythonText.strip(invitee)
             guard invitee.isEmpty || Address.looksLikeEmail(invitee) else {
                 return "The invitee “\(invitee)” isn't one email address. Enter one, like it@example.com, or leave it empty."
+            }
+            if services.isEmpty, !leftOut.contains(.transfer) {
+                return "The transfer moves nothing: pick Drive, Calendar or Looker Studio, or leave the transfer out."
+            }
+            if let unknown = services.subtracting(serviceChoices.map(\.key)).sorted().first {
+                return "“\(unknown)” isn't something the transfer moves."
+            }
+            if releaseResources, !services.contains("calendar"), !leftOut.contains(.transfer) {
+                return "Releasing the rooms their events booked is part of the Calendar transfer: tick Calendar too."
             }
             return nil
         }

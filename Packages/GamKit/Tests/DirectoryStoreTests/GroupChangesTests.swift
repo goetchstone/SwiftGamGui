@@ -495,4 +495,36 @@ final class GroupChangesTests {
         #expect(capped.shown.count == GroupChanges.pickLimit && capped.more)
         #expect(capped.shown.first?.primaryEmail == "person00@example.com")
     }
+
+    // MARK: remove several (roadmap 3.5, GamGUI's `tests/test_remove_members.py`)
+
+    /// The group is read again: those still in it are held with their roles, owners named, the rest left out; one removal
+    /// each, run once.
+    @Test func removingSeveralHoldsThoseStillInTheGroup() async throws {
+        try await connect()
+        let sales = try group("sales@example.com")
+        await changes.previewRemoveMany(["ALICE@example.com", "it@example.com", "nobody@example.com", "not an address"], from: sales)
+        let held = try pending()
+        #expect(held.members == ["alice@example.com", "it@example.com"] && held.title == "Remove 2 people from sales@example.com?")
+        #expect(held.notes.contains("1 of those ticked isn't in the group now and is left out."))
+        #expect(held.notes.contains("Owners among them: alice@example.com. Make sure the group keeps one."))
+        #expect(writes().isEmpty, "a preview writes nothing")
+        await changes.confirm(held, OperatorConfirmation(confirmed: true))
+        #expect(bytes(writes()) == bytes([["update", "group", "sales@example.com", "remove", "alice@example.com"],
+                                          ["update", "group", "sales@example.com", "remove", "it@example.com"]]))
+        #expect(try done() == "Removed 2 people from sales@example.com.")
+        #expect(changes.failedRemovals == nil)
+    }
+
+    @Test func nothingTickedOrNoneStillInItHoldsNothing() async throws {
+        try await connect()
+        let sales = try group("sales@example.com")
+        await changes.previewRemoveMany([], from: sales)
+        #expect(try problem().summary == "Tick the members to remove first.")
+        await changes.previewRemoveMany(["nobody@example.com"], from: sales)
+        #expect(try problem().summary == "None of those ticked is in sales@example.com now: nothing to remove.")
+        await changes.previewRemoveMany(["a@example.com"], from: unlisted("nosuch@example.com"))
+        #expect(try problem().summary.hasPrefix("Couldn't read nosuch@example.com's members again, so nothing is offered."))
+        #expect(writes().isEmpty)
+    }
 }
