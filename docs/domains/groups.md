@@ -189,6 +189,12 @@ models, held to `gam_models.json`), and `WriteRouteTests` (only `ChangePreviewSh
 - **Another group field in the list:** add it to `GamChoices.groupListFields` only with GamGUI (argv
   parity), then model it in the mock's `print groups`.
 
+## Remove several members (roadmap 3.5, 2026-11-27; GamGUI #162)
+Each member with an address has a tick; **Remove Selected (N)…** (`GroupChanges.previewRemoveMany`) reads the group again and
+holds the ticked people still in it, with their roles from that read, owners named and the rest counted as left out. One
+`update group <g> remove <m>` each through the executor: a confirm always, the count typed past 25, in the jobs tray with Stop.
+A finished run that failed for some offers **Retry the N That Failed…** on the tenant it ran on. A failed read offers nothing.
+Held to `GroupChangesTests`. Not run live.
 ## Group settings (roadmap 4.4, 2026-11-27; GamGUI #182)
 Group Settings… on a group's page (`GroupSettingsSheet`, `Directory/GroupSettingsChanges.swift`, `GamEngine/GroupSettings.swift`):
 seven of Google's (who can post, join, see the members; outside members; moderation; web posting; history), read with `info

@@ -152,6 +152,65 @@ public final class GroupChanges {
                    notes: [role, leaving].compactMap { $0 }, adding: nil, expecting: tenant)
     }
 
+    /// Remove several members at once (GamGUI's `/groups/members/remove-many`, roadmap 3.5): the group read again now, and the
+    /// ticked people still in it held, each with the role that read found, owners named; one removal a person through the
+    /// executor, a confirm always and the count typed past 25. A failed read offers nothing (it is never "nobody to remove").
+    public func previewRemoveMany(_ picked: Set<String>, from group: GamGroup) async {
+        guard !isBusy else { return }
+        let tenant = setup.active.map { (domain: $0, generation: setup.generation) }
+        let address = PythonText.strip(group.email)
+        subject = Guard.normalized(group.email)
+        let wanted = Set(picked.map { PythonText.lower(PythonText.strip($0)) }.filter(Address.looksLikeEmail))
+        guard Address.looksLikeEmail(address), !wanted.isEmpty else {
+            state = .problem(Problem("Tick the members to remove first."))
+            return
+        }
+        await members.load(address)
+        guard let read = members.members(of: address), members.problem(for: address) == nil else {
+            let why = members.problem(for: address)?.summary ?? "Try again."
+            state = .problem(Problem("Couldn't read \(address)'s members again, so nothing is offered. \(why)"))
+            return
+        }
+        var byEmail: [String: GroupMember] = [:]
+        for member in read where !member.email.isEmpty { byEmail[PythonText.lower(member.email)] = member }
+        let still = wanted.sorted().compactMap { byEmail[$0] }
+        let gone = wanted.count - still.count
+        guard !still.isEmpty else {
+            state = .problem(Problem("None of those ticked is in \(address) now: nothing to remove."))
+            return
+        }
+        let owners = still.filter { PythonText.lower($0.role) == "owner" }.map(\.email)
+        var notes: [String] = []
+        if gone > 0 { notes.append("\(gone) of those ticked \(gone == 1 ? "isn't" : "aren't") in the group now and \(gone == 1 ? "is" : "are") left out.") }
+        if !owners.isEmpty {
+            notes.append("Owners among them: \(owners.joined(separator: ", ")). Make sure the group keeps one.")
+        }
+        notes.append("They stop getting the group's mail and lose what is shared with it. You can add them back.")
+        let steps = still.map { member in
+            WriteStep(GamCommands.removeGroupMember(group: address, member: member.email), target: member.email,
+                      summary: "Remove \(member.email) from \(address).", about: ["group": address])
+        }
+        let n = steps.count
+        removing = group
+        await hold(steps, group: address, title: n == 1 ? "Remove \(still[0].email) from \(address)?" : "Remove \(n) people from \(address)?",
+                   confirmLabel: n == 1 ? "Remove" : "Remove \(n) People", notes: notes, adding: nil, expecting: tenant)
+    }
+
+    /// The group a removal of several was previewed for, so its failures can be retried.
+    private var removing: GamGroup?
+
+    /// The members a finished removal of several failed for, on the tenant it ran on: what Retry previews.
+    public private(set) var failedRemovals: (group: GamGroup, members: Set<String>, domain: Domain, generation: Int)?
+
+    /// "Retry the N that failed" (GamGUI's): the normal preview for exactly those still in the group.
+    public func previewRetryRemovals() async {
+        guard let failed = failedRemovals, setup.active == failed.domain, setup.generation == failed.generation else {
+            state = .problem(Problem(Executor.PreviewRefusal.tenantChanged.message))
+            return
+        }
+        await previewRemoveMany(failed.members, from: failed.group)
+    }
+
     private func hold(_ steps: [WriteStep], group: String, title: String, confirmLabel: String, notes: [String],
                       adding: GamCommands.GroupRole?, expecting: (domain: Domain, generation: Int)?) async {
         typedProblem = nil
@@ -197,6 +256,14 @@ public final class GroupChanges {
         }
         await members.load(pending.group)
         let result = Self.result(of: pending, outcome.steps)
+        // A removal of several that failed for some: they are offered again (GamGUI's retry).
+        if pending.adding == nil, pending.members.count > 1, let group = removing {
+            let failed = zip(pending.members, outcome.steps.map(Optional.some) + Array(repeating: nil, count: max(0, pending.members.count - outcome.steps.count)))
+                .filter { !($0.1?.isSucceeded ?? false) }.map(\.0)
+            failedRemovals = failed.isEmpty ? nil : (group, Set(failed), pending.preview.domain, pending.preview.generation)
+        } else {
+            failedRemovals = nil
+        }
         let note = outcome.auditProblem.map { " \($0)" } ?? ""
         switch result {
         case .success(let message): state = .done(message + note)
@@ -242,6 +309,15 @@ public final class GroupChanges {
         }
         failed += Array(repeating: ("Nothing ran.", nil), count: max(0, pending.members.count - steps.count))
         guard let role = pending.adding else {
+            let count = pending.members.count
+            if count > 1 {
+                if failed.isEmpty { return .success("Removed \(count) people from \(group).") }
+                let said = failed.prefix(failuresSaid), more = failed.count - said.count
+                let head = added.isEmpty ? "Removed none of the \(count) people from \(group)." : "Removed \(added.count) of \(count) people from \(group)."
+                let details = said.compactMap(\.detail)
+                return .failure(Problem(([head] + said.map(\.why) + (more > 0 ? ["\(more) more weren't removed either."] : [])).joined(separator: " "),
+                                        detail: details.isEmpty ? nil : details.joined(separator: "\n")))
+            }
             let member = pending.members.first ?? ""
             guard let failure = failed.first else { return .success("Removed \(member) from \(group).") }
             return .failure(Problem("Couldn't remove \(member) from \(group). \(failure.why)", detail: failure.detail))
