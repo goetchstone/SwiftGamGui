@@ -23,8 +23,23 @@ import re
 import subprocess
 import sys
 
-CSV_SIGNATURES = ["csv", "-", "columndelimiter", ",", "quotechar", '"', "noescapechar", "true",
+CSV_SIGNATURES = ["csv", "-", "columndelimiter", ",", "noescapechar", "true", "quotechar", '"',
                   "gam", "user", "~User", "signature", "~signature", "html"]
+CSV_OPTIONS = ["columndelimiter", "noescapechar", "quotechar"]   # openCSVFileReader's order, each checked once
+
+
+def csv_options_refusal(argv: list):
+    """GAM 7.52.05's `csv -` option parse (openCSVFileReader, then doCSV's required `gam`): each option checked once, in
+    CSV_OPTIONS' order, so one out of order is left for `checkArgumentPresent('gam', required=True)`, which exits 2 naming
+    it. Returns that error, or None when the options are read in order and `gam` follows."""
+    i = 2
+    for option in CSV_OPTIONS:
+        if i < len(argv) and argv[i].lower().replace("_", "") == option:
+            i += 2
+    word = argv[i] if i < len(argv) else ""
+    if word.lower() != "gam":
+        return f"ERROR: Invalid choice ({word}): Expected <gam>\n"
+    return None
 FILE_PRINT_SIGNATURE = ["file", "-", "print", "signature"]
 
 
@@ -76,6 +91,11 @@ def print_loop(mock: str) -> int:
 
 def main() -> int:
     mock, argv = sys.argv[1], sys.argv[2:]
+    if argv[:2] == ["csv", "-"]:
+        refusal = csv_options_refusal(argv)
+        if refusal:
+            sys.stderr.write(refusal)
+            return 2
     if argv == CSV_SIGNATURES:
         return csv_loop(mock)
     if argv == FILE_PRINT_SIGNATURE:

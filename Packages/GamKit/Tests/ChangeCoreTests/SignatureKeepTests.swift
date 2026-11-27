@@ -299,6 +299,10 @@ final class SignatureKeepTests {
         }
         let held = try await executor.preview([WriteStep(write, target: "2 people", summary: "", keepFirst: .signatures(people: people))]).get()
         #expect(held.decision.affectedCount == 2, "the guard counts each person, not the one step")
+        // The digest covers the rows on standard input: the same argv with other rows is another change.
+        let other = GamCommands.setSignaturesCSV(rows: [(Self.alice, "A"), (Self.bob, "Z")])
+        #expect(write.argv == other.argv && HeldPreview.digest(of: [WriteStep(write, target: "", summary: "")])
+                != HeldPreview.digest(of: [WriteStep(other, target: "", summary: "")]))
         #expect(happened().isEmpty)
     }
 

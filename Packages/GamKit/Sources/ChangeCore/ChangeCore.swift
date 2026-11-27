@@ -275,6 +275,11 @@ public struct HeldPreview: Sendable, Identifiable {
                 hasher.update(data: Data(element.utf8))
                 hasher.update(data: Data([0]))
             }
+            // What a step sends on GAM's standard input (roadmap 5.4's rows) is what it does too: two runs of one argv differ here.
+            if let input = step.write.input {
+                hasher.update(data: Data([0xFE]))
+                hasher.update(data: input)
+            }
             hasher.update(data: Data([0xFF]))
         }
         return hasher.finalize().map { String(format: "%02x", $0) }.joined()
@@ -678,8 +683,9 @@ public actor Executor {
         if let word = taken.typedExactWord, !PythonText.strip(confirmation.typedWord).utf8.elementsEqual(word.utf8) {
             return .refused("Type \(word) (exactly) to run this.")
         }
-        let targets = Set(taken.steps.map { Self.key($0.target) })
-        if let busy = taken.steps.first(where: { inFlight.contains(Self.key($0.target)) }) {
+        // Each person a step changes (a one-call signature run's are many), not its summary target.
+        let targets = Set(taken.changes.map { Self.key($0.target) })
+        if let busy = taken.changes.first(where: { inFlight.contains(Self.key($0.target)) }) {
             return .refused("A change to \(busy.target) is already running — wait for it to finish, then preview again.")
         }
         inFlight.formUnion(targets)
@@ -830,11 +836,13 @@ public actor Executor {
                 return (.failed(message: "\(Self.notRead) \(unread.count) of \(emails.count) couldn't be read, so none was set: "
                                 + "run them one at a time.", kind: nil), nil)
             }
-            // A domain switch during the read stops it before anything is written (GamGUI's review finding).
+            // A domain switch during the read stops it before anything is written (GamGUI's review finding), and so does the
+            // jobs tray's Stop, asked during a read that can take minutes.
             guard await isCurrent(preview) else {
                 let stop = await stopWords(for: preview)
                 return (.skipped(reason: stop), stop)
             }
+            if stopRequests.contains(preview.id) { return (.skipped(reason: Self.stopped), Self.stopped) }
             do {
                 // Kept as sent (GamGUI's `as_sent`): the bytes Gmail is given, so a Put Back compares against what it then holds.
                 for person in people {

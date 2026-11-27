@@ -475,7 +475,7 @@ final class SignatureScopeTests {
 
     // MARK: one GAM call (roadmap 5.4, GamGUI's `tests/test_signatures_fast.py`)
 
-    private static let csvWrite = ["csv", "-", "columndelimiter", ",", "quotechar", "\"", "noescapechar", "true",
+    private static let csvWrite = ["csv", "-", "columndelimiter", ",", "noescapechar", "true", "quotechar", "\"",
                                    "gam", "user", "~User", "signature", "~signature", "html"]
     private func fastCalls() -> [[String]] { calls().filter { $0.first == "csv" || $0.first == "file" } }
 
@@ -488,7 +488,7 @@ final class SignatureScopeTests {
         let pending = try pending(changes)
         let fast = try #require(pending.fast)
         // Masked as the audit keeps it (`signature` is a sensitive key, as in GamGUI's record): never a body, which goes on stdin.
-        #expect(fast.isOffered && fast.refusal == nil && fast.shownCommand.hasPrefix("csv - columndelimiter , quotechar"))
+        #expect(fast.isOffered && fast.refusal == nil && fast.shownCommand.hasPrefix("csv - columndelimiter , noescapechar true quotechar"))
         await changes.confirmFast(pending, confirmed)
         #expect(bytes(fastCalls()) == bytes([["file", "-", "print", "signature"], Self.csvWrite]))
         // The mock's read says GAM's own words, with its counter: "Getting Signatures for <u> (i/n)".

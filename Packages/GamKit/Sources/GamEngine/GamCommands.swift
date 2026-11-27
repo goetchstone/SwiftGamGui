@@ -571,11 +571,13 @@ public enum GamCommands {
         GamRead(["file", "-", "print", "signature"], input: Data(SignaturesFast.emailsStdin(emails).utf8))
     }
 
-    /// GAM's own `csv` loop sets each row's signature, the rows (`User`, `signature`) on standard input. The delimiter, quote
-    /// and no escape character are said here, not left to gam.cfg (a `\\` escape would eat backslashes). `~User` and
+    /// GAM's own `csv` loop sets each row's signature, the rows (`User`, `signature`) on standard input. The delimiter, no
+    /// escape character and quote are said here, not left to gam.cfg (a `\\` escape would eat backslashes), in the order
+    /// `openCSVFileReader` checks them, each once: GamGUI's order leaves `noescapechar` unread and GAM exits 2 (a listed
+    /// deviation, `GoldenArgvTests.deviations`). `~User` and
     /// `~signature` are whole-argument substitutions. An empty cell would clear a signature: `SignaturesFast.refusal` refuses one.
     public static func setSignaturesCSV(rows: [(email: String, body: String)] = []) -> GamWrite {
-        GamWrite(["csv", "-", "columndelimiter", ",", "quotechar", "\"", "noescapechar", "true",
+        GamWrite(["csv", "-", "columndelimiter", ",", "noescapechar", "true", "quotechar", "\"",
                   "gam", "user", "~User", "signature", "~signature", "html"],
                  action: .setSignaturesFast, input: Data(SignaturesFast.rowsCSV(rows).utf8))
     }
