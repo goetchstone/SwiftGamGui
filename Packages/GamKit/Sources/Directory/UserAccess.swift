@@ -202,6 +202,51 @@ public final class UserAccess {
         }
     }
 
+    /// Reports' mail review (roadmap 3.2, GamGUI's `mail_review`): every active account's forwarding that is on, and every mail
+    /// delegate, two domain-wide reads. GAM carries on past an account it can't read and exits with that warning's code: its
+    /// lines say which (`MailReview.accountFor`). Any other exit, a run that announced no account or wrote no table (GAM writes
+    /// the titles even with no row), or stderr cut off at the runner's cap is a problem, never "none".
+    public func mailReview(in pinned: Domain? = nil) async -> Result<MailReview, Problem> {
+        let forward = await mailRead(GamCommands.allUsersPrintForward(), "forwarding", in: pinned)
+        guard case .success(let (forwarding, forwardingAccounts)) = forward else {
+            if case .failure(let problem) = forward { return .failure(problem) }
+            return .failure(Self.interrupted)
+        }
+        let delegates = await mailRead(GamCommands.allUsersPrintDelegates(), "delegates", in: pinned)
+        guard case .success(let (delegations, delegationAccounts)) = delegates else {
+            if case .failure(let problem) = delegates { return .failure(problem) }
+            return .failure(Self.interrupted)
+        }
+        return .success(MailReview(forwarding: MailReview.forwarding(forwarding), forwardingAccounts: forwardingAccounts,
+                                   delegations: MailReview.delegations(delegations), delegationAccounts: delegationAccounts))
+    }
+
+    private func mailRead(_ read: GamRead, _ what: String, in pinned: Domain?)
+        async -> Result<([GamOutput.Record], MailReview.Accounted), Problem> {
+        guard let domain = pinned ?? setup.active, let runner else { return .failure(Problem(summary: "Connect a domain on Setup first.")) }
+        let result: GamResult
+        do {
+            result = try await runner.run(read, as: domain, timeout: ActivityLogs.timeout, extraEnvironment: environment)
+        } catch is CancellationError {
+            return .failure(Self.interrupted)
+        } catch GamRunnerError.timedOut {
+            return .failure(Problem(summary: GamError(exitCode: nil, stderr: "", argv: read.argv).message))
+        } catch {
+            return .failure(Problem(summary: SetupModel.message(for: error)))
+        }
+        guard MessageCopies.perUserExitCodes.contains(result.exitCode) else {
+            return .failure(Problem(summary: GamError(exitCode: result.exitCode, stderr: result.stderr, argv: read.argv).message))
+        }
+        guard !result.stdoutTruncated, !result.stderrTruncated else {
+            return .failure(Problem(summary: "GAM printed more than this app reads at once, so not every account's \(what) was read."))
+        }
+        guard let accounted = MailReview.accountFor(result.stderr), !PythonText.strip(result.stdout).isEmpty else {
+            return .failure(Problem(summary: "GAM exited without reading any account's \(what), so it can't be told. Its sign-in may "
+                + "have been refused: check the service account on Setup."))
+        }
+        return .success((GamOutput.records(result.stdout), accounted))
+    }
+
     /// Every license seat (roadmap 4.3), read now: `print licenses`, no product named. It passes over a product Google won't let
     /// it read without a word, so only what it lists is acted on (`Licenses`).
     public func licenses(in pinned: Domain? = nil) async -> Result<[Licenses.Seat], Problem> {

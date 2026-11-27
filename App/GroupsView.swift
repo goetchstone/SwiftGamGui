@@ -198,6 +198,8 @@ private struct GroupPage: View {
     /// keeps what was typed.
     @State private var adding = false
     @State private var addresses = ""
+    /// The members ticked for Remove Selected… (roadmap 3.5), by address.
+    @State private var picked: Set<String> = []
     @State private var role = GamCommands.GroupRole.member
     @State private var peopleSearch = ""
     @State private var debugApplied = false
@@ -316,6 +318,10 @@ private struct GroupPage: View {
             adding = true
         case "remove":
             if let first = members.members(of: group.email)?.first { Task { await changes.previewRemove(first, from: group) } }
+        case "remove-many":
+            picked = Set((members.members(of: group.email) ?? []).map(\.email).filter { !$0.isEmpty })
+            let picked = picked
+            Task { await changes.previewRemoveMany(picked, from: group) }
         default:
             break
         }
@@ -339,15 +345,42 @@ private struct GroupPage: View {
                             .foregroundStyle(.secondary)
                     }
                     ForEach(rows) { member in
+                        HStack {
+                            if !member.email.isEmpty {
+                                Toggle(isOn: Binding(get: { picked.contains(member.email) },
+                                                     set: { if $0 { picked.insert(member.email) } else { picked.remove(member.email) } })) {
+                                    EmptyView()
+                                }
+                                .toggleStyle(.checkbox)
+                                .labelsHidden()
+                                .accessibilityLabel("Select \(member.email)")
+                            }
                         MemberRow(member: member, nested: nested(member), group: title, busy: changes.isBusy,
                                   remove: member.email.isEmpty ? nil : { Task { await changes.previewRemove(member, from: group) } }) { nested in
                             focusNext = true
                             show(nested)
                         }
+                        }
                     }
                 } header: {
-                    Text(searched.isEmpty ? "\(all.count.formatted()) member\(all.count == 1 ? "" : "s")"
-                         : "\(rows.count.formatted()) of \(all.count.formatted()) member\(all.count == 1 ? "" : "s") match “\(searched)”")
+                    HStack {
+                        Text(searched.isEmpty ? "\(all.count.formatted()) member\(all.count == 1 ? "" : "s")"
+                             : "\(rows.count.formatted()) of \(all.count.formatted()) member\(all.count == 1 ? "" : "s") match “\(searched)”")
+                        Spacer()
+                        if !picked.isEmpty {
+                            Button("Remove Selected (\(picked.count))\u{2026}") {
+                                let picked = picked
+                                Task { await changes.previewRemoveMany(picked, from: group) }
+                            }
+                            .disabled(changes.isBusy)
+                            .accessibilityHint("Reads the group again and shows who would be removed before anything changes.")
+                            Button("Clear") { picked = [] }
+                        }
+                        if changes.concerns(group.email), let failed = changes.failedRemovals, failed.group.email == group.email {
+                            Button("Retry the \(failed.members.count) That Failed\u{2026}") { Task { await changes.previewRetryRemovals() } }
+                                .disabled(changes.isBusy)
+                        }
+                    }
                 }
             }
         } else {

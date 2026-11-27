@@ -38,6 +38,14 @@ public final class OffboardChanges {
         public var added: Set<Offboarding.Step> = [] {
             didSet { done.subtract(oldValue.subtracting(added)) }
         }
+        /// Who takes the transfer and the secondary calendars when it isn't the manager; empty is the manager (GamGUI #158).
+        public var recipient = ""
+        /// What the transfer moves (GamGUI #158): Drive and Calendar by default, the routine's argv byte for byte.
+        public var services: Set<String> = Offboarding.defaultServices
+        /// Free the rooms their events booked (a Calendar parameter, GamGUI #160).
+        public var releaseResources = false
+        /// The day the auto-reply stops, YYYY-MM-DD; empty never (GamGUI #159). Held as that date to the run.
+        public var autoreplyEnd = ""
 
         public init() {}
 
@@ -50,11 +58,14 @@ public final class OffboardChanges {
             message = template.message
             days = template.days
             invitee = template.invitee
+            services = template.services
+            releaseResources = template.releaseResources
         }
 
         /// What saving this form as a template keeps.
         public var template: Offboarding.Template {
-            Offboarding.Template(leftOut: notApplicable, added: added, subject: subject, message: message, days: days, invitee: invitee)
+            Offboarding.Template(leftOut: notApplicable, added: added, subject: subject, message: message, days: days, invitee: invitee,
+                                 services: services, releaseResources: releaseResources)
         }
     }
 
@@ -123,7 +134,10 @@ public final class OffboardChanges {
         public let form: Form
         /// The directory's accounts, by their primary addresses: what every step acts on.
         public let leaver: GamUser
-        public let manager: GamUser
+        /// Nil when no step that runs needs a manager (GamGUI #161).
+        public let manager: GamUser?
+        /// The transfer's recipient when it isn't the manager (GamGUI #158).
+        public let recipient: GamUser?
         /// "Offboarding carol@example.com — 8 steps", or how many run.
         public let header: String
         /// Said before anything runs; none blocks.
@@ -148,7 +162,7 @@ public final class OffboardChanges {
 
         /// The same plan without its preview: shown, never run.
         var shownOnly: Plan {
-            Plan(form: form, leaver: leaver, manager: manager, header: header, warnings: warnings, rows: rows,
+            Plan(form: form, leaver: leaver, manager: manager, recipient: recipient, header: header, warnings: warnings, rows: rows,
                  whatStopsWhat: whatStopsWhat, autoreply: autoreply, notes: notes, classes: classes, steps: steps, preview: nil)
         }
     }
@@ -358,8 +372,35 @@ public final class OffboardChanges {
         func refuse(_ reason: String) { finish(.blocked(Blocked(form: form, reason: reason))) }
 
         let leaver = PythonText.strip(form.leaver), manager = PythonText.strip(form.manager)
-        guard !leaver.isEmpty, !manager.isEmpty else { return refuse("Enter both the departing user and the manager email.") }
+        let skippedSteps = form.done.union(form.notApplicable)
+        // Only when something takes it: the transfer, or the secondary calendars' hand-over (review of #210).
+        let recipientUsed = !skippedSteps.contains(.transfer)
+            || (form.added.contains(.secondaryCalendars) && !form.done.contains(.secondaryCalendars))
+        let recipient = recipientUsed ? PythonText.strip(form.recipient) : ""
+        guard !leaver.isEmpty else { return refuse("Enter the departing user's email.") }
+        let skipped = form.done.union(form.notApplicable)
+        // A manager only when a step that runs acts on one (GamGUI #161).
+        let need = Offboarding.needsManager(done: form.done, notApplicable: form.notApplicable, added: form.added, recipient: recipient)
+        if manager.isEmpty, !need.isEmpty {
+            return refuse("Enter the manager: \(need.map { "“\($0)”" }.joined(separator: ", ")) \(need.count == 1 ? "needs" : "need") one. "
+                + "Or leave \(need.count == 1 ? "it" : "them") out.")
+        }
         if let problem = Offboarding.tickProblem(done: form.done, notApplicable: form.notApplicable, adding: form.added) {
+            return refuse(problem)
+        }
+        // The transfer's options matter only while it runs (GamGUI #158, #160); otherwise the routine's are planned.
+        let transferring = !skipped.contains(.transfer)
+        let services = transferring ? form.services : Offboarding.defaultServices
+        if transferring, services.isEmpty {
+            return refuse("The transfer moves nothing: pick Drive, Calendar or Looker Studio, or leave the transfer out.")
+        }
+        let release = transferring && form.releaseResources
+        if release, !services.contains("calendar") {
+            return refuse("Releasing the rooms their events booked is part of the Calendar transfer: tick Calendar too.")
+        }
+        // The auto-reply's end, only while it runs (GamGUI #159).
+        let autoreplyEnd = skipped.contains(.vacation) ? "" : PythonText.strip(form.autoreplyEnd)
+        if let problem = Offboarding.autoreplyEndProblem(autoreplyEnd, today: Offboarding.Day(now(), in: calendar)) {
             return refuse(problem)
         }
         let invitee = PythonText.strip(form.invitee)
@@ -377,11 +418,12 @@ public final class OffboardChanges {
         guard let admin = setup.connectedAdmin, !admin.isEmpty else {
             return refuse("The admin this app signs in as isn't known. Check access on Setup, then preview again.")
         }
-        let check = Offboarding.checkAddresses(users, user: leaver, manager: manager, connectedAdmin: admin)
-        guard check.errors.isEmpty, let leaving = check.user, let takingOver = check.manager else {
+        let check = Offboarding.checkAddresses(users, user: leaver, manager: manager, connectedAdmin: admin, recipient: recipient)
+        guard check.errors.isEmpty, let leaving = check.user, manager.isEmpty || check.manager != nil else {
             return refuse(check.errors.joined(separator: " "))
         }
-        let user = leaving.primaryEmail, boss = takingOver.primaryEmail
+        let takingOver = check.manager, receiving = check.recipient
+        let user = leaving.primaryEmail, boss = takingOver?.primaryEmail ?? "", to = receiving?.primaryEmail ?? ""
         var warnings = check.warnings
         // The three reads at once: each is one gam call, and none needs another's answer.
         let readsDelegates = !form.done.union(form.notApplicable).contains(.delegate)
@@ -441,7 +483,8 @@ public final class OffboardChanges {
                 today: Offboarding.Day(now(), in: calendar), notify: invitee,
                 employeeName: Offboarding.displayName(of: user, in: users),
                 managerContact: Offboarding.managerContact(boss, in: users), notApplicable: form.notApplicable,
-                adding: adding, ownedCalendars: (try? owned.get()) ?? [], forwardingFilters: forwarding)
+                adding: adding, ownedCalendars: (try? owned.get()) ?? [], forwardingFilters: forwarding,
+                recipient: to, services: services, releaseResources: release, autoreplyEnd: autoreplyEnd)
         } catch Offboarding.Invalid.outOfRange {
             return refuse("The reminder would fall after the year 9999. Enter fewer days.")
         } catch GamCommands.Invalid.argument(let why) {
@@ -450,7 +493,8 @@ public final class OffboardChanges {
             return refuse("\(error)")
         }
         let block = Offboarding.composeAutoreply(user: user, manager: boss, subject: subject, message: message, directory: users)
-        let steps = Self.writeSteps(planned, leaver: user, manager: boss, done: form.done, notApplicable: form.notApplicable,
+        let steps = Self.writeSteps(planned, leaver: user, manager: boss, newOwner: to.isEmpty ? boss : to, done: form.done,
+                                    notApplicable: form.notApplicable,
                                     added: adding)
         // Held as shown: the leaver's address to type, only `requires` stopping a step, and both accounts read
         // fresh just before the run, refused if either changed since this check (GamGUI re-checks a list). So are the
@@ -461,10 +505,11 @@ public final class OffboardChanges {
             let deletesFilters = steps.contains { $0.action == .deleteFilters }
             let heldFilters = Set(forwarding.map(\.id))
             let precondition: @Sendable () async throws -> Bool = { [access] in
-                let nowLeaving: GamUser, nowTakingOver: GamUser
+                let nowLeaving: GamUser, nowTakingOver: GamUser?, nowReceiving: GamUser?
                 do {
                     nowLeaving = try await access.account(user, in: domain)
-                    nowTakingOver = try await access.account(boss, in: domain)
+                    nowTakingOver = boss.isEmpty ? nil : try await access.account(boss, in: domain)
+                    nowReceiving = to.isEmpty ? nil : try await access.account(to, in: domain)
                 } catch let problem as UserAccess.Problem {
                     throw PreconditionFailure(problem.summary)
                 }
@@ -474,9 +519,22 @@ public final class OffboardChanges {
                     case .success(let now): guard Set(now.filter { !$0.forward.isEmpty }.map(\.id)) == heldFilters else { return false }
                     }
                 }
+                // An end day that was tomorrow at the preview may be today by the run: GAM would switch the reply off as it's set.
+                if !autoreplyEnd.isEmpty, await MainActor.run(body: { [weak self] in
+                    self.map { Offboarding.autoreplyEndProblem(autoreplyEnd, today: Offboarding.Day($0.now(), in: $0.calendar)) } ?? nil
+                }) != nil {
+                    throw PreconditionFailure("The auto-reply's end has to be after today: preview again with a later day.")
+                }
                 // The admin as connected now, not as when the plan was made; unknown refuses.
                 guard let admin = await setup.connectedAdmin, !admin.isEmpty else { return false }
-                return Self.unchanged(nowLeaving, since: leaving) && Self.unchanged(nowTakingOver, since: takingOver)
+                func same(_ now: GamUser?, _ then: GamUser?) -> Bool {
+                    switch (now, then) {
+                    case (nil, nil): true
+                    case let (now?, then?): Self.unchanged(now, since: then)
+                    default: false
+                    }
+                }
+                return Self.unchanged(nowLeaving, since: leaving) && same(nowTakingOver, takingOver) && same(nowReceiving, receiving)
                     && Guard.normalized(nowLeaving.primaryEmail) != Guard.normalized(admin)
             }
             // The leaver's address is typed when a step acts on the leaver. The rest of a run can be the manager's
@@ -501,7 +559,7 @@ public final class OffboardChanges {
             return Row(key: step.key, label: step.label, summary: step.summary, status: status)
         }
         finish(.planned(Plan(
-            form: form, leaver: leaving, manager: takingOver,
+            form: form, leaver: leaving, manager: takingOver, recipient: receiving,
             header: Offboarding.header(user: user, done: form.done, notApplicable: form.notApplicable, adding: adding),
             warnings: warnings, rows: rows,
             whatStopsWhat: Offboarding.whatStopsWhat(done: form.done, notApplicable: form.notApplicable, adding: adding),
@@ -621,7 +679,7 @@ public final class OffboardChanges {
     /// The steps that run (neither ticked as done nor left out), as ChangeCore holds writes: each about the
     /// leaver, the reminder on the manager's calendar, and each needing the earlier steps that run and that
     /// it requires (a step ticked as done counts as succeeded).
-    nonisolated static func writeSteps(_ planned: [Offboarding.Planned], leaver: String, manager: String,
+    nonisolated static func writeSteps(_ planned: [Offboarding.Planned], leaver: String, manager: String, newOwner: String? = nil,
                                        done: Set<Offboarding.Step>, notApplicable: Set<Offboarding.Step>,
                                        added: Set<Offboarding.Step> = []) -> [WriteStep] {
         let running = planned.filter { !done.contains($0.key) && !notApplicable.contains($0.key) }
@@ -630,7 +688,7 @@ public final class OffboardChanges {
         let adds = Offboarding.Step.allCases.filter(added.contains).map(\.rawValue).joined(separator: ",")
         return running.enumerated().map { index, step in
             var about = ["offboard": leaver]
-            if step.key == .transfer || step.key == .secondaryCalendars { about["new_owner"] = manager }
+            if step.key == .transfer || step.key == .secondaryCalendars { about["new_owner"] = newOwner ?? manager }
             if index == 0, !leftOut.isEmpty { about["not_applicable"] = leftOut }
             if index == 0, !adds.isEmpty { about["added"] = adds }
             return WriteStep(step.write, target: step.key == .reminder ? manager : leaver, summary: step.summary,

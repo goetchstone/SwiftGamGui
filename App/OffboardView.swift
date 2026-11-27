@@ -236,6 +236,11 @@ private struct WhoSection: View {
             AddressField(title: "Departing user", prompt: "leaver@example.com", text: $form.leaver, directory: directory)
             AddressField(title: "Manager (delegate, data and reminder)", prompt: "manager@example.com",
                          text: $form.manager, directory: directory)
+            AddressField(title: "Transfer to, if not the manager (optional)", prompt: "manager@example.com",
+                         text: $form.recipient, directory: directory)
+            Text("Takes the Drive and calendar transfer, and any secondary calendars handed over. Empty: the manager. The manager "
+                 + "can be left empty when no step that runs acts on one.")
+                .font(.callout).foregroundStyle(.secondary)
             if directory.users == nil {
                 Text(directory.isLoading ? "The directory is loading: suggestions follow."
                                          : "The directory isn't loaded, so there are no suggestions: type the addresses.")
@@ -272,6 +277,15 @@ private struct AutoReplySection: View {
             TextField("Subject", text: $form.subject)
             TextField("Message", text: $form.message, axis: .vertical)
                 .lineLimit(3...8)
+            Toggle("Stop the auto-reply on a day", isOn: Binding(
+                get: { !form.autoreplyEnd.isEmpty },
+                set: { form.autoreplyEnd = $0 ? Self.iso(Self.gregorian.date(byAdding: .day, value: 30, to: Date()) ?? Date()) : "" }))
+            if !form.autoreplyEnd.isEmpty {
+                DatePicker("Stop on", selection: Binding(
+                    get: { Self.date(form.autoreplyEnd) ?? Date() },
+                    set: { form.autoreplyEnd = Self.iso($0) }), in: Date().addingTimeInterval(86_400)..., displayedComponents: .date)
+                Text("Google switches it off at the start of that day.").font(.callout).foregroundStyle(.secondary)
+            }
             Text("{employee} (the departing person) and {manager} (who to contact) are filled in from the directory. "
                  + "An emptied field sends the default text.")
                 .font(.callout).foregroundStyle(.secondary)
@@ -281,6 +295,27 @@ private struct AutoReplySection: View {
                 Text("No auto-reply: it is left out of this offboarding.").foregroundStyle(.secondary)
             }
         }
+    }
+}
+
+extension AutoReplySection {
+    /// A day as GAM takes it, YYYY-MM-DD in this Mac's time zone.
+    /// Gregorian in this Mac's time zone, as the engine's `Day` is: another calendar would give another year.
+    static var gregorian: Calendar {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = .current
+        return calendar
+    }
+
+    static func iso(_ date: Date) -> String {
+        let parts = gregorian.dateComponents([.year, .month, .day], from: date)
+        return String(format: "%04d-%02d-%02d", parts.year ?? 0, parts.month ?? 0, parts.day ?? 0)
+    }
+
+    static func date(_ iso: String) -> Date? {
+        let parts = iso.split(separator: "-").compactMap { Int($0) }
+        guard parts.count == 3 else { return nil }
+        return gregorian.date(from: DateComponents(year: parts[0], month: parts[1], day: parts[2]))
     }
 }
 
@@ -309,6 +344,17 @@ private struct ReminderSection: View {
     @Binding var form: OffboardChanges.Form
 
     var body: some View {
+        Section("Transfer") {
+            ForEach(Offboarding.serviceChoices, id: \.key) { choice in
+                Toggle(choice.name, isOn: Binding(
+                    get: { form.services.contains(choice.key) },
+                    set: { if $0 { form.services.insert(choice.key) } else { form.services.remove(choice.key) } }))
+            }
+            Toggle("Release the rooms their events booked", isOn: $form.releaseResources)
+                .disabled(!form.services.contains("calendar"))
+                .help("Frees the meeting rooms and resources the leaver's events hold. Part of the Calendar transfer.")
+            Text("What the transfer moves. Drive goes with every file, private and shared.").font(.callout).foregroundStyle(.secondary)
+        }
         Section("Reminder") {
             LabeledContent("Remind the manager in") {
                 HStack {

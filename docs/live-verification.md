@@ -28,6 +28,7 @@ Dates are 2026, and the last time the command ran from any screen.
 - **Ran:** add people as members (11-13), remove a member (10-13).
 - **Not run:** add people as managers or owners.
 
+- **Not run:** remove several members at once (new 2026-11-27, roadmap 3.5; each the same removal that ran).
 ### Calendars
 - **Not run:** anything from this screen: share a calendar with a person, put it in their list, remove someone's access.
   Sharing a person's own calendar ran from Users.
@@ -61,6 +62,8 @@ Dates are 2026, and the last time the command ran from any screen.
   time and the run tolerates it: a calendar's owner can't be removed from their own calendar.
 - **Not run:** hand over secondary calendars, remove filters that forward.
 
+- **Not run:** the options (new 2026-11-27, roadmap 3.4): another recipient, Looker Studio, releasing rooms, the auto-reply's
+  end day, no manager. GamGUI's haven't run either.
 ### Incident
 - **Ran:** the lock (10-19): reset the password, sign out, forwarding off, IMAP and POP off, clear recovery.
 - **Not run:** delete filters, remove a delegate from this screen (Users' command, which ran), remove a send-as address,
@@ -72,7 +75,8 @@ Dates are 2026, and the last time the command ran from any screen.
 - **Not run:** copies in Spam, several emails in one preview (Pull All).
 
 ### Builder
-- **Not run:** any change from this screen (the log marks a Builder run, and has none).
+- **Not run:** any change from this screen (the log marks a Builder run, and has none), nor a sequence (new 2026-11-27,
+  roadmap 2.5; each step is one of the changes below, held and run together).
   - **B3:** the changes that ran from other screens: add or remove a delegate, auto-reply on and off, add or remove a group
     member, title and department, sign out, suspend, reset password, forwarding off, the Drive and Calendar transfer.
   - **B4:** the changes that haven't run in either app: add a forwarding address, forward on, create or remove an alias,
@@ -112,6 +116,8 @@ On 2026-11-05 the operator said most of what's built has run, without listing it
 
 ### Not run
 - Signatures (new 2026-11-13): a group's members read before a signature preview.
+- Reports' Forwarding & mail delegates (new 2026-11-27, roadmap 3.2): both domain-wide reads; check the counts against
+  the Admin console on the first run. GamGUI's hasn't run either.
 - Calendars (new 2026-11-13): find an event by title or days (each day as an instant with its offset); one event read again
   before its delete (a deleted one read back `cancelled`); a group's members read before a share; a calendar's data owner
   (`calendars <c> print settings fields id,dataowner formatjson`) before its delete.

@@ -1899,6 +1899,83 @@ fi
 # for <u> (i/N)"), the same CSV. An address the directory doesn't hold, or GAM_MOCK_STATE/tokens_gone/<u>, is
 # entityUnknownWarning: "User: <u>, Does not exist (i/N)", 56 at the end (73, "Service not applicable", outside the domain),
 # the rest read. GAM_MOCK_STATE/denied/tokens is ClientAPIAccessDeniedExit, 12. GamGUI's handler at db579c7.
+# Ported from GamGUI's mock (#154).
+# `all users print forward [enabledonly]` and `all users print delegates [shownames]` (printShowForward, printShowDelegates, read
+# from the vendored 7.52.03 build): Reports' domain-wide mail review. Every active user (isSuspended=False), one at a time:
+#   - a refused token GAM drops without a word (buildGAPIServiceObject, then `if not gmail: continue`): nothing for that user,
+#     not even its "Getting" line ($GAM_MOCK_STATE/quiet/<u>);
+#   - else "Getting Forward Enabled for <u> (i/N)" or "Getting all Delegates for <u> (i/N)" on stderr (printGetting…ForWhom,
+#     the count only past one user), then Gmail off is "User: <u>, Gmail Service/App not enabled (i/N)" after it
+#     (userGmailServiceNotEnabledWarning, $GAM_MOCK_STATE/nogmail/<u>), the last code set standing;
+#   - the CSV once every user is read: forward's `User,forwardEnabled,forwardTo,disposition` (enabledonly: only those on),
+#     delegates' `User,delegateAddress,delegationStatus`, `User,delegateName,…` with shownames (a delegate the Directory
+#     can't name keeps its address, _getDelegateName). The header line even with no row.
+if [ "${1:-}" = "all" ] && [ "${2:-}" = "users" ] && [ "${3:-}" = "print" ] \
+   && { [ "${4:-}" = "forward" ] || [ "${4:-}" = "delegates" ]; }; then
+  what=$4; shift 4; enabledonly=""; shownames=""
+  while [ $# -gt 0 ]; do
+    case "$what:$(lower "$1")" in
+      forward:enabledonly) enabledonly=1; shift ;;
+      delegates:shownames) shownames=1; shift ;;
+      *) not_modelled "all users print $what with $1" ;;
+    esac
+  done
+  users=$(grep -vF '"suspended": true' "$GAM_MOCK_FIXTURES/print_users.json" \
+    | sed -n 's/.*"primaryEmail": "\([^"]*\)".*/\1/p' | LC_ALL=C sort)
+  count=$(printf '%s\n' "$users" | grep -c . || true)
+  printf 'Getting all Users that match query (isSuspended=False isGuest=False), may take some time on a large Google Workspace Account...\n' 1>&2
+  [ "$count" -le 1 ] || printf '\rGot 1 User...' 1>&2; printf '\rGot %s Users...\r\n' "$count" 1>&2
+  rows=""; rc=0; i=0
+  for user in $users; do
+    i=$((i + 1))
+    if [ "$count" -gt 1 ]; then n=" ($i/$count)"; else n=""; fi
+    if [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/quiet/$user" ]; then continue; fi
+    if [ "$what" = forward ]; then
+      printf 'Getting Forward Enabled for %s%s\n' "$user" "$n" 1>&2
+    else
+      printf 'Getting all Delegates for %s%s\n' "$user" "$n" 1>&2
+    fi
+    if [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/nogmail/$user" ]; then
+      printf 'User: %s, Gmail Service/App not enabled%s\n' "$user" "$n" 1>&2
+      rc=73; continue
+    fi
+    if [ "$what" = forward ]; then
+      if [ -n "${GAM_MOCK_STATE:-}" ] && [ -f "$GAM_MOCK_STATE/forward/$user" ]; then
+        row="$user,$(cat "$GAM_MOCK_STATE/forward/$user")"
+      else
+        case "$user" in
+          carol@example.com) row="$user,True,carol.home@example.org,leaveInInbox" ;;
+          *) row="$user,False,," ;;
+        esac
+      fi
+      case "$row" in "$user,True,"*) ;; *) [ -n "$enabledonly" ] && continue ;; esac
+      rows="$rows$row
+"
+    else
+      for d in $(delegates_of "$user"); do
+        if [ -n "$shownames" ]; then
+          name=$(sed -n "s/.*\"primaryEmail\": \"$d\", \"name\": {\"givenName\": \"\([^\"]*\)\", \"familyName\": \"\([^\"]*\)\".*/\1 \2/p" \
+            "$GAM_MOCK_FIXTURES/print_users.json")
+          rows="$rows$user,${name:-$d},$d,accepted
+"
+        else
+          rows="$rows$user,$d,accepted
+"
+        fi
+      done
+    fi
+  done
+  if [ "$what" = forward ]; then
+    echo "User,forwardEnabled,forwardTo,disposition"
+  elif [ -n "$shownames" ]; then
+    echo "User,delegateName,delegateAddress,delegationStatus"
+  else
+    echo "User,delegateAddress,delegationStatus"
+  fi
+  printf '%s' "$rows"
+  exit "$rc"
+fi
+
 if [ "${1:-}" = "print" ] && [ "${2:-}" = "tokens" ] && [ "${3:-}" = "users" ]; then
   [ $# -eq 4 ] && [ -n "$4" ] || not_modelled "print tokens users with other than one list"
   listed=$(lower "$4" | tr ',' ' ')
@@ -4278,7 +4355,15 @@ if { [ "${1:-}" = "create" ] || [ "${1:-}" = "add" ]; } && { [ "${2:-}" = "datat
           *) usage_error "No data transfer application for key PRIVACY_LEVEL" ;;
         esac
         shift ;;
-      releaseresources|release_resources) need_value $# "Boolean"; need_bool "$2"; shift 2 ;;
+      # RELEASE_RESOURCES is a Calendar parameter, a bare word in the grammar (`[release_resources]`): refused the same way
+      # when Calendar isn't listed (GamGUI #160). This mock once read it as taking a Boolean, which would refuse the bare
+      # word both apps send.
+      release_resources)
+        case ",$svcs," in
+          *,calendar,*) ;;
+          *) usage_error "No data transfer application for key RELEASE_RESOURCES" ;;
+        esac
+        shift ;;
       *) invalid_arg "$1" ;;
     esac
   done

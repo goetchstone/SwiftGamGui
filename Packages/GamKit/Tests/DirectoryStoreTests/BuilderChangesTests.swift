@@ -240,4 +240,66 @@ final class BuilderChangesTests {
         await changes.preview(set, values: ["email": "alice@example.com", "title": "Head of IT", "department": "IT"])
         #expect(try pending().warning == nil)
     }
+
+    // MARK: a sequence (roadmap 2.5, GamGUI's `/builder/sequence/*`)
+
+    private let member = ["group": "sales@example.com", "member": "carol@example.com", "role": "member"]
+
+    /// GamGUI's add, move, remove and its cap: each step built and checked as Preview… checks it; a wrong form isn't added.
+    @Test func aSequenceIsBuiltCheckedAndCapped() async throws {
+        try await connect()
+        let add = try command("build.add_group_member")
+        changes.addToSequence(add, values: ["group": "sales@example.com", "member": "", "role": "member"])
+        #expect(changes.sequence.isEmpty && changes.sequenceRefusal != nil)
+        for _ in 0..<BuilderChanges.maxSequenceSteps { changes.addToSequence(add, values: member) }
+        #expect(changes.sequence.count == 25 && changes.sequenceRefusal == nil)
+        changes.addToSequence(add, values: member)
+        #expect(changes.sequence.count == 25 && changes.sequenceRefusal == "Sequence is capped at 25 steps.")
+        changes.clearSequence()
+        changes.addToSequence(add, values: member)
+        changes.addToSequence(try command("build.transfer_data"),
+                              values: ["old_owner": "carol@example.com", "service": "drive", "new_owner": "alice@example.com"])
+        changes.moveInSequence(from: 1, to: 0)
+        #expect(changes.sequence.first?.step.shownArgv.first == "create")
+        changes.removeFromSequence(changes.sequence[0].id)
+        #expect(changes.sequence.count == 1)
+    }
+
+    /// One preview for the whole sequence; an edit after it drops it, so its confirm runs nothing; the confirm runs each step in
+    /// order, once.
+    @Test func theSequenceRunsAsHeldInOrder() async throws {
+        try await connect()
+        let add = try command("build.add_group_member")
+        changes.addToSequence(add, values: member)
+        changes.addToSequence(add, values: ["group": "sales@example.com", "member": "dana@example.com", "role": "member"])
+        await changes.previewSequence()
+        let first = try pending()
+        #expect(first.preview.title == "Builder sequence \u{2014} 2 steps" && first.preview.steps.count == 2)
+        changes.addToSequence(add, values: ["group": "sales@example.com", "member": "admin@example.com", "role": "member"])
+        let before = calls().count
+        await changes.confirm(first, OperatorConfirmation(confirmed: true))
+        #expect(calls().count == before, "edited after its preview")
+        await changes.previewSequence()
+        let held = try pending()
+        await changes.confirm(held, OperatorConfirmation(confirmed: true))
+        let ran = calls().dropFirst(before).filter { $0.first == "update" }
+        #expect(ran.map(\.last) == ["carol@example.com", "dana@example.com", "admin@example.com"])
+        guard case .done(let words) = changes.state else { Issue.record("\(changes.state)"); return }
+        #expect(words.hasPrefix("Ran 3 of 3 steps."))
+    }
+
+    /// The guard's rule for a sequence: ten steps with a destructive one need the word typed.
+    @Test func tenStepsWithADestructiveOneNeedTheWordTyped() async throws {
+        try await connect()
+        let add = try command("build.add_group_member")
+        for _ in 0..<9 { changes.addToSequence(add, values: member) }
+        changes.addToSequence(try command("build.transfer_data"),
+                              values: ["old_owner": "carol@example.com", "service": "drive", "new_owner": "alice@example.com"])
+        await changes.previewSequence()
+        let held = try pending()
+        #expect(held.preview.decision.requiresTypedConfirmation)
+        let before = calls().count
+        await changes.confirm(held, OperatorConfirmation(confirmed: true))
+        #expect(problem == "Type confirm to run this destructive bulk change." && calls().count == before)
+    }
 }

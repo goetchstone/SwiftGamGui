@@ -134,8 +134,6 @@ struct GoldenArgvTests {
 
     /// GamGUI builders deliberately not ported.
     static let notPorted: [String: String] = [
-        "all_users_print_forward": "Reports' forwarding review (GamGUI #154): filling-the-gaps slice 2, not built here yet",
-        "all_users_print_delegates": "Reports' delegates review (GamGUI #154): filling-the-gaps slice 2, not built here yet",
         "print_org_units": "Org units (GamGUI #169): not built here yet; the mock refuses the read",
         "move_user_to_org_unit": "Org units (GamGUI #169): not built here yet",
         "create_org_unit": "Org units (GamGUI #169): not built here yet",
@@ -292,6 +290,8 @@ struct GoldenArgvTests {
         "swap_license": { try GamCommands.swapLicense(email: $0.text("email"), productID: $0.text("product_id"),
                                                       oldSKUID: $0.text("old_sku_id"), newSKUID: $0.text("new_sku_id")) },
         "remove_license": { try GamCommands.removeLicense(email: $0.text("email"), productID: $0.text("product_id"), skuID: $0.text("sku_id")) },
+        "all_users_print_forward": { _ in GamCommands.allUsersPrintForward() },
+        "all_users_print_delegates": { _ in GamCommands.allUsersPrintDelegates() },
         "print_licenses": { _ in GamCommands.printLicenses() },
         "print_tokens_of": { try GamCommands.printTokens(users: $0.strings("users")) },
         "print_all_admins": { _ in GamCommands.printAllAdmins() },
