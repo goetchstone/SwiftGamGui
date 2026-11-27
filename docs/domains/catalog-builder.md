@@ -309,3 +309,10 @@ between steps. A step that sets a password, or a value with a line break or NUL 
 character), is refused. `Executor.exportBatch` records `sequence_export` (each step's command and argv) before giving the file,
 and a record that can't be written gives none. The file runs outside the guard and audit, and the sheet says so. Held to
 `SequenceExportTests` and `BuilderChangesTests`.
+
+## The closed list of writes (roadmap 5.1, 2026-11-27; GamGUI #189)
+Rename a user (`update user <u> primaryemail <new> noactionifalias`), delete a group (`delete group <g> noactionifalias`) and add
+an admin role (`create admin <holder> <role> customer|org_unit <unit>`), each destructive and curated. `noactionifalias` makes GAM
+refuse an alias (51), said as `alias_refused`; a rename is a cut-off (`GamWrite.cutsOff`), so the connected admin is refused; a
+run that exits 0 without GAM's own line reads as unconfirmed (`GamWrite.notDone`). Create and rename a shared drive follow once
+the Shared Drives screen (4.7) is in. Held to `BuilderChangesTests`. Not run live.
