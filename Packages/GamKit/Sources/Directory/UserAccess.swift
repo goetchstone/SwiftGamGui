@@ -202,6 +202,14 @@ public final class UserAccess {
         }
     }
 
+    /// Every license seat (roadmap 4.3), read now: `print licenses`, no product named. It passes over a product Google won't let
+    /// it read without a word, so only what it lists is acted on (`Licenses`).
+    public func licenses(in pinned: Domain? = nil) async -> Result<[Licenses.Seat], Problem> {
+        await readNow(GamCommands.printLicenses(), in: pinned, timeout: ActivityLogs.timeout) {
+            GamOutput.records($0).map(Licenses.Seat.init(record:))
+        }
+    }
+
     /// The phones and tablets syncing the account (`GamCommands.printMobileDevices`).
     public func mobileDevices(of email: String) async -> Result<[Compromised.MobileDevice], Problem> {
         guard let read = try? GamCommands.printMobileDevices(user: email) else {

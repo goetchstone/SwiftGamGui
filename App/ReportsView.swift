@@ -20,6 +20,8 @@ struct ReportsView: View {
     /// The audit runs, and Inactive users' Suspend these….
     let runs: AuditRunner
     let suspend: InactiveSuspend
+    /// Suspended → Remove Their Licenses… (roadmap 3.3, 4.3).
+    let suspendedLicenses: SuspendedLicenses
     /// The audit runs' schedules on the connected domain (plan F7a): when each is due, and what it keeps.
     let schedules: RunSchedules
     /// An audit run another screen asked to open (Home's due runs), by its key.
@@ -341,7 +343,7 @@ struct ReportsView: View {
         case .report(let key):
             if let reports = directory.reports {
                 if let report = reports.first(where: { $0.key == key }) {
-                    ReportPeople(report: report, selection: $person, open: openPerson)
+                    ReportPeople(report: report, selection: $person, open: openPerson, licenses: suspendedLicenses)
                 }
             } else {
                 directoryStatus
@@ -508,6 +510,9 @@ private struct ReportPeople: View {
     let report: DirectoryReport
     @Binding var selection: GamUser.ID?
     let open: (String) -> Void
+    /// Suspended's Remove Their Licenses…; nil for the other reports.
+    var licenses: SuspendedLicenses? = nil
+    @State private var removingLicenses = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -515,6 +520,14 @@ private struct ReportPeople: View {
                 Text(report.title).font(.title2.bold()).accessibilityAddTraits(.isHeader)
                 Text(report.description).foregroundStyle(.secondary)
                 Text("\(report.count.formatted()) account\(report.count == 1 ? "" : "s")")
+                if let licenses, report.key == "suspended", !report.users.isEmpty {
+                    Button("Remove Their Licenses\u{2026}") { removingLicenses = true }
+                        .accessibilityHint("Reads the licenses again and shows each seat on a suspended account before anything changes.")
+                        .sheet(isPresented: $removingLicenses) {
+                            SuspendedLicensesSheet(model: licenses) { removingLicenses = false }
+                                .interactiveDismissDisabled(licenses.isBusy)
+                        }
+                }
             }
             .padding()
             if report.users.isEmpty {

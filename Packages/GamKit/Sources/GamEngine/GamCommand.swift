@@ -98,6 +98,8 @@ public enum WriteAction: String, Sendable, CaseIterable {
     case trashMessage, deleteMessages, setPassword
     case blockDeviceUser, deleteDeviceUser
     case updatePhones
+    /// A person's license seats (roadmap 4.3, GamGUI #175).
+    case addLicense, swapLicense, removeLicense
     /// A read's table to a new Google Sheet in the connected admin's Drive (plan F4): named as GamGUI's record names it, so both
     /// apps' logs read alike and Files finds either's.
     case exportToSheet = "export_to_sheet"
