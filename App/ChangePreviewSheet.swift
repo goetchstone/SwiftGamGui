@@ -835,7 +835,12 @@ struct OffboardConfirmSheet: View {
         Form {
             Section {
                 LabeledContent("Leaving", value: "\(plan.leaver.fullName) (\(leaver))")
-                LabeledContent("Taking over", value: "\(plan.manager.fullName) (\(plan.manager.primaryEmail))")
+                if let manager = plan.manager {
+                    LabeledContent("Taking over", value: "\(manager.fullName) (\(manager.primaryEmail))")
+                }
+                if let recipient = plan.recipient {
+                    LabeledContent("Transfer goes to", value: "\(recipient.fullName) (\(recipient.primaryEmail))")
+                }
                 Text(plan.header)
             } header: {
                 Text("Offboard \(plan.leaver.fullName)").accessibilityAddTraits(.isHeader)
@@ -1599,6 +1604,161 @@ struct HiresFromCSVReview: View {
             }
             .keyboardShortcut(.return, modifiers: .command)
             .accessibilityHint("Runs exactly the hires shown, once. Command-Return does the same.")
+        }
+    }
+}
+
+/// The Builder's sequence (GamGUI's `_sequence.html`, roadmap 2.5): the changes added with Add to Sequence, in the order they run,
+/// each movable up or down or removable; Preview holds them all as one change. Its review shows every step's command and what to
+/// know, asks the word `confirm` typed when the guard does (ten steps with a destructive one), and runs exactly that, once, in
+/// the jobs tray and here with Stop; each step's outcome is listed after. A step added, moved or removed drops the preview.
+struct BuilderSequenceSheet: View {
+    let changes: BuilderChanges
+    let close: () -> Void
+    @State private var word = ""
+    @State private var stopAsked = false
+
+    private var reviewing: BuilderChanges.Pending? {
+        guard changes.concernsSequence, case .previewing(let pending) = changes.state else { return nil }
+        return pending
+    }
+
+    private var running: Bool {
+        guard changes.concernsSequence, case .running = changes.state else { return false }
+        return true
+    }
+
+    var body: some View {
+        Form {
+            if let pending = reviewing {
+                review(pending)
+            } else if running {
+                let progress = changes.sequenceProgress ?? (0, changes.sequence.count, false)
+                Section {
+                    Text(progress.stopping ? "Stopping after this step\u{2026}" : "Running the sequence\u{2026}")
+                    ProgressView(value: Double(progress.done), total: Double(max(progress.total, 1)))
+                        .accessibilityLabel("Steps done")
+                        .accessibilityValue("\(progress.done) of \(progress.total)")
+                    Button("Stop\u{2026}") { stopAsked = true }
+                        .disabled(progress.stopping)
+                        .accessibilityLabel("Stop the sequence")
+                }
+            } else {
+                steps
+                outcome
+            }
+        }
+        .formStyle(.grouped)
+        .frame(minWidth: 560, minHeight: 420)
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+                Button(reviewing != nil ? "Back" : "Done") {
+                    if reviewing != nil { changes.dismiss() } else { close() }
+                }
+                .disabled(running)
+            }
+            if reviewing == nil, !running {
+                ToolbarItem(placement: .primaryAction) {
+                    Button("Preview\u{2026}") { Task { await changes.previewSequence() } }
+                        .disabled(changes.sequence.isEmpty || changes.isBusy)
+                        .help("Shows every step's exact command before anything changes")
+                }
+            }
+        }
+        .confirmationDialog("Stop after this step?", isPresented: $stopAsked) {
+            Button("Stop After This Step") { Task { await changes.stopSequence() } }
+            Button("Keep Going", role: .cancel) {}
+        } message: {
+            Text("The step running now finishes. The rest aren't run, and what's done stays done.")
+        }
+    }
+
+    @ViewBuilder private var steps: some View {
+        Section {
+            if changes.sequence.isEmpty {
+                Text("Nothing yet. On a change's page in the Builder, fill it in and click Add to Sequence.")
+                    .foregroundStyle(.secondary)
+            }
+            ForEach(Array(changes.sequence.enumerated()), id: \.element.id) { index, queued in
+                HStack(alignment: .firstTextBaseline) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("\(index + 1). \(queued.name)")
+                        Text(queued.step.commandLine).font(.caption.monospaced()).textSelection(.enabled)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .accessibilityElement(children: .combine)
+                    Spacer()
+                    Button { changes.moveInSequence(from: index, to: index - 1) } label: { Image(systemName: "arrow.up") }
+                        .disabled(index == 0)
+                        .accessibilityLabel("Move step \(index + 1) up")
+                    Button { changes.moveInSequence(from: index, to: index + 1) } label: { Image(systemName: "arrow.down") }
+                        .disabled(index == changes.sequence.count - 1)
+                        .accessibilityLabel("Move step \(index + 1) down")
+                    Button { changes.removeFromSequence(queued.id) } label: { Image(systemName: "xmark") }
+                        .accessibilityLabel("Remove step \(index + 1)")
+                }
+                .buttonStyle(.borderless)
+            }
+            if !changes.sequence.isEmpty {
+                Button("Clear", role: .destructive) { changes.clearSequence() }
+            }
+        } header: {
+            Text("Sequence \u{2014} \(changes.sequence.count) of \(BuilderChanges.maxSequenceSteps) steps").accessibilityAddTraits(.isHeader)
+        } footer: {
+            Text("Steps run in this order, each once; a step that fails doesn't stop the rest.")
+        }
+    }
+
+    @ViewBuilder private var outcome: some View {
+        if changes.concernsSequence {
+            switch changes.state {
+            case .done(let words), .problem(let words):
+                Section("Last run") {
+                    Text(words).font(.callout).textSelection(.enabled)
+                }
+            default:
+                EmptyView()
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func review(_ pending: BuilderChanges.Pending) -> some View {
+        let decision = pending.preview.decision
+        Section {
+            Text(decision.summary)
+            ForEach(decision.warnings, id: \.self) { Label($0, systemImage: "exclamationmark.triangle.fill").symbolRenderingMode(.multicolor) }
+            if let warning = pending.warning {
+                Label(warning, systemImage: "exclamationmark.triangle.fill").symbolRenderingMode(.multicolor)
+            }
+        } header: {
+            Text(pending.title).accessibilityAddTraits(.isHeader)
+        }
+        Section("Steps") {
+            ForEach(Array(pending.preview.steps.enumerated()), id: \.offset) { index, step in
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("\(index + 1). \(step.summary)")
+                    Text(step.commandLine).font(.caption.monospaced()).textSelection(.enabled)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .accessibilityElement(children: .combine)
+            }
+        }
+        Section {
+            if decision.requiresTypedConfirmation {
+                TextField("The word confirm", text: $word, prompt: Text(verbatim: Guard.typedWord))
+                    .autocorrectionDisabled()
+                    .accessibilityLabel("Type the word confirm to run this destructive sequence")
+            }
+            // Not the default button: Return alone runs nothing.
+            Button(decision.maxRisk == .destructive ? "Run the Sequence" : "Run \(pending.preview.steps.count) Steps",
+                   role: decision.maxRisk == .destructive ? .destructive : nil) {
+                let pending = pending, changes = changes, word = word
+                Task { await changes.confirm(pending, OperatorConfirmation(confirmed: true, typedWord: word)) }
+            }
+            .keyboardShortcut(.return, modifiers: .command)
+            .disabled(decision.requiresTypedConfirmation && word.trimmingCharacters(in: .whitespaces).lowercased() != Guard.typedWord)
+            .accessibilityHint("Runs exactly these steps, once, in order.")
         }
     }
 }

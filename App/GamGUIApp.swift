@@ -287,7 +287,7 @@ struct ContentView: View {
                         .navigationTitle("Builder")
                 case .reports:
                     ReportsView(setup: services.setup, directory: services.directory, usage: services.usage,
-                                apps: services.connectedApps, runs: services.auditRuns, suspend: services.inactiveSuspend, reminders: services.bucketReminders,
+                                apps: services.connectedApps, mail: services.mailReview, runs: services.auditRuns, suspend: services.inactiveSuspend, reminders: services.bucketReminders,
                                 schedules: services.runSchedules, requestedRun: $reportsRun,
                                 openCommand: { id in
                                     builderCommand = id

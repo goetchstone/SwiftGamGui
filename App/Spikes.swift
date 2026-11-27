@@ -52,6 +52,7 @@ enum Spikes {
                     if Screen.initial == .reports, environment["SWIFTGAMGUI_SELECT"] == "usage" { await services.usage.load() }
                     // …and its connected apps (`apps`): every account's, from the mock's tokens.
                     if Screen.initial == .reports, environment["SWIFTGAMGUI_SELECT"] == "apps" { await services.connectedApps.read() }
+                    if Screen.initial == .reports, environment["SWIFTGAMGUI_SELECT"] == "mail" { await services.mailReview.read() }
                     // …and an audit run (`run.<key>`): run against the mock before the picture; `suspend` holds Suspend these…'s
                     // preview over it (the directory read again, nothing run).
                     // A named report's run (`run.<report key>`, plan F7a) too, once the catalog is read; `stranded` is a
