@@ -491,6 +491,10 @@ final class SignatureScopeTests {
         #expect(fast.isOffered && fast.refusal == nil && fast.shownCommand.hasPrefix("csv - columndelimiter , quotechar"))
         await changes.confirmFast(pending, confirmed)
         #expect(bytes(fastCalls()) == bytes([["file", "-", "print", "signature"], Self.csvWrite]))
+        // The mock's read says GAM's own words, with its counter: "Getting Signatures for <u> (i/n)".
+        let read = try await runner.run(GamCommands.printSignaturesFromStdin(emails: ["alice@example.com", "dana@example.com"]),
+                                        as: Domain("example.com")!, extraEnvironment: ["GAM_MOCK_STATE": state.path])
+        #expect(read.stderr.contains("Getting Signatures for alice@example.com (1/2)\n"))
         #expect(writes().isEmpty, "no per-person write ran")
         let done = try done(changes)
         #expect(done.message == "Applied to 3 of 3 users in one GAM call." && !done.partial && done.retry == nil)
