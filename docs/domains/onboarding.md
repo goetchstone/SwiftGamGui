@@ -125,10 +125,13 @@ CSV…** (`App/HiresFromCSVView.swift`, model `Directory/HiresFromCSV.swift`, re
   **Deviations:** that stop applies to any step (GamGUI stops only on a create's failure), and after "no licence left"
   later creates still try and fail (GamGUI skips them untried). Neither writes more than GamGUI would.
 - **Passwords:** a created account without `notify` gets a sign-in card in the sheet (`HireCredentialCards`, the
-  only reader of the password text there), held fifteen minutes or until each card's Done; the sheet can't close
-  until then, and a new preview is refused while one is held.
+  only reader of the password text there), held fifteen minutes (a timer drops it, as the one-hire card's does) or
+  until each card's Done; the sheet can't close until then, and a new preview is refused while one is held. A `notify`
+  row whose create may have landed (a timeout) gets a card too, marked unsure: its email may never have gone.
 - **Waiting for Google:** after the run, what a new account wasn't ready for is retried on GamGUI's waits
-  (`Executor.retry`), unless the run stopped. What still waits is said not done.
+  (`Executor.retry`), unless the run stopped (Stop, or an account-wide failure: then the hires not reached are "not
+  attempted", with the reason). What still waits is said not done: Google not ready, stopped by you, or the retry's refusal
+  (review of #206, 2026-11-27).
 - Held to `HireCSVTests` (GamGUI's parse cases) and `HiresFromCSVTests` (strict mock).
 
 ## ChangeCore for onboarding (D3)

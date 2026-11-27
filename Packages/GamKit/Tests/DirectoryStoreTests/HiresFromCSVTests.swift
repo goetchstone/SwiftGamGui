@@ -186,4 +186,68 @@ final class HiresFromCSVTests {
         guard case .problem(let none, _) = model.state else { Issue.record("\(model.state)"); return }
         #expect(none == "No hires found in the CSV.")
     }
+
+    // MARK: the review of #206
+
+    /// The cards go at fifteen minutes, as the one-hire card does: dropped from memory, not only hidden.
+    @Test func theSignInCardsAreDroppedAfterFifteenMinutes() async throws {
+        try await connect()
+        let clock = HireTestClock()
+        let model = HiresFromCSV(executor: executor, setup: setup, directory: directory, waits: [], now: { clock.now })
+        let pending = try await preview(model, "role,name,email,create_account,first,last\nSales,Ben Cole,ben@example.com,yes,Ben,Cole\n")
+        await model.confirm(pending, confirmed)
+        #expect(model.credentials.count == 1)
+        model.dropCredentialsIfExpired()
+        #expect(model.credentials.count == 1, "not yet")
+        clock.moved = .seconds(16 * 60)
+        model.dropCredentialsIfExpired()
+        clock.moved = .zero
+        #expect(model.credentials.isEmpty, "gone, not hidden by the clock")
+    }
+
+    /// Stop during the wait for Google says so, never "Google still hadn't finished".
+    @Test func stopDuringTheWaitSaysStopped() async throws {
+        try await connect()
+        let provisioning = state.appending(path: "provisioning")
+        try FileManager.default.createDirectory(at: provisioning, withIntermediateDirectories: true)
+        try Data("99".utf8).write(to: provisioning.appending(path: "ben@example.com"))
+        let model = HiresFromCSV(executor: executor, setup: setup, directory: directory, waits: [.seconds(30)])
+        let pending = try await preview(model, "role,name,email,create_account,first,last\nSales,Ben Cole,ben@example.com,yes,Ben,Cole\n")
+        let run = Task { await model.confirm(pending, confirmed) }
+        try await yieldWhile(every: .milliseconds(20)) { model.progress?.waitingUntil == nil }
+        await model.stop()
+        await run.value
+        let ran = try done(model)
+        #expect(ran.hires[0].outcome.contains(Onboarding.stoppedReason), "\(ran.hires[0].outcome)")
+        #expect(!ran.hires[0].outcome.contains(Onboarding.notReadyReason))
+    }
+
+    /// After a failure every later step would share, nothing waits for Google, and the hires not reached are not attempted.
+    @Test func anAccountWideStopEndsTheRunWithoutWaiting() async throws {
+        try await connect()
+        let base = scratch.appending(path: "run2")
+        let script = scratch.appending(path: "failing.sh")
+        try Data("#!/bin/sh\nif [ \"$1\" = update ]; then echo 'ERROR: 403: Request had insufficient authentication scopes' >&2; exit 50; fi\nexec '\(Fixtures.mockGam.path)' \"$@\"\n".utf8).write(to: script)
+        chmod(script.path, 0o755)
+        let runner = AuthenticatedRunner(runner: GamRunner(binary: script), vault: vault,
+                                         runtimeDirectory: try RuntimeDirectory.prepare(base))
+        let setup = setup
+        let failing = Executor(runner: runner, audit: AuditLog(url: scratch.appending(path: "audit2.jsonl")), tenant: { @MainActor in
+            setup.active.map { ($0, setup.generation) }
+        }, extraEnvironment: ["GAM_MOCK_FIXTURES": Fixtures.mockGamData.path, "GAM_MOCK_STATE": state.path])
+        let model = HiresFromCSV(executor: failing, setup: setup, directory: directory, waits: [.seconds(600)])
+        let roles = HiresFromCSV.Roles(role: { _ in RoleTemplate(name: "Sales", steps: ["x"], groups: ["sales@example.com"]) },
+                                       signature: { _ in nil }, welcome: { _ in nil })
+        await model.preview(Array("role,email\nSales,dana@example.com\nSales,carol@example.com\n".utf8), roles: roles)
+        await model.confirm(try pending(model), confirmed)
+        let ran = try done(model)
+        #expect(ran.message.hasPrefix("Stopped: ") && ran.message.contains("1 not attempted"), "\(ran.message)")
+    }
+}
+
+/// A clock a test moves.
+final class HireTestClock: @unchecked Sendable {
+    let start = ContinuousClock.now
+    var moved: Duration = .zero
+    var now: ContinuousClock.Instant { start + moved }
 }

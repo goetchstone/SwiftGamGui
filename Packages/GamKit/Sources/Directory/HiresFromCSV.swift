@@ -108,6 +108,8 @@ public final class HiresFromCSV {
     public private(set) var state: State = .idle
     public private(set) var progress: Progress?
     private var heldCredentials: (cards: [Credential], shownAt: ContinuousClock.Instant)?
+    /// Drops the cards once their fifteen minutes are up, as the one-hire card's timer does.
+    private var cardTimer: Task<Void, Never>?
     /// Each create's password, by the step that creates it: the sheet's once the create ends, or dropped.
     private var passwords: [Int: TemporaryPassword] = [:]
     private var serial = 0
@@ -150,6 +152,14 @@ public final class HiresFromCSV {
     /// The operator printed or saved the sheet: the passwords go now.
     public func doneWithCredentials() {
         heldCredentials = nil
+        cardTimer?.cancel()
+        cardTimer = nil
+    }
+
+    /// Drops the cards once their fifteen minutes are up (the timer's call; a test's after moving the clock).
+    func dropCredentialsIfExpired() {
+        guard let held = heldCredentials, now() - held.shownAt > OnboardChanges.cardLifetime else { return }
+        heldCredentials = nil
     }
 
     /// One account's details were handed over: its password goes now.
@@ -157,6 +167,7 @@ public final class HiresFromCSV {
         guard var held = heldCredentials else { return }
         held.cards.removeAll { $0.id == id }
         heldCredentials = held.cards.isEmpty ? nil : held
+        if heldCredentials == nil { cardTimer?.cancel() }
     }
 
     // MARK: previewing
@@ -256,28 +267,40 @@ public final class HiresFromCSV {
         }
         for (index, step) in outcome.steps.enumerated() { results[index] = step }
         keepCredentials(pending, results)
-        // GamGUI's FinishJob: not after a stop of any kind.
-        var stopped = outcome.steps.count < stepCount || outcome.steps.contains { if case .skipped(let why) = $0 { why == Executor.stopped } else { false } }
-        var handle = outcome.retry
+        // GamGUI's FinishJob: not after a stop of any kind (Stop, or a failure every later step would share).
+        var stopped = outcome.steps.count < stepCount || outcome.steps.contains { if case .skipped(let why) = $0 { Self.isStop(why) } else { false } }
+        var handle = stopped ? nil : outcome.retry
+        if stopped, let retry = outcome.retry { await executor.abandon(retry) }
+        // Why what still waits isn't done: Google not ready (the waits ran out), Stop, or a retry refused.
+        var waitEnded = Onboarding.notReadyReason
         for wait in waits where handle != nil && !stopped {
             progress?.waitingUntil = now() + wait
             let sleep = Task { try await Task.sleep(for: wait) }
             sleeper = sleep
             do { try await sleep.value } catch {
                 stopped = true
+                waitEnded = Onboarding.stoppedReason
                 break
             }
             sleeper = nil
             progress?.waitingUntil = nil
             outcome = await executor.retry(handle!, progress: nil)
+            if let refusal = outcome.refusal {
+                handle = nil
+                waitEnded = refusal
+                break
+            }
             for (index, step) in outcome.steps.enumerated() where index < stepCount { results[index] = step }
             handle = outcome.retry
-            if progress?.stopping == true { stopped = true }
+            if progress?.stopping == true {
+                stopped = true
+                waitEnded = Onboarding.stoppedReason
+            }
         }
         if let handle { await executor.abandon(handle) }
         sleeper = nil
         progress = nil
-        state = .done(Self.done(pending, results, stopped: stopped, waitedOut: !waits.isEmpty))
+        state = .done(Self.done(pending, results, waitEnded: waits.isEmpty ? nil : waitEnded))
         accountsChanged(pending, results)
     }
 
@@ -292,15 +315,30 @@ public final class HiresFromCSV {
     /// Each create that ended (or may have) puts its password on the sheet, unless GAM emailed it.
     private func keepCredentials(_ pending: Pending, _ results: [RunOutcome.Step?]) {
         var cards: [Credential] = []
-        for hire in pending.hires where hire.plan.creates && PythonText.strip(hire.plan.hire.notify).isEmpty {
+        for hire in pending.hires where hire.plan.creates {
             guard let password = passwords[hire.steps.lowerBound], let result = results[hire.steps.lowerBound] else { continue }
             let unsure = !result.isSucceeded && result.mayHaveChanged
-            guard result.isSucceeded || unsure else { continue }
+            // GAM emailed a create that ended; one that may have landed may not have sent its email, so it has a card too.
+            let emailed = !PythonText.strip(hire.plan.hire.notify).isEmpty
+            guard emailed ? unsure : (result.isSucceeded || unsure) else { continue }
             cards.append(Credential(name: hire.plan.name, email: hire.plan.email, orgUnit: hire.plan.orgUnit, password: password,
                                     unsure: unsure))
         }
         passwords = [:]
         heldCredentials = cards.isEmpty ? nil : (cards, now())
+        cardTimer?.cancel()
+        guard !cards.isEmpty else { return }
+        cardTimer = Task { [weak self] in
+            try? await Task.sleep(for: OnboardChanges.cardLifetime)
+            guard !Task.isCancelled else { return }
+            self?.dropCredentialsIfExpired()
+        }
+    }
+
+    /// A step skipped because the run stopped: Stop (`Executor.stopped`), or a failure every later step would share
+    /// ("Stopped: …", GamGUI's `stop_reason`).
+    nonisolated static func isStop(_ why: String) -> Bool {
+        why == Executor.stopped || why.hasPrefix("Stopped")
     }
 
     private func accountsChanged(_ pending: Pending, _ results: [RunOutcome.Step?]) {
@@ -311,13 +349,22 @@ public final class HiresFromCSV {
     }
 
     /// GamGUI's `_onboard_bulk_status.html`: hires done, each hire's outcome, the accounts created.
-    nonisolated static func done(_ pending: Pending, _ results: [RunOutcome.Step?], stopped: Bool, waitedOut: Bool) -> Done {
-        var ok = 0, created = 0, notified = 0, notRun = 0
+    /// `waitEnded` is why what still waits for Google isn't done (nil when there was no wait).
+    nonisolated static func done(_ pending: Pending, _ results: [RunOutcome.Step?], waitEnded: String?) -> Done {
+        var ok = 0, created = 0, notified = 0, notRun = 0, stoppedBy: String?
         var rows: [(String, String, Bool)] = []
         for hire in pending.hires {
             let mine = hire.steps.map { results[$0] }
             let who = hire.plan.email.isEmpty ? hire.plan.name : hire.plan.email
-            if mine.allSatisfy({ $0 == nil }) || mine.allSatisfy({ if case .skipped(let why)? = $0 { why == Executor.stopped } else { $0 == nil } }) {
+            let unrun = mine.allSatisfy { result in
+                guard let result else { return true }
+                if case .skipped(let why) = result, isStop(why) {
+                    if stoppedBy == nil { stoppedBy = why }
+                    return true
+                }
+                return false
+            }
+            if unrun {
                 notRun += 1
                 rows.append((who, "Not attempted.", false))
                 continue
@@ -331,7 +378,7 @@ public final class HiresFromCSV {
                 switch result {
                 case .succeeded?: continue
                 case .failed(let message, let kind)?: failed.append("\(row.label): \(kind?.remediation ?? message)")
-                case .waiting?: failed.append("\(row.label): \(waitedOut ? Onboarding.notReadyReason : "waiting for Google")")
+                case .waiting?: failed.append("\(row.label): \(waitEnded ?? "waiting for Google")")
                 case .skipped(let why)?: failed.append("\(row.label): \(why)")
                 case nil: failed.append("\(row.label): not run")
                 }
@@ -346,7 +393,10 @@ public final class HiresFromCSV {
                 + (notified > 0 ? " (\(notified) emailed by GAM)" : "")
         }
         message += "."
-        if stopped, notRun > 0 { message = "Stopped \u{2014} \(notRun) not attempted. " + message }
+        if notRun > 0 {
+            let why = stoppedBy == nil || stoppedBy == Executor.stopped ? "Stopped by you" : stoppedBy!
+            message = "\(why) \u{2014} \(notRun) not attempted. " + message
+        }
         return Done(message: message, hires: rows)
     }
 
