@@ -123,6 +123,8 @@ for spec in home:home users:users groups:groups setup:setup jobs:home::jobs \
             compromised:incident:carol@example.com compromised-plan:incident:carol@example.com:plan \
             compromised-confirm:incident:carol@example.com:confirm compromised-result:incident:carol@example.com:result \
             narrow-compromised:incident:carol@example.com:plan:smallest \
+            users-department:users::department users-department-review:users::department-review \
+            narrow-users-department-review:users::department-review:smallest \
             users-secure:users:carol@example.com:secure person-search:users:carol@example.com:search \
             person-password:users:carol@example.com:password \
             narrow-person-search:users:carol@example.com:search:smallest \

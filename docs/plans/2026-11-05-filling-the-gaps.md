@@ -93,7 +93,7 @@ Built when the operator asks, each on its own. No new mechanism: many steps in o
 already do, with the typed count, the jobs tray and a retry of what failed.
 
 - Remove several members from a group.
-- A department for many (GamGUI has it).
+- A department for many (GamGUI has it). Done 2026-11-27 (roadmap 2.1).
 - A signature for many (S2) and hires from a CSV (O3), both already deferred until asked.
 
 ### 5. The Builder's remaining pieces

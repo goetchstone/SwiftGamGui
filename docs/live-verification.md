@@ -19,6 +19,8 @@ Dates are 2026, and the last time the command ran from any screen.
   share their own calendar and remove that access (10-13), set or change the phone a signature shows (10-29).
 - **Not run:** a temporary password changed at next sign-in, removing a phone, deleting an account (new 2026-11-07; its first run is
   on a real leaver).
+- **Not run:** Department for Many… (new 2026-11-27, roadmap 2.1): one department for a group's members or a pasted list, each
+  title kept, with Stop and Retry. The argv is the one-person editor's, which ran (10-24); GamGUI's bulk page has no live run either.
 
 ### Groups
 - **Ran:** add people as members (11-13), remove a member (10-13).
