@@ -279,7 +279,7 @@ private struct AutoReplySection: View {
                 .lineLimit(3...8)
             Toggle("Stop the auto-reply on a day", isOn: Binding(
                 get: { !form.autoreplyEnd.isEmpty },
-                set: { form.autoreplyEnd = $0 ? Self.iso(Calendar.current.date(byAdding: .day, value: 30, to: Date()) ?? Date()) : "" }))
+                set: { form.autoreplyEnd = $0 ? Self.iso(Self.gregorian.date(byAdding: .day, value: 30, to: Date()) ?? Date()) : "" }))
             if !form.autoreplyEnd.isEmpty {
                 DatePicker("Stop on", selection: Binding(
                     get: { Self.date(form.autoreplyEnd) ?? Date() },
@@ -300,15 +300,22 @@ private struct AutoReplySection: View {
 
 extension AutoReplySection {
     /// A day as GAM takes it, YYYY-MM-DD in this Mac's time zone.
+    /// Gregorian in this Mac's time zone, as the engine's `Day` is: another calendar would give another year.
+    static var gregorian: Calendar {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = .current
+        return calendar
+    }
+
     static func iso(_ date: Date) -> String {
-        let parts = Calendar.current.dateComponents([.year, .month, .day], from: date)
+        let parts = gregorian.dateComponents([.year, .month, .day], from: date)
         return String(format: "%04d-%02d-%02d", parts.year ?? 0, parts.month ?? 0, parts.day ?? 0)
     }
 
     static func date(_ iso: String) -> Date? {
         let parts = iso.split(separator: "-").compactMap { Int($0) }
         guard parts.count == 3 else { return nil }
-        return Calendar.current.date(from: DateComponents(year: parts[0], month: parts[1], day: parts[2]))
+        return gregorian.date(from: DateComponents(year: parts[0], month: parts[1], day: parts[2]))
     }
 }
 

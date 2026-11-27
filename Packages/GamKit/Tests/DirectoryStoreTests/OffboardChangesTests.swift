@@ -593,6 +593,28 @@ final class OffboardChangesTests {
         _ = try await self.plan(options)
     }
 
+    /// Review of #210: an end day that was tomorrow at the preview and is today by the run refuses the run, writing nothing.
+    @Test func anEndDayThatIsTodayByTheRunRunsNothing() async throws {
+        try await connect()
+        let today = try #require(Offboarding.Day(year: 2026, month: 6, day: 23), "the suite's clock")
+        var options = form()
+        options.autoreplyEnd = try today.adding(days: 1).iso
+        let plan = try await plan(options)
+        let before = writes().count
+        clock.advance(86_400)
+        await changes.confirm(plan, typed("carol@example.com"))
+        #expect(writes().count == before)
+    }
+
+    /// Review of #210: a recipient nothing uses (the transfer left out, no hand-over) isn't checked or shown.
+    @Test func aRecipientNothingUsesIsIgnored() async throws {
+        try await connect()
+        var options = form(notApplicable: [.transfer, .reminder])
+        options.recipient = "nobody@example.com"
+        let plan = try await plan(options)
+        #expect(plan.recipient == nil)
+    }
+
     /// `test_manager_optional`: with nothing that acts on the manager running, none is needed and nobody is named.
     @Test func noManagerWhenNoStepNeedsOne() async throws {
         try await connect()

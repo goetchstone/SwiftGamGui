@@ -372,7 +372,11 @@ public final class OffboardChanges {
         func refuse(_ reason: String) { finish(.blocked(Blocked(form: form, reason: reason))) }
 
         let leaver = PythonText.strip(form.leaver), manager = PythonText.strip(form.manager)
-        let recipient = PythonText.strip(form.recipient)
+        let skippedSteps = form.done.union(form.notApplicable)
+        // Only when something takes it: the transfer, or the secondary calendars' hand-over (review of #210).
+        let recipientUsed = !skippedSteps.contains(.transfer)
+            || (form.added.contains(.secondaryCalendars) && !form.done.contains(.secondaryCalendars))
+        let recipient = recipientUsed ? PythonText.strip(form.recipient) : ""
         guard !leaver.isEmpty else { return refuse("Enter the departing user's email.") }
         let skipped = form.done.union(form.notApplicable)
         // A manager only when a step that runs acts on one (GamGUI #161).
@@ -514,6 +518,12 @@ public final class OffboardChanges {
                     case .failure(let problem): throw PreconditionFailure(problem.summary)
                     case .success(let now): guard Set(now.filter { !$0.forward.isEmpty }.map(\.id)) == heldFilters else { return false }
                     }
+                }
+                // An end day that was tomorrow at the preview may be today by the run: GAM would switch the reply off as it's set.
+                if !autoreplyEnd.isEmpty, await MainActor.run(body: { [weak self] in
+                    self.map { Offboarding.autoreplyEndProblem(autoreplyEnd, today: Offboarding.Day($0.now(), in: $0.calendar)) } ?? nil
+                }) != nil {
+                    throw PreconditionFailure("The auto-reply's end has to be after today: preview again with a later day.")
                 }
                 // The admin as connected now, not as when the plan was made; unknown refuses.
                 guard let admin = await setup.connectedAdmin, !admin.isEmpty else { return false }
