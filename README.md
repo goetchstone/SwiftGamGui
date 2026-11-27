@@ -31,7 +31,7 @@ containment, eradication, recovery, lessons learned).
 
 - **People**: browse the directory; change a title, department, groups, mail delegates, auto-reply or signature;
   suspend, sign out, set a temporary password, or delete the account. A signature can go to a group, an org unit or
-  everyone at once.
+  everyone at once, and a department to a group's members or a pasted list.
 - **Groups and calendars**: a group's members and roles; rooms, a person's calendars and who can see them; share a
   calendar with a group, or delete a calendar or an event.
 - **Classroom**, read only: find a class by name or teacher, see who teaches it and who is in it, a person's classes, and
@@ -84,8 +84,7 @@ Rendered by CI from a demo domain and a mock of GAM, so every name is made up. [
 ## Status
 
 In daily use on a real domain; what has run live is in [docs/live-verification.md](docs/live-verification.md). It's
-free, and built for its author's own use. Still only in GamGUI: the Builder's sequences, changes for many people at once
-other than a signature (a department for many, hires from a CSV), and finding a calendar by name. What's next is in
+free, and built for its author's own use. Still only in GamGUI: the Builder's sequences, hires from a CSV, and finding a calendar by name. What's next is in
 [docs/plans/2026-11-05-filling-the-gaps.md](docs/plans/2026-11-05-filling-the-gaps.md).
 
 ## Build from source

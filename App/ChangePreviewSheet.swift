@@ -1494,3 +1494,53 @@ struct SheetExportSheet: View {
         .formStyle(.grouped)
     }
 }
+
+/// Department for Many…'s review (roadmap 2.1): who it changes, each one's department now, the commands, and the one button that
+/// runs exactly this list. Shown in place of the form inside `DepartmentForManySheet`.
+struct DepartmentForManyReview: View {
+    let pending: DepartmentForMany.Pending
+    let model: DepartmentForMany
+
+    var body: some View {
+        let n = pending.count
+        Section {
+            Text("Set the department to “\(pending.department)” for \(n) \(n == 1 ? "person" : "people"), each keeping their title.")
+            ForEach(pending.notes, id: \.self) { Label($0, systemImage: "info.circle") }
+            ForEach(pending.preview.decision.warnings, id: \.self) { warning in
+                Label(warning, systemImage: "exclamationmark.triangle.fill").symbolRenderingMode(.multicolor)
+            }
+        } header: {
+            Text(pending.preview.title).accessibilityAddTraits(.isHeader)
+        }
+        Section("Who it changes") {
+            ForEach(pending.people.prefix(DepartmentForMany.shown)) { person in
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(person.fullName.isEmpty ? person.primaryEmail : person.fullName)
+                    Text("\(person.primaryEmail) \u{B7} now \(person.department.isEmpty ? "no department" : "“\(person.department)”")")
+                        .font(.callout).foregroundStyle(.secondary)
+                }
+                .accessibilityElement(children: .combine)
+            }
+            if n > DepartmentForMany.shown {
+                Text("\u{2026} and \(n - DepartmentForMany.shown) more.").foregroundStyle(.secondary)
+            }
+            DisclosureGroup(n == 1 ? "Show command" : "Show \(n) commands") {
+                Text(pending.preview.steps.map(\.commandLine).joined(separator: "\n"))
+                    .font(.caption.monospaced())
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        Section {
+            Text("Sets exactly this list, one person at a time, in the jobs tray with Stop. Go back to change anything and preview again.")
+                .font(.callout).foregroundStyle(.secondary)
+            // Not the default button: Return alone changes nobody.
+            Button("Set \(n) Department\(n == 1 ? "" : "s")") {
+                let pending = pending, model = model
+                Task { await model.confirm(pending, OperatorConfirmation(confirmed: true)) }
+            }
+            .keyboardShortcut(.return, modifiers: .command)
+            .accessibilityHint("Runs exactly the list shown, once. Command-Return does the same.")
+        }
+    }
+}

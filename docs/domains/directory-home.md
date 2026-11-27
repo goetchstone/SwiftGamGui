@@ -120,6 +120,15 @@ It reads only through `DirectoryStore`, so it shares Home's tenant rules. Writes
   how much it can hurt. A destructive confirm is never the Return-key default.
 - Held to `Tests/DirectoryStoreTests/UserChangesTests` against the strict mock: GamGUI's argv byte for
   byte, the audit record, the patch, a bare confirm refused, a failure patching nothing.
+- **Department for Many…** (2026-11-27, roadmap 2.1; GamGUI's `/users/bulk`, `core/bulk.py`): `Directory/DepartmentForMany.swift`
+  and `App/DepartmentForManyView.swift`, a sheet from the Users toolbar. A department for a group's members (read live, a failed
+  read said, never taken for an empty group) or pasted addresses (GamGUI's `_pasted`: commas or line ends, any case); the cached
+  directory's active users only, the rest counted as left out. One `organization … primary` step a person, each carrying their
+  title as the directory had it at preview (GamGUI reads titles again at Apply; here the confirm runs what was held, invariant 2).
+  LOW, a confirm always. The run is the executor's: one at a time, in the jobs tray and the sheet with Stop after the write in
+  flight; an account-wide failure stops it (`stopsAtAccountWideFailure`, GamGUI's `stop_reason`). Retry the N that failed
+  previews exactly those, still active, on the tenant it ran on. Each success patches the cache; any failure or Stop reads the
+  directory again (a timeout may have applied). Held to `DepartmentForManyTests`.
 - **Groups and mail delegates** (`UserAccess`, `UserChanges`): the person's groups (`print groups
   member`, the `email` column) and delegates (`print delegates`, `delegateAddress`) are read live when
   their page opens, kept only for that tenant, generation and person, and read again after a change of

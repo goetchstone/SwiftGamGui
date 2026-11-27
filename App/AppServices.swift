@@ -86,6 +86,8 @@ struct AppServices {
     let runSchedules: RunSchedules
     /// Inactive users' Suspend these…: the directory read again, one previewed write through the executor.
     let inactiveSuspend: InactiveSuspend
+    /// Users' Department for Many…: one department for a group's members or pasted addresses, each previewed write through the executor.
+    let departmentForMany: DepartmentForMany
     /// This app's audit log: Home reads it (off the main actor) for writes that never ended, and Audit shows it.
     let auditURL: URL
     /// The files saved through a save panel, newest first, for Files (plan F4).
@@ -227,6 +229,7 @@ struct AppServices {
                            auditRuns: auditRuns,
                            runSchedules: runSchedules,
                            inactiveSuspend: InactiveSuspend(executor: executor, setup: setup, directory: directory),
+                           departmentForMany: DepartmentForMany(executor: executor, setup: setup, directory: directory, runner: runner),
                            auditURL: auditURL, savedFiles: savedFiles, lockVault: { await vault.lock() })
     }
 
