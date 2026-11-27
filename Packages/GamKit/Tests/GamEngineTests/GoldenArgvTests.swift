@@ -75,6 +75,15 @@ struct GoldenArgvTests {
             return try string(key)
         }
 
+        /// A `{name: value}` of strings (GamGUI #182's changes).
+        func settings(_ key: String) throws -> [String: String] {
+            guard case .object(let object) = take(key) else { throw Missing.argument(key) }
+            return try object.mapValues { value in
+                guard case .string(let text) = value else { throw Missing.argument(key) }
+                return text
+            }
+        }
+
         func strings(_ key: String) throws -> [String] {
             guard case .strings(let value) = take(key) else { throw Missing.argument(key) }
             return value
@@ -144,8 +153,6 @@ struct GoldenArgvTests {
         "add_license": "A person's licenses from their page (GamGUI #175): not built here yet",
         "swap_license": "A person's licenses from their page (GamGUI #175): not built here yet",
         "remove_license": "A person's licenses from their page (GamGUI #175): not built here yet",
-        "info_group_settings": "A group's settings from the Groups board (GamGUI #182): not built here yet; the mock refuses the read",
-        "update_group_settings": "A group's settings from the Groups board (GamGUI #182): not built here yet",
         "set_archived": "Close out a leaver (GamGUI #183, roadmap 4.5): not built here yet",
         "move_alias": "Close out a leaver (GamGUI #183, roadmap 4.5): not built here yet",
         "delete_admin_role": "Close out a leaver (GamGUI #183, roadmap 4.5): not built here yet",
@@ -291,6 +298,8 @@ struct GoldenArgvTests {
         "delete_send_as": { try GamCommands.deleteSendAs(email: $0.string("email"), address: $0.string("address")) },
         "print_admins": { try GamCommands.printAdmins(user: $0.string("email")) },
         "print_tokens": { _ in try GamCommands.printTokens() },
+        "info_group_settings": { try GamCommands.infoGroupSettings(group: $0.string("group")) },
+        "update_group_settings": { try GamCommands.updateGroupSettings(group: $0.string("group"), changes: $0.settings("changes")) },
         "print_licenses": { _ in GamCommands.printLicenses() },
         "print_tokens_of": { try GamCommands.printTokens(users: $0.strings("users")) },
         "print_all_admins": { _ in GamCommands.printAllAdmins() },

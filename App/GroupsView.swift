@@ -13,6 +13,8 @@ struct GroupsView: View {
     let groups: GroupStore
     let members: GroupMembers
     let changes: GroupChanges
+    /// A group's settings (roadmap 4.4).
+    let settings: GroupSettingsChanges
     /// A group another screen asked to open, by address (Classroom's who can create classes), cleared once it's open;
     /// empty opens the list.
     @Binding var requested: String?
@@ -141,7 +143,7 @@ struct GroupsView: View {
             .inspector(isPresented: Binding(get: { selection != nil }, set: { if !$0 { select(nil) } })) {
                 if let group = all.first(where: { $0.id == selection }) {
                     GroupPage(group: group, store: groups, members: members, directory: directory, changes: changes,
-                              show: show)
+                              settings: settings, show: show)
                 }
             }
         } else {
@@ -192,7 +194,9 @@ private struct GroupPage: View {
     let members: GroupMembers
     let directory: DirectoryStore
     let changes: GroupChanges
+    let settings: GroupSettingsChanges
     let show: (GamGroup) -> Void
+    @State private var editingSettings = false
     @State private var query = ""
     /// The Add Members sheet is open. Its fields live here, so going back from the preview to edit them
     /// keeps what was typed.
@@ -226,6 +230,12 @@ private struct GroupPage: View {
                 .disabled(changes.isBusy)
                 .accessibilityLabel("Add members to \(title)")
                 .padding(.top, 6)
+                Button("Group Settings…") { editingSettings = true }
+                    .accessibilityHint("Who can post, join and see the members, outside members, moderation, web posting, history.")
+                    .sheet(isPresented: $editingSettings) {
+                        GroupSettingsSheet(group: group.email, model: settings) { editingSettings = false }
+                            .interactiveDismissDisabled(settings.isBusy)
+                    }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding()
