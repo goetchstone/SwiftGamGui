@@ -114,7 +114,7 @@ for spec in home:home users:users groups:groups setup:setup jobs:home::jobs \
             person-profile:users:alice@example.com:profile person-groups:users:alice@example.com:groups \
             person-mail:users:alice@example.com:mail person-security:users:alice@example.com:security \
             group-sales:groups:sales@example.com group-sales-add:groups:sales@example.com:add \
-            group-sales-remove:groups:sales@example.com:remove \
+            group-sales-remove:groups:sales@example.com:remove group-sales-remove-many:groups:sales@example.com:remove-many \
             signatures:signatures signatures-alice:signatures:alice@example.com::1100x940:Classic \
             offboard:offboard:carol@example.com offboard-plan:offboard:carol@example.com:plan \
             offboard-confirm:offboard:carol@example.com:confirm offboard-result:offboard:carol@example.com:result \
@@ -176,7 +176,7 @@ for spec in home:home users:users groups:groups setup:setup jobs:home::jobs \
             narrow-builder-change:builder:build.add_group_member:fill:smallest \
             builder-sheet:builder:build.print_delegates:sheet builder-sheet-result:builder:build.print_delegates:sheet-result \
             narrow-builder-sheet:builder:build.print_delegates:sheet:smallest \
-            reports:reports reports-usage:reports:usage reports-apps:reports:apps::1100x940 audit:audit \
+            reports:reports reports-usage:reports:usage reports-apps:reports:apps::1100x940 reports-mail:reports:mail::1100x940 audit:audit \
             files:files narrow-files:files:::smallest \
             narrow-reports:reports:::smallest narrow-reports-usage:reports:usage::smallest narrow-reports-apps:reports:apps::smallest \
             reports-named:reports:named.licenses::1100x940 narrow-reports-named:reports:named.alerts::smallest \

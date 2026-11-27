@@ -835,7 +835,12 @@ struct OffboardConfirmSheet: View {
         Form {
             Section {
                 LabeledContent("Leaving", value: "\(plan.leaver.fullName) (\(leaver))")
-                LabeledContent("Taking over", value: "\(plan.manager.fullName) (\(plan.manager.primaryEmail))")
+                if let manager = plan.manager {
+                    LabeledContent("Taking over", value: "\(manager.fullName) (\(manager.primaryEmail))")
+                }
+                if let recipient = plan.recipient {
+                    LabeledContent("Transfer goes to", value: "\(recipient.fullName) (\(recipient.primaryEmail))")
+                }
                 Text(plan.header)
             } header: {
                 Text("Offboard \(plan.leaver.fullName)").accessibilityAddTraits(.isHeader)

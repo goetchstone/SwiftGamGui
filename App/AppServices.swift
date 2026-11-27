@@ -61,6 +61,8 @@ struct AppServices {
     let personDevices: PersonDeviceReads
     /// Every account's connected apps and AI agents, read from Reports.
     let connectedApps: ConnectedAppsRead
+    /// Reports' Forwarding & mail delegates (roadmap 3.2).
+    let mailReview: MailReviewRead
     /// Google Classroom's classes and rosters, read only (the Classroom screen).
     let classroom: ClassroomReads
     /// The SIS roster kept on this Mac for Classroom's Plan an Import (never sent anywhere).
@@ -215,6 +217,7 @@ struct AppServices {
                            chromeProfiles: ChromeProfileReads(setup: setup, access: UserAccess(setup: setup, runner: runner)),
                            personDevices: PersonDeviceReads(setup: setup, access: UserAccess(setup: setup, runner: runner)),
                            connectedApps: ConnectedAppsRead(setup: setup, access: UserAccess(setup: setup, runner: runner)),
+                           mailReview: MailReviewRead(setup: setup, access: UserAccess(setup: setup, runner: runner)),
                            classroom: ClassroomReads(setup: setup, access: UserAccess(setup: setup, runner: runner)),
                            roster: RosterKeeper(store: roster, auditURL: auditURL, setup: setup,
                                                 compare: RosterCompare(setup: setup, access: UserAccess(setup: setup, runner: runner),

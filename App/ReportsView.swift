@@ -17,6 +17,8 @@ struct ReportsView: View {
     let usage: UsageStore
     /// Every account's connected apps and AI agents.
     let apps: ConnectedAppsRead
+    /// Every account's forwarding that is on and its mail delegates (roadmap 3.2).
+    let mail: MailReviewRead
     /// The audit runs, and Inactive users' Suspend these….
     let runs: AuditRunner
     let suspend: InactiveSuspend
@@ -43,6 +45,7 @@ struct ReportsView: View {
         case report(String)
         case usage
         case apps
+        case mail
         /// A named domain-wide read, by its key.
         case named(String)
         /// An audit run, by its key.
@@ -101,6 +104,7 @@ struct ReportsView: View {
                             switch item {
                             case .usage: await usage.load()
                             case .apps: await apps.read()
+                            case .mail: await mail.read()
                             case .run(let key):
                                 if let run = schedules.run(key), let refusal = runs.start(run, days: days) {
                                     announce(refusal)
@@ -122,6 +126,7 @@ struct ReportsView: View {
         switch item {
         case .usage: "Refresh Usage"
         case .apps: "Read Connected Apps Again"
+        case .mail: "Read Mail Settings Again"
         case .run(let key): runs.state(of: run(key)) == nil ? "Run" : "Run Again"
         default: "Refresh the Directory"
         }
@@ -140,6 +145,7 @@ struct ReportsView: View {
         switch item {
         case .usage: usage.isLoading
         case .apps: apps.isReading
+        case .mail: mail.isReading
         case .run(let key): runs.isRunning(run(key))
         default: directory.isLoading
         }
@@ -168,7 +174,7 @@ struct ReportsView: View {
     private func selectForSnapshot() {
         #if DEBUG
         guard let key = ProcessInfo.processInfo.environment["SWIFTGAMGUI_SELECT"] else { return }
-        item = key == "usage" ? .usage : key == "apps" ? .apps
+        item = key == "usage" ? .usage : key == "apps" ? .apps : key == "mail" ? .mail
             : key.hasPrefix("named.") ? .named(String(key.dropFirst("named.".count)))
             : key.hasPrefix("run.") ? .run(String(key.dropFirst("run.".count))) : .report(key)
         #endif
@@ -200,6 +206,9 @@ struct ReportsView: View {
                         Label("Connected apps and agents", systemImage: "puzzlepiece.extension")
                             .tag(Item.apps)
                             .accessibilityHint("Every account's apps and AI agents, read from Google when you ask.")
+                        Label("Forwarding & mail delegates", systemImage: "arrowshape.turn.up.right")
+                            .tag(Item.mail)
+                            .accessibilityHint("Every account's forwarding that is on, and its mail delegates, read when you ask.")
                     }
                     Section("Audit runs") {
                         ForEach(AuditRuns.all) { run in runRow(run, kind: "audit run") }
@@ -350,6 +359,8 @@ struct ReportsView: View {
             UsagePanel(usage: usage, directory: directory, selection: $usagePerson, open: openPerson)
         case .apps:
             ConnectedAppsPanel(reads: apps, connected: setup.active != nil)
+        case .mail:
+            MailReviewPanel(reads: mail, connected: setup.active != nil, open: openPerson)
         case .run(let key):
             if let run = schedules.run(key) {
                 // Its own state per run: one run's export line and picked table never show on another's.
