@@ -472,4 +472,114 @@ final class SignatureScopeTests {
         #expect(try pending(changes).id == newer.id && newer.scope == .orgUnit("/Students"))
         #expect(writes().isEmpty)
     }
+
+    // MARK: one GAM call (roadmap 5.4, GamGUI's `tests/test_signatures_fast.py`)
+
+    private static let csvWrite = ["csv", "-", "columndelimiter", ",", "noescapechar", "true", "quotechar", "\"",
+                                   "gam", "user", "~User", "signature", "~signature", "html"]
+    private func fastCalls() -> [[String]] { calls().filter { $0.first == "csv" || $0.first == "file" } }
+
+    /// `test_two_gam_calls_set_everyone_and_keep_what_they_had`: one read, each kept, one write; the bodies on standard
+    /// input, never in the argv or the audit; GAM's own "Set" line is the result.
+    @Test func oneCallSetsEveryoneAndKeepsWhatTheyHad() async throws {
+        try await connect()
+        let changes = changes()
+        await changes.previewScope(.orgUnit("/Staff"), template: "<b>{name}</b>")
+        let pending = try pending(changes)
+        let fast = try #require(pending.fast)
+        // Masked as the audit keeps it (`signature` is a sensitive key, as in GamGUI's record): never a body, which goes on stdin.
+        #expect(fast.isOffered && fast.refusal == nil && fast.shownCommand.hasPrefix("csv - columndelimiter , noescapechar true quotechar"))
+        await changes.confirmFast(pending, confirmed)
+        #expect(bytes(fastCalls()) == bytes([["file", "-", "print", "signature"], Self.csvWrite]))
+        // The mock's read says GAM's own words, with its counter: "Getting Signatures for <u> (i/n)".
+        let read = try await runner.run(GamCommands.printSignaturesFromStdin(emails: ["alice@example.com", "dana@example.com"]),
+                                        as: Domain("example.com")!, extraEnvironment: ["GAM_MOCK_STATE": state.path])
+        #expect(read.stderr.contains("Getting Signatures for alice@example.com (1/2)\n"))
+        #expect(writes().isEmpty, "no per-person write ran")
+        let done = try done(changes)
+        #expect(done.message == "Applied to 3 of 3 users in one GAM call." && !done.partial && done.retry == nil)
+        let dana = try #require(directory.users?.first { $0.primaryEmail == "dana@example.com" })
+        let stored = try String(contentsOf: state.appending(path: "signature/alice@example.com"), encoding: .utf8)
+        #expect(stored == "<b>Alice Anders</b>")
+        let kept = try #require(try backups.runs().first?.run)
+        #expect(done.keptRun == kept.id)
+        #expect(kept.entries.map(\.email) == ["admin@example.com", "alice@example.com", "dana@example.com"])
+        #expect(kept.entries.map(\.previous) == ["", "Best,<br>Alice", ""])
+        #expect(kept.entries.map(\.set) == ["<b>IT Admin</b>", "<b>Alice Anders</b>", SignaturesFast.asSent("<b>\(dana.fullName)</b>")], "kept as sent: non-ASCII as character references")
+        #expect(audited().map(\.action) == ["set_signatures_fast"] && audited().allSatisfy(\.ok))
+        let end = try #require(AuditLog.records(at: auditURL).first { $0["action"]?.string == "set_signatures_fast" })
+        #expect(end["extra"]?.object?["count"] == .string("3"))
+        #expect(end["extra"]?.object?["set"] == .string("admin@example.com,alice@example.com,dana@example.com"))
+        #expect(!(try String(contentsOf: auditURL, encoding: .utf8)).contains("Alice Anders"), "the bodies went on stdin")
+    }
+
+    /// `test_a_person_gam_doesn_t_say_it_set_is_failed_and_can_be_retried`: exit 0 and no line for dana is unknown, never
+    /// set; Retry runs her through the per-person path, which offers no one-call run.
+    @Test func someoneGamDoesntSayItSetIsFailedAndRetriedOneAtATime() async throws {
+        try await connect()
+        let unsaid = try wrapped("if [ \"$1\" = csv ]; then '\(gam.path)' \"$@\" | grep -v dana; exit 0; fi\n")
+        let changes = changes(writer: unsaid)
+        await changes.previewScope(.orgUnit("/Staff"), template: "{name}")
+        await changes.confirmFast(try pending(changes), confirmed)
+        let done = try done(changes)
+        #expect(done.message == "Applied to 2 of 3 users in one GAM call." && done.partial)
+        #expect(done.failures == ["dana@example.com \u{2014} \(SignaturesFast.notSaid)"])
+        let retry = try #require(done.retry)
+        #expect(retry.failed == ["dana@example.com"])
+        await changes.previewRetry(retry)
+        let again = try pending(changes)
+        #expect(again.isRetry && again.people.map(\.primaryEmail) == ["dana@example.com"] && again.fast == nil)
+    }
+
+    /// `test_a_failing_exit_partway_still_writes_only_who_was_read`, stricter here: alice's Gmail off fails her read, and
+    /// nobody is written (the held rows are sent whole or not at all); each is failed for a per-person Retry.
+    @Test func anyoneUnreadMeansNobodyIsWritten() async throws {
+        try await connect()
+        try marker("nogmail/alice@example.com")
+        let changes = changes()
+        await changes.previewScope(.orgUnit("/Staff"), template: "{name}")
+        await changes.confirmFast(try pending(changes), confirmed)
+        #expect(bytes(fastCalls()) == bytes([["file", "-", "print", "signature"]]), "the write never ran")
+        let done = try done(changes)
+        #expect(done.message == "Applied to 0 of 3 users in one GAM call." && done.failedCount == 3)
+        #expect(done.failures.allSatisfy { $0.contains(Executor.notRead) })
+        #expect(try backups.runs().isEmpty, "nothing kept, nothing replaced")
+        #expect(!FileManager.default.fileExists(atPath: state.appending(path: "signature").path))
+    }
+
+    /// `test_a_switch_during_the_read_writes_nothing` (GamGUI's review finding): a domain switch while everyone's read
+    /// stops it before the write.
+    @Test func aSwitchDuringTheReadWritesNothing() async throws {
+        try await connect()
+        let reading = scratch.appending(path: "reading-fast")
+        let slow = try wrapped("[ \"$1\" = file ] && : > '\(reading.path)' && sleep 0.5\n")
+        let changes = changes(writer: slow)
+        await changes.previewScope(.orgUnit("/Staff"), template: "{name}")
+        let pending = try pending(changes)
+        let run = Task { await changes.confirmFast(pending, confirmed) }
+        try await yieldWhile(every: .milliseconds(10)) { !FileManager.default.fileExists(atPath: reading.path) }
+        try await connect("other.example", admin: "admin@other.example")
+        await run.value
+        #expect(bytes(fastCalls()) == bytes([["file", "-", "print", "signature"]]), "the write never ran")
+        #expect(try backups.runs().isEmpty)
+    }
+
+    /// The one-call run is offered only for more than one person, never for a retry, and not when a render can't go
+    /// through GAM's csv (an empty one would clear theirs); the guard counts every person, so the typed count is theirs.
+    @Test func oneCallIsOfferedOnlyWhenEveryRowCanGo() async throws {
+        try await connect()
+        let changes = changes()
+        await changes.previewScope(.orgUnit("/Students"), template: "{name}")
+        #expect(try pending(changes).fast == nil, "one person")
+        await changes.previewScope(.orgUnit("/Staff"), template: "")
+        let refused = try #require(try pending(changes).fast)
+        #expect(!refused.isOffered && refused.refusal?.hasPrefix("One GAM call isn't offered: 3 of them can't go that way") == true)
+        changes.typedCountAbove = 2
+        await changes.previewScope(.orgUnit("/Staff"), template: "{name}")
+        let pending = try pending(changes)
+        let fast = try #require(pending.fast)
+        #expect(!fast.typedCountMatches("") && !fast.typedCountMatches("1") && fast.typedCountMatches("3"))
+        await changes.confirmFast(pending, OperatorConfirmation(confirmed: true, typedCount: "1"))
+        #expect(changes.typedProblem == SignatureChanges.typedCountRefusal(3) && fastCalls().isEmpty)
+    }
 }

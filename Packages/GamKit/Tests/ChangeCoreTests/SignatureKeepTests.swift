@@ -282,6 +282,30 @@ final class SignatureKeepTests {
         #expect(happened().isEmpty)
     }
 
+    /// Roadmap 5.4: the one-call write keeps too, and only exactly its own rows: a keep for other people or other bodies, or
+    /// none, is refused before anything is held.
+    @Test func aOneCallSignatureWriteKeepsExactlyItsRows() async throws {
+        let executor = executor(try gam([:]), keeper: LoggingKeeper(log: log))
+        let rows = [(Self.alice, "A"), (Self.bob, "B")]
+        let people = rows.map { WriteStep.KeepFirst.Person(email: $0.0, setting: $0.1) }
+        let write = GamCommands.setSignaturesCSV(rows: rows)
+        await #expect(throws: Executor.PreviewRefusal.signatureNotKept(step: 0)) {
+            try await executor.preview([WriteStep(write, target: "2 people", summary: "")]).get()
+        }
+        for wrong in [[people[0]], [people[0], .init(email: Self.bob, setting: "C")], []] {
+            await #expect(throws: Executor.PreviewRefusal.badKeep(step: 0)) {
+                try await executor.preview([WriteStep(write, target: "2 people", summary: "", keepFirst: .signatures(people: wrong))]).get()
+            }
+        }
+        let held = try await executor.preview([WriteStep(write, target: "2 people", summary: "", keepFirst: .signatures(people: people))]).get()
+        #expect(held.decision.affectedCount == 2, "the guard counts each person, not the one step")
+        // The digest covers the rows on standard input: the same argv with other rows is another change.
+        let other = GamCommands.setSignaturesCSV(rows: [(Self.alice, "A"), (Self.bob, "Z")])
+        #expect(write.argv == other.argv && HeldPreview.digest(of: [WriteStep(write, target: "", summary: "")])
+                != HeldPreview.digest(of: [WriteStep(other, target: "", summary: "")]))
+        #expect(happened().isEmpty)
+    }
+
     /// What's kept is the signature of the account the step's own write replaces, beside what that write sets: a keep for
     /// anyone or anything else, or on an account the run makes, is refused at the preview.
     @Test func aKeepIsOnlyItsOwnWritesSignature() async throws {
