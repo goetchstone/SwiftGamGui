@@ -69,6 +69,13 @@ public struct GamWrite: GamCommand {
         case .renameUser:
             return argv.count > 2 && PythonText.lower(output).contains("user: \(PythonText.lower(argv[2])),") ? nil
                 : "GAM exited without saying it did this, so it may not have happened. Look the person up on Users."
+        case .createSharedDrive:
+            // GAM prints the new drive's ID; without it the drive may or may not exist (a refused token exits 0 without a word).
+            return PythonText.lower(output).contains("shared drive id: ") ? nil
+                : "GAM exited without saying it did this, so it may not have happened. Look for it on Shared Drives before creating it again."
+        case .renameSharedDrive:
+            return argv.count > 3 && PythonText.lower(output).contains("shared drive id: \(PythonText.lower(argv[3]))") ? nil
+                : "GAM exited without saying it did this, so it may not have happened. Look at its name on Shared Drives."
         case .exportToSheet:
             // An exit 0 that printed no link is no answer: whether a Sheet was made can't be told (plan F4, GamGUI's `verify`).
             return SheetExport.sheetURL(output).isEmpty ? SheetExport.noLink : nil
@@ -145,7 +152,7 @@ public enum WriteAction: String, Sendable, CaseIterable {
     /// Many signatures in one GAM call (roadmap 5.4, GamGUI #193).
     case setSignaturesFast = "set_signatures_fast"
     /// The closed list of Builder writes (roadmap 5.1, GamGUI #189).
-    case renameUser, deleteGroup, createAdmin
+    case renameUser, deleteGroup, createAdmin, createSharedDrive, renameSharedDrive
     /// A read's table to a new Google Sheet in the connected admin's Drive (plan F4): named as GamGUI's record names it, so both
     /// apps' logs read alike and Files finds either's.
     case exportToSheet = "export_to_sheet"

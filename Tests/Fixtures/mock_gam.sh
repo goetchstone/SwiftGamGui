@@ -2905,6 +2905,43 @@ if [ "${1:-}" = "delete" ] && [ "${2:-}" = "drivefileacl" ]; then
   exit 0
 fi
 
+# Ported from GamGUI's mock (#189).
+# Create and rename a shared drive (roadmap 5.1), createSharedDrive and updateSharedDrive at the 7.52.05 tag, as the app
+# sends them:
+#   user <u> create shareddrive <Name>                 as that person, who becomes its Manager
+#   update shareddrive shareddriveid <id> name <Name>  as the admin, useDomainAdminAccess
+# The name is a getString with checkBlank: blank is a usage error (2). Create: an address that isn't a user fails at its
+# token (50); GAM_MOCK_STATE/no_drive_create is the admin's policy (userCannotCreateTeamDrives, 50); a name another drive has
+# is created anyway (Drive doesn't check). Rename: a drive Google doesn't have is entityActionFailedWarning (50). Under
+# GAM_MOCK_STATE drives_created.tsv and drives_renamed.tsv keep what was done. Wording approximate.
+if [ "${1:-}" = "user" ] && [ "${3:-}" = "create" ] && [ "${4:-}" = "shareddrive" ]; then
+  [ $# -eq 5 ] || not_modelled "create shareddrive with options"
+  case "$5" in *[![:space:]]*) ;; *) usage_error "Blank argument: Expected <Name>" ;; esac
+  known_user "$(lower "$2")" || not_a_user "$2" Create
+  if [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/no_drive_create" ]; then
+    printf 'User: %s, Request ID: 6f1c0d2e-0000-4000-8000-000000000001, Create Failed: The user does not have sufficient permissions to create shared drives.\n' "$2" 1>&2
+    exit 50
+  fi
+  n=1
+  if [ -n "${GAM_MOCK_STATE:-}" ]; then
+    n=$(( $(wc -l < "$GAM_MOCK_STATE/drives_created.tsv" 2>/dev/null || echo 0) + 1 ))
+    printf '%s\t%s\n' "$(lower "$2")" "$5" >> "$GAM_MOCK_STATE/drives_created.tsv"
+  fi
+  printf 'User: %s, Shared Drive Name: %s, Shared Drive ID: 0ANEW%sUk9PVA, Created\n' "$(lower "$2")" "$5" "$n"
+  exit 0
+fi
+if [ "${1:-}" = "update" ] && [ "${2:-}" = "shareddrive" ]; then
+  { [ $# -eq 6 ] && [ "$3" = shareddriveid ] && [ "$5" = name ]; } || not_modelled "update shareddrive other than shareddriveid <id> name <name>"
+  case "$6" in *[![:space:]]*) ;; *) usage_error "Blank argument: Expected <Name>" ;; esac
+  if ! drive_known "$4"; then
+    printf 'User: %s, Shared Drive ID: %s, Update Failed: Shared drive not found: %s\n' "$(drives_admin)" "$4" "$4" 1>&2
+    exit 50
+  fi
+  [ -z "${GAM_MOCK_STATE:-}" ] || printf '%s\t%s\n' "$4" "$6" >> "$GAM_MOCK_STATE/drives_renamed.tsv"
+  printf 'User: %s, Shared Drive Name: %s, Shared Drive ID: %s, Updated: name\n' "$(drives_admin)" "$6" "$4"
+  exit 0
+fi
+
 # A shared drive's files (roadmap 4.7, the Builder's "List a shared drive's files"), read as a member: only `select
 # shareddriveid <id> showownedby any fields <the app's fields> formatjson`. Data: shared_drive_files.tsv (drive id, a file).
 # Someone not among the drive's members (shared_drive_acls.tsv, or GAM_MOCK_STATE's copy once a member change made one) gets

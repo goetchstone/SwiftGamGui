@@ -254,6 +254,21 @@ extension CuratedCommand {
                            "Search a user's Drive by a Drive query — by name, type, owner, sharing, or modified date…") { v in
                 .read(GamCommands.printFileList(email: v("email"), query: v("query")))
             },
+            // Create and rename a shared drive (roadmap 5.1, GamGUI #189): low risk, each one call.
+            CuratedCommand("build.create_shared_drive", "Shared Drives", "", "Create a shared drive", .change,
+                           [person("email", "Created as (its first Manager)"), field("name", "Name", .text)],
+                           "gam user <email> create shareddrive <name>",
+                           "Create a shared drive as this person, who becomes its only Manager; add others on Shared drives. Google "
+                           + "allows two drives with one name, so look there first. GAM prints the new drive's ID.") { v in
+                .write(try GamCommands.createSharedDrive(email: v("email"), name: v("name")))
+            },
+            CuratedCommand("build.rename_shared_drive", "Shared Drives", "", "Rename a shared drive", .change,
+                           [field("drive_id", "Shared drive ID", .text, placeholder: "0AB\u{2026}Uk9PVA (Shared drives lists each one's)"),
+                            field("name", "New name", .text)],
+                           "gam update shareddrive shareddriveid <drive ID> name <name>",
+                           "Rename a shared drive, as the admin: no need to be a member of it. Its files and members stay as they are.") { v in
+                .write(try GamCommands.renameSharedDrive(driveID: v("drive_id"), name: v("name")))
+            },
             // A shared drive's files (roadmap 4.7, GamGUI #187), read as one of its members.
             CuratedCommand("build.shared_drive_files", "Shared Drives", "", "List a shared drive's files", .read,
                            [person("email", "A member of the drive"),
