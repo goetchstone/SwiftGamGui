@@ -185,9 +185,6 @@ struct GoldenArgvTests {
 
     /// GamGUI builders deliberately not ported.
     static let notPorted: [String: String] = [
-        "print_folder_files": "Move a folder into a shared drive (GamGUI #188, roadmap 4.8): not built here yet",
-        "move_folder_to_shared_drive": "Move a folder into a shared drive (GamGUI #188, roadmap 4.8): not built here yet",
-        "copy_rest_of_folder_to_shared_drive": "Move a folder into a shared drive (GamGUI #188, roadmap 4.8): not built here yet",
         "create_shared_drive": "Create a shared drive (GamGUI #189, roadmap 5.1): not built here yet",
         "rename_shared_drive": "Rename a shared drive (GamGUI #189, roadmap 5.1): not built here yet",
     ]
@@ -337,6 +334,12 @@ struct GoldenArgvTests {
         "rename_org_unit": { GamCommands.renameOrgUnit(orgUnit: try $0.text("org_unit"), name: try $0.text("name")) },
         "delete_org_unit": { GamCommands.deleteOrgUnit(orgUnit: try $0.text("org_unit")) },
         "rename_user": { try GamCommands.renameUser(email: $0.string("email"), newEmail: $0.string("new_email")) },
+        "print_folder_files": { try GamCommands.printFolderFiles(email: $0.string("email"), folderID: $0.string("folder_id")) },
+        "move_folder_to_shared_drive": { try GamCommands.moveFolderToSharedDrive(email: $0.string("email"), folderID: $0.string("folder_id"),
+                                                                                 driveID: $0.string("drive_id")) },
+        "copy_rest_of_folder_to_shared_drive": { try GamCommands.copyRestOfFolderToSharedDrive(email: $0.string("email"),
+                                                                                               folderID: $0.string("folder_id"),
+                                                                                               driveID: $0.string("drive_id")) },
         "delete_group": { try GamCommands.deleteGroup(group: $0.string("group")) },
         "create_admin": { try GamCommands.createAdmin(email: $0.string("email"), role: $0.string("role"), orgUnit: $0.text("org_unit")) },
         "parallel_print_forward": { _ in GamCommands.parallelPrintForward(people: []) },

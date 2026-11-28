@@ -335,6 +335,34 @@ public final class UserAccess {
         })
     }
 
+    /// What `folderID` holds, by who owns each file, read now as its owner (roadmap 4.8: the move's preview, GamGUI's
+    /// `folder_count`). The read lists the folder itself, so a folder that was read is never "no row": exit 60 (printFileList's
+    /// no row, which it also gives a folder it couldn't find) is unknown with what GAM said, and so is output without the
+    /// folder's own row or the `id` titles. Any other failure is GAM's words.
+    public func folderCount(_ email: String, folderID: String, domains: [String], in pinned: Domain? = nil)
+        async -> Result<SharedDrives.FolderCount, Problem> {
+        guard let read = try? GamCommands.printFolderFiles(email: email, folderID: folderID) else {
+            return .failure(Problem(summary: "“\(folderID)” isn't a folder ID, or “\(email)” isn't one address."))
+        }
+        guard let domain = pinned ?? setup.active, let runner else { return .failure(Problem(summary: "Connect a domain on Setup first.")) }
+        let result: GamResult
+        do { result = try await runner.run(read, as: domain, extraEnvironment: environment) } catch {
+            return .failure(Problem(summary: SetupModel.message(for: error)))
+        }
+        if result.exitCode == 60 {
+            let said = PythonText.lines(PythonText.strip(result.stderr)).last.map { " GAM said: \(PythonText.strip($0))" } ?? ""
+            return .failure(Problem(summary: "GAM didn't list folder \(folderID): it may not exist, or \(email) can't see it.\(said)"))
+        }
+        guard result.exitCode == 0 else {
+            return .failure(Problem(summary: GamError(exitCode: result.exitCode, stderr: result.stderr, argv: read.argv).message))
+        }
+        guard !result.stdoutTruncated, let records = GamOutput.titled(result.stdout, column: "id") else {
+            return .failure(Problem(summary: "GAM ended without listing the folder, so what would move can't be told."))
+        }
+        return SharedDrives.countFolder(records, email: email, domains: domains, folderID: folderID)
+            .mapError { Problem(summary: $0.why) }
+    }
+
     /// One shared drive's members, read now: a run that didn't print that drive's one row is unread (`SharedDrives.members`).
     public func driveMembers(_ driveID: String, in pinned: Domain? = nil) async -> Result<[SharedDrives.Member], Problem> {
         guard let read = try? GamCommands.printDriveMembers(driveID: driveID) else {

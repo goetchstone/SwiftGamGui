@@ -720,6 +720,52 @@ public enum GamCommands {
         return GamWrite(["delete", "drivefileacl", "shareddriveid", driveID, "id:\(permissionID)"], action: .removeDriveMember)
     }
 
+    // MARK: a folder of mixed ownership into a shared drive (roadmap 4.8, GamGUI #188)
+
+    /// GamGUI's `_folder_and_drive`: one address, a folder ID and (for the writes) a shared drive ID. The folder is named
+    /// `id:<ID>`, so a DriveFileEntity keyword can't stand for a whole Drive, and Drive's own aliases for one are refused.
+    static func folderAndDrive(_ email: String, _ folderID: String, _ driveID: String? = nil) throws {
+        guard isOneAddress(email) else { throw Invalid.argument("'\(email)' isn't one email address") }
+        guard SharedDrives.isItemID(folderID) else {
+            throw Invalid.argument("a folder ID is letters, digits, - and _ (the end of the folder's Drive address)")
+        }
+        if SharedDrives.driveIDAliases.contains(PythonText.lower(folderID)) {
+            throw Invalid.argument("'\(folderID)' is Drive's name for a whole Drive, not a folder: name the folder by its ID")
+        }
+        if let driveID, !SharedDrives.isItemID(driveID) {
+            throw Invalid.argument("a shared drive ID is letters, digits, - and _ (Shared drives lists each drive's)")
+        }
+    }
+
+    /// Every item under the folder at any depth, whoever owns it, and the folder itself (`showparent`): printFileList exits 60
+    /// both for an empty folder and for one it couldn't find, so only the folder's own row tells them apart. The trash is left
+    /// out, as the copy leaves it.
+    public static func printFolderFiles(email: String, folderID: String) throws -> GamRead {
+        try folderAndDrive(email, folderID)
+        return GamRead(["user", email, "print", "filelist", "select", "id:\(folderID)", "showparent", "showownedby", "any",
+                        "excludetrashed", "fields", SharedDrives.folderFileFields.joined(separator: ","), "formatjson"])
+    }
+
+    /// moveDriveFile into a shared drive: GAM makes the folders again there and moves each file. `retainsourcefolders` keeps
+    /// the originals, which still hold what couldn't move; `duplicatefolders merge` joins a same-named folder in the drive;
+    /// `duplicatefiles skip` leaves a file whose name is taken, where GAM's default would replace the older one.
+    public static func moveFolderToSharedDrive(email: String, folderID: String, driveID: String) throws -> GamWrite {
+        try folderAndDrive(email, folderID, driveID)
+        return GamWrite(["user", email, "move", "drivefile", "id:\(folderID)", "teamdriveparentid", driveID,
+                         "retainsourcefolders", "duplicatefolders", "merge", "duplicatefiles", "skip"], action: .moveFolderToSharedDrive)
+    }
+
+    /// copyDriveFile, after the move: what is still in the folder and someone else owns is copied into the same folders in the
+    /// drive; a file already there by name is skipped, so a second run copies nothing twice. `excludetrashed`: the copy lists a
+    /// folder's children trashed or not. `suppressnotselectedmessages`: each of the person's own files left behind would
+    /// otherwise be a NOT_SELECTED warning, exit 51, on a copy that did its work.
+    public static func copyRestOfFolderToSharedDrive(email: String, folderID: String, driveID: String) throws -> GamWrite {
+        try folderAndDrive(email, folderID, driveID)
+        return GamWrite(["user", email, "copy", "drivefile", "id:\(folderID)", "teamdriveparentid", driveID, "recursive",
+                         "copysubfilesownedby", "others", "duplicatefolders", "merge", "duplicatefiles", "skip", "excludetrashed",
+                         "suppressnotselectedmessages"], action: .copyFolderToSharedDrive)
+    }
+
     /// A shared drive's files, read as one of its members (`<user> print filelist select shareddriveid <id> showownedby any`):
     /// GAM keeps only the person's own files unless told otherwise, and a shared drive's are owned by no one.
     public static func printSharedDriveFiles(email: String, driveID: String) throws -> GamRead {

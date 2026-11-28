@@ -320,6 +320,21 @@ character), is refused. `Executor.exportBatch` records `sequence_export` (each s
 and a record that can't be written gives none. The file runs outside the guard and audit, and the sheet says so. Held to
 `SequenceExportTests` and `BuilderChangesTests`.
 
+## A folder of mixed ownership into a shared drive (roadmap 4.8, 2026-11-28; GamGUI #188)
+Two curated steps, queued in that order: **Move a folder into a shared drive** (destructive; `user <u> move drivefile
+id:<folder> teamdriveparentid <drive> retainsourcefolders duplicatefolders merge duplicatefiles skip`) and **Copy what didn't
+move** (low; `copy drivefile … recursive copysubfilesownedby others duplicatefolders merge duplicatefiles skip excludetrashed
+suppressnotselectedmessages`). The folder is `id:<ID>`, and Drive's names for a whole Drive (`root`, `rootid`,
+`appDataFolder`) are refused. Before either is held, alone or in a sequence, `BuilderChanges.folderMoves` reads, for each
+person, folder and drive the held argv names (`SharedDrives.folderMove`): what the folder holds by owner (`UserAccess.folderCount`:
+`print filelist select id:<folder> showparent showownedby any excludetrashed fields id,name,mimeType,owners formatjson`,
+`SharedDrives.countFolder`) and whether the person is a Manager of the drive in their own name (`managesDirectly`; GAM's
+verifyorganizer). A count without the folder's own row, an item it can't place, or exit 60 is unknown, never an empty folder; a
+members read that failed is said; only "not a Manager" refuses. The note (`folderNote`, GamGUI's `_folder_move_note.html`) says
+what the move takes, what Google may refuse, what step 2 copies, and that neither step has a dry run or an undo. The mock's
+folder read and move/copy handlers are GamGUI's, with `mock_gam/drive_folders.tsv`. Held to `FolderMoveTests`. Not run live (a
+throwaway folder holding a file from outside the domain).
+
 ## The closed list of writes (roadmap 5.1, 2026-11-27; GamGUI #189)
 Rename a user (`update user <u> primaryemail <new> noactionifalias`), delete a group (`delete group <g> noactionifalias`) and add
 an admin role (`create admin <holder> <role> customer|org_unit <unit>`), each destructive and curated. `noactionifalias` makes GAM

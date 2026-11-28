@@ -96,14 +96,20 @@ public final class BuilderChanges {
             guard request == asked else { return }
             state = .problem(text)
         }
-        let step: WriteStep, warning: String?
+        let step: WriteStep, built: String?
         switch self.step(command, values: values) {
-        case .success(let built): (step, warning) = built
+        case .success(let made): (step, built) = made
         case .failure(let why): return refuse(why.words)
         }
         guard let executor else {
             return refuse("This build has no GAM. Build the app again after running scripts/fetch_gam.sh.")
         }
+        // Roadmap 4.8: a folder's move or copy is counted and its Manager checked before it's held.
+        let (folderNotes, refusals) = await folderMoves([step], in: tenant?.domain)
+        guard request == asked else { return }
+        if !refusals.isEmpty { return refuse(refusals.joined(separator: " ")) }
+        let shown = ([built].compactMap { $0 } + folderNotes).joined(separator: "\n")
+        let warning: String? = shown.isEmpty ? nil : shown
         let held = await executor.preview([step], confirmStep: true, expecting: tenant, title: "\(command.name) for \(step.target)")
         guard request == asked else {
             if case .success(let preview) = held { await executor.discard(preview.id) }
@@ -115,6 +121,84 @@ public final class BuilderChanges {
         case .failure(let refusal):
             refuse(refusal.message)
         }
+    }
+
+    // MARK: a folder into a shared drive (roadmap 4.8, GamGUI's `_folder_moves`)
+
+    /// Each folder move or copy in `steps` (`SharedDrives.folderMove`), read before it's held: what the folder holds by owner,
+    /// and whether the person is a Manager of the drive in their own name (GAM moves or copies into a drive only as one). A read
+    /// that failed is said, never an empty folder or a Manager; only a read that answered "not a Manager" refuses.
+    func folderMoves(_ steps: [WriteStep], in domain: Domain?) async -> (notes: [String], refusals: [String]) {
+        var found: [(email: String, folder: String, drive: String)] = []
+        for step in steps where Self.folderCommands.contains(step.about["command"] ?? "") {
+            guard let move = SharedDrives.folderMove(of: step.shownArgv) else { continue }
+            if !found.contains(where: { $0 == move }) { found.append(move) }
+        }
+        guard !found.isEmpty, let access else { return ([], []) }
+        let domains = await access.tenantDomains()
+        var notes: [String] = [], refusals: [String] = []
+        // Drive knows the person by their primary address: an alias typed is them (the directory as read), never "someone else".
+        let primaries = directory.users.map(GamUser.primaryOfEveryAddress) ?? [:]
+        for move in found {
+            let person = primaries[PythonText.lower(PythonText.strip(move.email))] ?? move.email
+            async let counted = access.folderCount(person, folderID: move.folder, domains: domains, in: domain)
+            async let read = access.driveMembers(move.drive, in: domain)
+            let (count, members) = await (counted, read)
+            var manager: Bool?, managerWhy = ""
+            switch members {
+            case .success(let members): manager = SharedDrives.managesDirectly(person, members)
+            case .failure(let problem): managerWhy = problem.summary
+            }
+            if manager == false {
+                refusals.append("\(move.email) isn't a Manager of that shared drive in their own name, and GAM moves or copies into a "
+                                + "drive only as one: make them a Manager on the Shared Drives screen first.")
+            }
+            let countWhy: String
+            if case .failure(let problem) = count { countWhy = problem.summary } else { countWhy = "" }
+            notes.append(Self.folderNote(email: move.email, folder: move.folder, domains: domains, count: try? count.get(),
+                                         countWhy: countWhy, manager: manager, managerWhy: managerWhy))
+        }
+        return (notes, refusals)
+    }
+
+    /// The two curated commands a folder's move counts and checks (GamGUI's `MOVE_FOLDER`, `COPY_FOLDER_REST`).
+    static let folderCommands: Set<String> = ["build.move_folder_to_shared_drive", "build.copy_rest_of_folder_to_shared_drive"]
+
+    /// GamGUI's `_folder_move_note.html`, in words: what the folder holds by owner, and what GAM can't take back.
+    nonisolated static func folderNote(email: String, folder: String, domains: [String], count: SharedDrives.FolderCount?, countWhy: String,
+                                       manager: Bool?, managerWhy: String) -> String {
+        func n(_ count: Int, _ one: String, _ many: String) -> String { count == 1 ? one : many }
+        var lines: [String] = []
+        switch count {
+        case nil:
+            lines.append("Couldn't count what folder \(folder) holds. \(countWhy) What would move and what would be copied is unknown.")
+        case let c? where c.files == 0:
+            lines.append("Folder \(folder) holds no files" + (c.folders > 0 ? ", only \(c.folders) folder\(n(c.folders, "", "s"))" : "") + ".")
+        case let c?:
+            lines.append("Folder \(folder) holds \(c.files) file\(n(c.files, "", "s"))"
+                         + (c.folders > 0 ? " in \(c.folders) folder\(n(c.folders, "", "s")) below it" : "") + ":")
+            if c.mine > 0 {
+                lines.append("\u{2022} \(c.mine) \(email) owns: the move takes \(n(c.mine, "it", "them")) into the drive.")
+            }
+            if c.domain > 0 {
+                lines.append("\u{2022} \(c.domain) someone else in the domain owns: Google moves \(n(c.domain, "it", "each")) only if \(email) may "
+                             + "and the owner is a member of the drive. A file it won't move stays where it is, and step 2 copies it.")
+            }
+            if c.outside > 0 {
+                let more = c.outside - c.outsideNames.count
+                lines.append("\u{2022} \(c.outside) owned outside \(domains.joined(separator: ", ")), which Google never moves into a shared "
+                             + "drive: step 2 copies \(n(c.outside, "it", "them")), and \(n(c.outside, "the original stays with its owner", "the originals stay with their owners")) "
+                             + "(\(c.outsideNames.joined(separator: ", "))\(more > 0 ? " and \(more) more" : ""))." )
+            }
+        }
+        if manager == nil {
+            lines.append("Couldn't check that \(email) is a Manager of the drive. \(managerWhy) GAM refuses to move or copy into it unless "
+                         + "they are, in their own name.")
+        }
+        lines.append("Files in the trash aren't counted or copied, and the move reports each as not moved, so a folder holding one reads "
+                     + "as failed. GAM has no dry run for either step, and a run that stops partway can't be undone: what moved stays "
+                     + "moved. The original folders stay in \(email)'s Drive.")
+        return lines.joined(separator: "\n")
     }
 
     /// Why a command couldn't be built or checked, in words.
@@ -431,7 +515,16 @@ public final class BuilderChanges {
             return
         }
         let n = steps.count
-        let warning = (sequence.compactMap { queued in queued.warning.map { "\(queued.name): \($0)" } } + notes).joined(separator: "\n")
+        resolving = true
+        let (folderNotes, refusals) = await folderMoves(steps, in: tenant.domain)
+        resolving = false
+        guard request == asked else { return }
+        if !refusals.isEmpty {
+            state = .problem(refusals.joined(separator: " "))
+            return
+        }
+        let warning = (sequence.compactMap { queued in queued.warning.map { "\(queued.name): \($0)" } } + notes + folderNotes)
+            .joined(separator: "\n")
         heldLabels = labels
         // A step filled in from a read counts toward the guard's typed count, as a bulk run's people do.
         let bound = sequence.contains { if case .bound = $0.kind { true } else { false } }

@@ -182,4 +182,99 @@ public enum SharedDrives {
 
     /// GamGUI's `SHARED_DRIVE_FILE_FIELDS`.
     public static let fileFields = ["id", "name", "mimeType", "modifiedTime", "lastModifyingUser", "webViewLink"]
+
+    // MARK: a folder of mixed ownership into a shared drive (roadmap 4.8, GamGUI #188)
+
+    public static let folderMime = "application/vnd.google-apps.folder"
+    /// What a folder's move counts: each item's kind and who owns it.
+    public static let folderFileFields = ["id", "name", "mimeType", "owners"]
+    /// File IDs that are a whole Drive, never one folder: the Drive API's aliases and GAM's own (`rootid`, even after `id:`).
+    static let driveIDAliases: Set<String> = ["root", "rootid", "appdatafolder"]
+    /// The files owned outside the domain a preview names; the rest are counted.
+    public static let namesShown = 5
+
+    /// GamGUI's `FolderCount`: what a folder holds, by who owns each file. What the move takes (the person's own), what Google
+    /// may refuse (someone else's in the domain), and what must be copied (owned outside the domain, which Google never moves
+    /// into a shared drive). Folders are made again in the drive, so they are counted apart.
+    public struct FolderCount: Sendable, Equatable {
+        public let mine: Int
+        public let domain: Int
+        public let outside: Int
+        public let folders: Int
+        public let outsideNames: [String]
+        public var files: Int { mine + domain + outside }
+    }
+
+    /// Why a folder couldn't be counted, in words: unknown, never an empty folder.
+    public struct Unknown: Error, Sendable, Equatable {
+        public let why: String
+    }
+
+    /// GamGUI's `count_folder`: `print filelist select id:<folder> showparent … excludetrashed`, read as the folder's owner. The
+    /// folder's own row must be there: without it GAM didn't read the folder, never "empty". An item without an ID, a kind or
+    /// an owner can't be placed (one in a shared drive has no owner), so the count is unknown rather than a guess.
+    public static func countFolder(_ records: [GamOutput.Record], email: String, domains: [String], folderID: String)
+        -> Result<FolderCount, Unknown> {
+        let me = PythonText.lower(PythonText.strip(email)), lowered = domains.map(PythonText.lower)
+        guard records.contains(where: { $0["id"]?.string == folderID }) else {
+            return .failure(Unknown(why: "GAM didn't list folder \(folderID) itself: it may not exist, or \(email) can't see it."))
+        }
+        var mine = 0, domain = 0, outside = 0, folders = 0, names: [String] = []
+        for record in records {
+            guard let id = record["id"]?.string, !id.isEmpty, let mime = record["mimeType"]?.string, !mime.isEmpty else {
+                return .failure(Unknown(why: "GAM listed something in the folder without its ID or kind, so what would move can't be told."))
+            }
+            if id == folderID, mime == folderMime { continue }   // the folder itself; a file's ID names that file, which counts
+            if mime == folderMime {
+                folders += 1
+                continue
+            }
+            // A name is someone else's text, shown in the preview: a line break or other control in it can't fake a line there.
+            let given = record["name"]?.string ?? ""
+            let name = shown(given.isEmpty ? id : given)
+            var owner = ""
+            if case .array(let owners)? = record["owners"], case .object(let first)? = owners.first {
+                owner = PythonText.lower(PythonText.strip(first["emailAddress"]?.string ?? ""))
+            }
+            guard !owner.isEmpty else {
+                return .failure(Unknown(why: "GAM listed \(name) without its owner (a file already in a shared drive has none), so "
+                                        + "what would move can't be told."))
+            }
+            if owner == me {
+                mine += 1
+            } else if let host = owner.split(separator: "@").last.map(String.init),
+                      lowered.contains(where: { host == $0 || host.hasSuffix("." + $0) }) {   // the domain's, or a subdomain's
+                domain += 1
+            } else {
+                outside += 1
+                if names.count < namesShown { names.append(name) }
+            }
+        }
+        return .success(FolderCount(mine: mine, domain: domain, outside: outside, folders: folders, outsideNames: names))
+    }
+
+    /// `text` with each control or format character (a line break, a bidi override) a space.
+    static func shown(_ text: String) -> String {
+        var out = String.UnicodeScalarView()
+        for scalar in text.unicodeScalars {
+            let kind = scalar.properties.generalCategory
+            out.append(kind == .control || kind == .format ? " " : scalar)
+        }
+        return String(out)
+    }
+
+    /// GamGUI's `folder_move_of`: (person, folder ID, drive ID) of a move or copy `GamCommands` built for 4.8, else nil. Read off
+    /// the argv the preview holds, so the count is of what will run.
+    public static func folderMove(of argv: [String]) -> (email: String, folder: String, drive: String)? {
+        guard argv.count >= 7, argv[0] == "user", ["move", "copy"].contains(argv[2]), argv[3] == "drivefile",
+              argv[4].hasPrefix("id:"), argv[5] == "teamdriveparentid" else { return nil }
+        return (argv[1], String(argv[4].dropFirst(3)), argv[6])
+    }
+
+    /// GamGUI's `manages_directly`: a Manager of the drive in their own name. GAM's verifyorganizer asks Drive for the person's
+    /// own permission, so a Manager only through a group is refused.
+    public static func managesDirectly(_ email: String, _ members: [Member]) -> Bool {
+        let me = PythonText.lower(PythonText.strip(email))
+        return members.contains { $0.kind == "user" && PythonText.lower(PythonText.strip($0.email)) == me && $0.manages }
+    }
 }
