@@ -59,6 +59,35 @@ public struct DirectoryReport: Sendable, Identifiable {
     }
 }
 
+extension DirectoryReport {
+    /// The completeness lists that download as a sheet to fill in (GamGUI's `FILL_IN_REPORTS`, roadmap 3.3).
+    public static let fillIn: Set<String> = ["no_title", "no_department", "no_phone", "no_location"]
+    /// GamGUI's `FILL_IN_COLUMNS`: the columns Change from a CSV reads back (it ignores `name` and `location`, as GamGUI's does).
+    public static let fillInColumns = ["email", "name", "title", "department", "phone", "location", "org_unit"]
+
+    /// GamGUI's `fill_in_rows`, header first: one row a person, by address, the values the directory holds now.
+    public var fillInRows: [[String]] {
+        [Self.fillInColumns] + byAddress.map { [$0.primaryEmail, $0.fullName, $0.title, $0.department, $0.phone, $0.location, $0.orgUnitPath] }
+    }
+
+    /// GamGUI's `bucket_csv`, header first: everyone the list counts, by address.
+    public var listRows: [[String]] {
+        [["email", "name", "org_unit", "suspended"]]
+            + byAddress.map { [$0.primaryEmail, $0.fullName, $0.orgUnitPath, $0.suspended ? "yes" : ""] }
+    }
+
+    /// The file name GamGUI gives it: the key, `_` as `-`.
+    public var fileName: String { key.replacingOccurrences(of: "_", with: "-") + ".csv" }
+
+    /// Python's `sorted(key=lambda u: u.primary_email.lower())`: stable, by code point.
+    private var byAddress: [GamUser] {
+        users.enumerated().sorted { a, b in
+            let x = PythonText.lower(a.element.primaryEmail), y = PythonText.lower(b.element.primaryEmail)
+            return x != y ? x.unicodeScalars.lexicographicallyPrecedes(y.unicodeScalars) : a.offset < b.offset
+        }.map(\.element)
+    }
+}
+
 /// GamGUI's `_parse_dt`: Python's `datetime.fromisoformat` after `strip()` and "Z" read as UTC, a time
 /// without an offset taken as UTC. Held to Python's own answers by the `logins` table in
 /// `Tests/Fixtures/reports.json`. The forms read:

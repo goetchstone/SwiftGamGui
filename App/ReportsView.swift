@@ -1,3 +1,5 @@
+import AppKit
+import ChangeCore
 import Directory
 import GamEngine
 import Setup
@@ -529,6 +531,9 @@ private struct ReportPeople: View {
     /// No 2SV and No recovery's Email Them a Reminder… (roadmap 3.3); nil for the other reports.
     var reminders: BucketReminders? = nil
     @State private var reminding = false
+    @Environment(SavedFiles.self) private var savedFiles: SavedFiles?
+    /// What the last export did, for this list.
+    @State private var exported: (text: String, failed: Bool, key: String)?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -578,11 +583,51 @@ private struct ReportPeople: View {
                         .disabled(selection == nil)
                         .accessibilityHint("Opens the selected person's page on Users.")
                     Text("Or double-click a person.").foregroundStyle(.secondary)
+                    Spacer()
+                    // GamGUI's /reports/list.csv and /reports/fill-in.csv (2.10's sweep).
+                    Button("Export CSV\u{2026}") { export(report.listRows, name: report.fileName) }
+                        .accessibilityLabel("Export \(report.title) as CSV, \(report.count.formatted()) \(report.count == 1 ? "person" : "people")")
+                        .accessibilityHint("Saves everyone on this list: address, name, org unit, suspended.")
+                    if DirectoryReport.fillIn.contains(report.key) {
+                        Button("Export to Fill In\u{2026}") { export(report.fillInRows, name: report.fileName) }
+                            .accessibilityHint("Saves this list with each person's title, department, phone, location and org unit, "
+                                               + "to fill in and bring back with Change from a CSV on Users.")
+                    }
                 }
                 .font(.callout)
                 .padding(8)
+                if let exported, exported.key == report.key {
+                    Label(exported.text, systemImage: exported.failed ? "exclamationmark.triangle.fill" : "checkmark.circle.fill")
+                        .symbolRenderingMode(.multicolor).font(.callout).padding([.horizontal, .bottom], 8)
+                }
             }
         }
+    }
+
+    /// A list as a CSV to a file the operator picks: private (0600, it names people), formula-safe, whole or not at all.
+    private func export(_ rows: [[String]], name: String) {
+        let panel = NSSavePanel()
+        panel.nameFieldStringValue = name
+        panel.allowedContentTypes = [.commaSeparatedText]
+        panel.canCreateDirectories = true
+        panel.message = report.title
+        let key = report.key, title = report.title, count = rows.count - 1
+        let finish: (NSApplication.ModalResponse) -> Void = { response in
+            guard response == .OK, let destination = panel.url else { return }
+            Task {
+                let text: String, failed: Bool
+                do {
+                    try await Task.detached { try AuditExport.writePrivately(AuditExport.csv(rows), to: destination) }.value
+                    savedFiles?.record(destination, what: "Reports: \(title)")
+                    (text, failed) = ("Exported \(count.formatted()) \(count == 1 ? "person" : "people") to \(destination.lastPathComponent).", false)
+                } catch {
+                    (text, failed) = ("Couldn't export to \(destination.lastPathComponent): \(error.localizedDescription)", true)
+                }
+                exported = (text, failed, key)
+                AccessibilityNotification.Announcement(text).post()
+            }
+        }
+        if let window = NSApp.keyWindow { panel.beginSheetModal(for: window, completionHandler: finish) } else { panel.begin(completionHandler: finish) }
     }
 
     /// GamGUI's badges, in words: an admin, or a suspended account, outside the report that is about it.

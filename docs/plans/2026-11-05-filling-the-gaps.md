@@ -38,6 +38,12 @@ No code and no test session: use the app, and record what ran when it comes up. 
 
 ## What's left of GamGUI
 
+**The sweep the other way (roadmap 2.10, 2026-11-28):** every GamGUI route at its main (202, about 60 capabilities) walked against
+this app's screens, each "missing" checked by grepping for its builder and words. Everything else below was built since. Left:
+Reports' Export CSV… and Export to Fill In… (built with this note); the Builder's click on an address for its follow-ups
+(`ROW_ACTIONS`) and External Only, both listed in `docs/domains/catalog-builder.md`; and, in flight, shared drives (4.7, 5.1's
+pair, 4.8) and the calendar index (GamGUI #200), which finding a calendar by name and Onboarding's calendar picker wait on.
+
 Compared route by route and builder by builder on 2026-11-07, by name and code, nothing run. Each has no way to run here. Built when
 asked, each on its own, because these earn their place by being used.
 

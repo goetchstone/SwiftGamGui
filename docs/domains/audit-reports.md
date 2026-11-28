@@ -341,6 +341,10 @@ GamGUI #178 (`82290f0`): each F2 named report is also a one-step run of its cata
   "Admin" or "Suspended" in words outside the report about it, as GamGUI's badges). Show in Users (or a
   double-click) opens the person's page on Users (`UsersView.requested`). No GAM call of its own; ⌘R reloads
   the directory.
+- **Export CSV…** saves everyone a report counts (GamGUI's `/reports/list.csv`: email, name, org_unit, suspended), and the four
+  completeness reports' **Export to Fill In…** the columns Change from a CSV reads back (GamGUI's `/reports/fill-in.csv`,
+  `FILL_IN_COLUMNS`), both by address, formula-safe, private (0600), from the same cached directory
+  (`DirectoryReport.listRows`, `fillInRows`; 2.10's sweep). Held to `DirectoryReportTests`.
 - **The usage report** is GamGUI's `/reports/usage`: `report users date <D> parameters
   accounts:used_quota_in_mb,gmail:num_emails_received,gmail:num_emails_sent,drive:num_items_created`, D two
   days ago (UTC), then a day earlier while a day has no rows, six days at most; a failure stops the walk. The
