@@ -2,6 +2,7 @@ import ChangeCore
 import Directory
 import GamEngine
 import SwiftUI
+import UniformTypeIdentifiers
 
 extension UserChanges {
     /// The preview a sheet shows, while one is held.
@@ -266,6 +267,7 @@ struct SignatureScopePreviewSheet: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
+            if let fast = pending.fast { SignatureFastSection(pending: pending, fast: fast, changes: changes, typedCount: typedCount) }
         }
         .formStyle(.grouped)
         .frame(minWidth: 640, idealWidth: 760, minHeight: 600, idealHeight: 780)
@@ -284,6 +286,53 @@ struct SignatureScopePreviewSheet: View {
         // Said on each refusal, a repeated one too: the label alone appears only once.
         .onChange(of: changes.typedRefusals) {
             if let problem = changes.typedProblem { AccessibilityNotification.Announcement(problem).post() }
+        }
+    }
+}
+
+/// Roadmap 5.4's opt-in (GamGUI's "Faster: all N in one GAM call"): the same people as one GAM call, its own held preview,
+/// the same typed count. No live list and no Stop, so its button asks once more; or why it isn't offered.
+private struct SignatureFastSection: View {
+    let pending: SignatureChanges.Pending
+    let fast: SignatureChanges.Fast
+    let changes: SignatureChanges
+    let typedCount: String
+    @State private var asking = false
+
+    private var count: Int { pending.people.count }
+
+    var body: some View {
+        Section {
+            if let refusal = fast.refusal {
+                Label(refusal, systemImage: "info.circle")
+            } else {
+                DisclosureGroup("Faster: all \(count) in one GAM call") {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("GAM reads every current signature in one call and keeps them on this Mac, so Put Back still works, "
+                             + "then sets them all in a second call. Much quicker for many people, but there's no live count and "
+                             + "no Stop: you see who was set when it finishes. Anyone GAM doesn't say it set is listed as failed, "
+                             + "and Retry runs them one at a time. Characters outside plain English (\u{E9}, \u{2014}) are sent "
+                             + "as HTML codes, which show the same in a signature.")
+                            .font(.callout).foregroundStyle(.secondary)
+                        Text(fast.shownCommand)
+                            .font(.caption.monospaced())
+                            .textSelection(.enabled)
+                        Button("Apply to \(count) Users in One GAM Call\u{2026}") { asking = true }
+                            .disabled(changes.isBusy || !fast.typedCountMatches(typedCount))
+                            .accessibilityLabel("Replace the Gmail signatures of \(count) people in one GAM call")
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+        }
+        .confirmationDialog("Set the signature of \(count) people in one GAM call?", isPresented: $asking) {
+            Button("Set \(count) in One Call") {
+                let confirmation = OperatorConfirmation(confirmed: true, typedCount: typedCount)
+                Task { await changes.confirmFast(pending, confirmation) }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("It can't be stopped once it starts.")
         }
     }
 }
@@ -1615,6 +1664,9 @@ struct HiresFromCSVReview: View {
 struct BuilderSequenceSheet: View {
     let changes: BuilderChanges
     let close: () -> Void
+    /// What the last export said, in words.
+    @State private var exported: String?
+    @Environment(SavedFiles.self) private var savedFiles: SavedFiles?
     @State private var word = ""
     @State private var stopAsked = false
 
@@ -1759,6 +1811,40 @@ struct BuilderSequenceSheet: View {
             .keyboardShortcut(.return, modifiers: .command)
             .disabled(decision.requiresTypedConfirmation && word.trimmingCharacters(in: .whitespaces).lowercased() != Guard.typedWord)
             .accessibilityHint("Runs exactly these steps, once, in order.")
+        }
+        Section {
+            Button("Export as a Batch File\u{2026}") { export(pending) }
+                .accessibilityHint("Saves these steps as a file GAM can run on its own. Nothing runs here.")
+            if let exported { Text(exported).font(.callout).textSelection(.enabled) }
+        } footer: {
+            Text("The file runs outside this app: no preview, no confirmation, no audit record when it runs. The export itself is "
+                 + "recorded in Audit. A step that sets a password can't be exported.")
+        }
+    }
+
+    /// Saves the held steps as a batch file through a save panel (roadmap 5.3), recorded in Files.
+    private func export(_ pending: BuilderChanges.Pending) {
+        let changes = changes
+        Task {
+            switch await changes.exportSequence(pending) {
+            case .failure(let why):
+                exported = why.words
+            case .success(let file):
+                let panel = NSSavePanel()
+                panel.nameFieldStringValue = "gamgui-sequence.txt"
+                panel.allowedContentTypes = [.plainText]
+                guard panel.runModal() == .OK, let url = panel.url else {
+                    exported = "Not saved. The export is still recorded in Audit."
+                    return
+                }
+                do {
+                    try Data(file.utf8).write(to: url, options: .atomic)
+                    savedFiles?.record(url, what: "Builder sequence batch file")
+                    exported = "Saved \(url.lastPathComponent). Read every line before you run it."
+                } catch {
+                    exported = "Couldn't save the file: \(error.localizedDescription)"
+                }
+            }
         }
     }
 }

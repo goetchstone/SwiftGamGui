@@ -1,6 +1,6 @@
 {
  "source": {
-  "gamgui_commit": "63ef104",
+  "gamgui_commit": "eb60f06",
   "gam_version": "7.52.05",
   "generator": "scripts/gen_fixtures.py"
  },
@@ -90,6 +90,7 @@
   "print_shared_drive_files",
   "print_shared_drives",
   "print_signature",
+  "print_signatures_from_stdin",
   "print_tokens",
   "print_tokens_of",
   "print_user_calendars",
@@ -116,6 +117,7 @@
   "set_forward",
   "set_password",
   "set_signature",
+  "set_signatures_csv",
   "set_suspended",
   "set_vacation",
   "show_signature",
@@ -785,6 +787,7 @@
     "name": "email"
    }
   ],
+  "print_signatures_from_stdin": [],
   "print_tokens": [],
   "print_tokens_of": [
    {
@@ -1026,6 +1029,7 @@
     "default": true
    }
   ],
+  "set_signatures_csv": [],
   "set_suspended": [
    {
     "name": "email"
@@ -29376,6 +29380,16 @@
    "argv": [
     "user",
     "日本語のテキスト",
+    "print",
+    "signature"
+   ]
+  },
+  {
+   "builder": "print_signatures_from_stdin",
+   "kwargs": {},
+   "argv": [
+    "file",
+    "-",
     "print",
     "signature"
    ]
@@ -90127,6 +90141,26 @@
     "日本語のテキスト",
     "signature",
     "日本語のテキスト",
+    "html"
+   ]
+  },
+  {
+   "builder": "set_signatures_csv",
+   "kwargs": {},
+   "argv": [
+    "csv",
+    "-",
+    "columndelimiter",
+    ",",
+    "quotechar",
+    "\"",
+    "noescapechar",
+    "true",
+    "gam",
+    "user",
+    "~User",
+    "signature",
+    "~signature",
     "html"
    ]
   },

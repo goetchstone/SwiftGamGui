@@ -1,3 +1,4 @@
+import Foundation
 /// A `gam` argv, typed by what it does to the tenant (design: docs/plans/2026-10-09-write-path-options.md,
 /// option A). Only GamKit builds one: a read any caller may run, a write only ChangeCore's executor can.
 /// `package`, so code outside GamKit can't declare a command type of its own.
@@ -10,11 +11,14 @@ package protocol GamCommand: Sendable, Equatable {
 /// Every read builder is held to GamGUI's read-only rule by `CommandKindTests` (invariant 3).
 public struct GamRead: GamCommand, Hashable {
     public let argv: [String]
+    /// What GAM reads on its standard input (`file -`, roadmap 5.4), or nil for none (`/dev/null`). Never shown or audited.
+    package let input: Data?
 
     /// `internal`: GamEngine's builders are the only source, the catalog's promoted reads included (`catalogRead`, for a
     /// command only `CommandCatalog` makes). Not even GamKit's other targets can make one.
-    init(_ argv: [String]) {
+    init(_ argv: [String], input: Data? = nil) {
         self.argv = argv
+        self.input = input
     }
 }
 
@@ -24,6 +28,9 @@ public struct GamRead: GamCommand, Hashable {
 public struct GamWrite: GamCommand {
     public let argv: [String]
     public let action: WriteAction
+    /// What GAM reads on its standard input (`csv -`, roadmap 5.4), or nil for none. Never shown or audited: a signature run's
+    /// rows ride here, not in the argv.
+    package let input: Data?
 
     /// What's wrong with a run GAM exited 0 for, for a command GAM can leave undone without a word; nil when its output says
     /// it's done, and for every other command. The executor makes it the step's failure, so a step that didn't happen never
@@ -69,14 +76,20 @@ public struct GamWrite: GamCommand {
     /// lines GAM printed about `owner`, the admin whose Drive it is (`SheetExport.noted`, GamGUI's `_run_write` `noted`). Never
     /// the output itself.
     public func noted(stdout: String, stderr: String, owner: String) -> [String: String] {
-        action == .exportToSheet ? SheetExport.noted(stdout: stdout, stderr: stderr, owner: owner) : [:]
+        switch action {
+        case .exportToSheet: SheetExport.noted(stdout: stdout, stderr: stderr, owner: owner)
+        // Who GAM's own "Set" line names (roadmap 5.4): its csv parent takes no child's exit code, so this is the result.
+        case .setSignaturesFast: ["set": SignaturesFast.updated(stdout: stdout).sorted().joined(separator: ",")]
+        default: [:]
+        }
     }
 
     static let saidNothing = "GAM exited without saying it did this, so it may not have happened. Check the account again."
 
-    init(_ argv: [String], action: WriteAction) {
+    init(_ argv: [String], action: WriteAction, input: Data? = nil) {
         self.argv = argv
         self.action = action
+        self.input = input
     }
 
     /// The account this write cuts off from Google, as its builder put it in the argv; nil for any other write. Deleted,
@@ -112,6 +125,8 @@ public enum WriteAction: String, Sendable, CaseIterable {
     case updatePhones
     /// A person's license seats (roadmap 4.3, GamGUI #175).
     case addLicense, swapLicense, removeLicense
+    /// Many signatures in one GAM call (roadmap 5.4, GamGUI #193).
+    case setSignaturesFast = "set_signatures_fast"
     /// The closed list of Builder writes (roadmap 5.1, GamGUI #189).
     case renameUser, deleteGroup, createAdmin
     /// A read's table to a new Google Sheet in the connected admin's Drive (plan F4): named as GamGUI's record names it, so both
