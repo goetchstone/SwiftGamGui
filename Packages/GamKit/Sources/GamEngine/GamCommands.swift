@@ -124,8 +124,13 @@ public enum GamCommands {
     /// left out is deleted: the others go as they are, and none left is `phone clear`. Each number one line, at most one
     /// primary (GAM's usage error otherwise).
     public static func updatePhones(email: String, phones: [Phone]) throws -> GamWrite {
+        GamWrite(["update", "user", email] + (try phoneArgs(phones)), action: .updatePhones)
+    }
+
+    /// The phones' checks and argv, shared by `updatePhones` and `updateProfile` (GamGUI's `_phone_args`).
+    static func phoneArgs(_ phones: [Phone]) throws -> [String] {
         guard phones.count(where: \.primary) <= 1 else { throw Invalid.argument("only one phone can be the primary") }
-        var argv = ["update", "user", email]
+        var argv: [String] = []
         for phone in phones {
             guard !phone.value.isEmpty, !phone.value.unicodeScalars.contains(where: { $0.properties.generalCategory == .control })
             else { throw Invalid.argument("each phone is a number on one line") }
@@ -149,7 +154,85 @@ public enum GamCommands {
             }
             argv += ["phone"] + typed + ["value", phone.value, phone.primary ? "primary" : "notprimary"]
         }
-        return GamWrite(phones.isEmpty ? argv + ["phone", "clear"] : argv, action: .updatePhones)
+        return phones.isEmpty ? argv + ["phone", "clear"] : argv
+    }
+
+    /// One of a person's organizations as Google keeps it (roadmap 4.6, GamGUI #184's `Organization`). `fields` are Google's
+    /// text fields by Google's name, only the ones it has, in their order. GAM sends the organizations it's given as the list
+    /// Google keeps in place of the old one.
+    public struct Organization: Sendable, Equatable {
+        public let fields: [(key: String, value: String)]
+        public let type: String
+        public let customType: String
+        public let fullTimeEquivalent: Int?
+        public let primary: Bool
+
+        public init(fields: [(key: String, value: String)] = [], type: String = "", customType: String = "",
+                    fullTimeEquivalent: Int? = nil, primary: Bool = false) {
+            (self.fields, self.type, self.customType, self.fullTimeEquivalent, self.primary)
+                = (fields, type, customType, fullTimeEquivalent, primary)
+        }
+
+        public func value(_ key: String) -> String { fields.last { $0.key == key }?.value ?? "" }
+
+        public static func == (a: Organization, b: Organization) -> Bool {
+            a.fields.map(\.key) == b.fields.map(\.key) && a.fields.map(\.value) == b.fields.map(\.value) && a.type == b.type
+                && a.customType == b.customType && a.fullTimeEquivalent == b.fullTimeEquivalent && a.primary == b.primary
+        }
+    }
+
+    /// GAM's organization types (`organization [type domain_only|school|unknown|work] [customtype <String>]`).
+    public static let organizationTypes: Set<String> = ["domain_only", "school", "unknown", "work"]
+
+    /// The text fields GAM sends back, Google's name to GAM's word (ORGANIZATION_ARGUMENT_TO_FIELD_MAP at the 7.52.04 tag),
+    /// in GamGUI's `ORG_TEXT_FIELDS` order.
+    public static let organizationTextFields: [(google: String, gam: String)] = [
+        ("name", "name"), ("title", "title"), ("department", "department"), ("symbol", "symbol"), ("costCenter", "costcenter"),
+        ("location", "location"), ("description", "description"), ("domain", "domain"),
+    ]
+
+    /// A person's organizations and phones in one `update user` (roadmap 4.6, GamGUI's `update_profile`): each list given is
+    /// sent whole, as Google keeps it in place of the old one, so every entry not changed goes back as it was read. One GAM
+    /// couldn't send back as it is is refused, and so is a field it would drop (GAM keeps a text field only when it isn't
+    /// empty).
+    public static func updateProfile(email: String, organizations: [Organization]? = nil, phones: [Phone]? = nil) throws -> GamWrite {
+        guard organizations != nil || phones != nil else { throw Invalid.argument("nothing to send") }
+        var argv = ["update", "user", email]
+        if let organizations { argv += try organizationArgs(organizations) }
+        if let phones { argv += try phoneArgs(phones) }
+        return GamWrite(argv, action: .updateProfile)
+    }
+
+    static func organizationArgs(_ organizations: [Organization]) throws -> [String] {
+        guard organizations.count(where: \.primary) <= 1 else { throw Invalid.argument("only one organization can be the primary") }
+        guard !organizations.isEmpty else { return ["organization", "clear"] }
+        let words = Dictionary(uniqueKeysWithValues: organizationTextFields.map { ($0.google, $0.gam) })
+        var argv: [String] = []
+        for organization in organizations {
+            var part = ["organization"]
+            if !organization.customType.isEmpty {
+                guard ["", "custom"].contains(organization.type) else {
+                    throw Invalid.argument("an organization of type “\(organization.type)” with its own name would lose one of them")
+                }
+                part += ["customtype", organization.customType]
+            } else if !organization.type.isEmpty {
+                guard organizationTypes.contains(organization.type) else {
+                    throw Invalid.argument("“\(organization.type)” isn't an organization type GAM keeps as it is")
+                }
+                part += ["type", organization.type]
+            }
+            for (key, value) in organization.fields {
+                guard let word = words[key] else { throw Invalid.argument("an organization's “\(key)” isn't a field GAM sends back") }
+                guard !value.isEmpty else { throw Invalid.argument("an organization's \(key) is empty, and GAM would drop it") }
+                part += [word, value]
+            }
+            if let fte = organization.fullTimeEquivalent {
+                guard (0...100_000).contains(fte) else { throw Invalid.argument("an organization's full-time equivalent is 0 to 100000") }
+                part += ["fulltimeequivalent", String(fte)]
+            }
+            argv += part + [organization.primary ? "primary" : "notprimary"]
+        }
+        return argv
     }
 
     /// Both recovery fields emptied, so "Forgot password?" can't reach the leaver's own phone or address

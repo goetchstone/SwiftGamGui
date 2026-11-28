@@ -25,6 +25,8 @@ Dates are 2026, and the last time the command ran from any screen.
 - **Not run:** a person's licenses, add, change and remove, and Suspended → remove their licenses (new 2026-11-27, roadmap
   4.3; a spare seat first).
 - **Not run:** move to another org unit, one or many (new 2026-11-27, roadmap 4.2; a throwaway unit first).
+- **Not run:** change from a CSV, title, department, phone and org unit (new 2026-11-28, roadmap 4.6; a throwaway account
+  with a second organization and two phones first: both must come back as they were).
 ### Groups
 - **Ran:** add people as members (11-13), remove a member (10-13).
 - **Not run:** add people as managers or owners.

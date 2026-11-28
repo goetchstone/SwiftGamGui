@@ -132,6 +132,48 @@ struct GoldenArgvTests {
             }
         }
 
+        /// GamGUI's optional phones: `None` is "not sent", a list (even `[]`) is sent whole.
+        func optionalPhones(_ key: String) throws -> [GamUser.Phone]? {
+            if values[key] == .null {
+                read.insert(key)
+                return nil
+            }
+            return try phones(key)
+        }
+
+        /// GamGUI's `Organization`s (`None` is "not sent"): each one's fields as `[name, value]` pairs, in their order.
+        func organizations(_ key: String) throws -> [GamCommands.Organization]? {
+            let given = take(key)
+            if given == .null { return nil }
+            let items: [[String: Value]]
+            switch given {
+            case .strings(let empty) where empty.isEmpty: items = []
+            case .objects(let objects): items = objects
+            default: throw Missing.argument(key)
+            }
+            return try items.map { item in
+                guard item.count == 5, case .string(let type)? = item["type"], case .string(let custom)? = item["custom_type"],
+                      case .bool(let primary)? = item["primary"] else { throw Missing.argument(key) }
+                let fte: Int?
+                switch item["full_time_equivalent"] {
+                case .null?: fte = nil
+                case .int(let value)?: fte = value
+                default: throw Missing.argument(key)
+                }
+                let pairs: [(key: String, value: String)]
+                switch item["fields"] {
+                case .strings(let empty)? where empty.isEmpty: pairs = []
+                case .values(let list)?:
+                    pairs = try list.map { pair in
+                        guard case .strings(let both) = pair, both.count == 2 else { throw Missing.argument(key) }
+                        return (both[0], both[1])
+                    }
+                default: throw Missing.argument(key)
+                }
+                return GamCommands.Organization(fields: pairs, type: type, customType: custom, fullTimeEquivalent: fte, primary: primary)
+            }
+        }
+
         /// A name GamGUI checks against a closed set, which Swift holds as an enum. An unknown one is the adapter's `Missing`,
         /// never `Invalid`: a case GamGUI refuses for it then fails here rather than passing with no Swift builder run (review
         /// 2026-11-11). The sets themselves are held to GamGUI's in `theClosedSetsAndFieldListsAreGamGUIsInOrder`.
@@ -146,7 +188,6 @@ struct GoldenArgvTests {
         "set_archived": "Close out a leaver (GamGUI #183, roadmap 4.5): not built here yet",
         "move_alias": "Close out a leaver (GamGUI #183, roadmap 4.5): not built here yet",
         "delete_admin_role": "Close out a leaver (GamGUI #183, roadmap 4.5): not built here yet",
-        "update_profile": "Change many people from a CSV (GamGUI #184, roadmap 4.6): not built here yet",
         "print_drive_members": "A shared drive's members (GamGUI #185, roadmap 4.7): not built here yet; the mock refuses the read",
         "add_drive_member": "A shared drive's members (GamGUI #185, roadmap 4.7): not built here yet",
         "set_drive_member_role": "A shared drive's members (GamGUI #185, roadmap 4.7): not built here yet",
@@ -275,6 +316,8 @@ struct GoldenArgvTests {
         "imap_off": { try GamCommands.imapOff(email: $0.string("email")) },
         "pop_off": { try GamCommands.popOff(email: $0.string("email")) },
         "update_phones": { try GamCommands.updatePhones(email: $0.string("email"), phones: $0.phones("phones")) },
+        "update_profile": { try GamCommands.updateProfile(email: $0.string("email"), organizations: $0.organizations("organizations"),
+                                                          phones: $0.optionalPhones("phones")) },
         "transfer_calendar_ownership": {
             try GamCommands.transferCalendarOwnership(calendarIDs: $0.strings("calendar_ids"), to: $0.string("new_owner"))
         },
