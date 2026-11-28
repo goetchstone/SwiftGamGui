@@ -434,16 +434,8 @@ struct GoldenArgvTests {
 
     /// Invariant 11's listed deviations: where GamGUI reads GAM wrongly, GAM's source is the oracle. Each holds GamGUI's argv
     /// as its fixture has it, so a fixture regenerated after GamGUI's fix fails here and the entry goes.
-    /// - `set_signatures_csv` (roadmap 5.4, PR #218's review): GAM 7.52.05's `openCSVFileReader` checks `columndelimiter`,
-    ///   `noescapechar`, `quotechar` in that order, each once (GamCommands.txt's `gam csv` line too). GamGUI's
-    ///   `… quotechar " noescapechar true gam …` leaves `noescapechar` for the required `gam`: exit 2, nobody set.
-    static let deviations: [String: (gamgui: [String], ours: [String])] = [
-        "set_signatures_csv": (
-            ["csv", "-", "columndelimiter", ",", "quotechar", "\"", "noescapechar", "true",
-             "gam", "user", "~User", "signature", "~signature", "html"],
-            ["csv", "-", "columndelimiter", ",", "noescapechar", "true", "quotechar", "\"",
-             "gam", "user", "~User", "signature", "~signature", "html"]),
-    ]
+    /// None now: `set_signatures_csv`'s option order (PR #218's review) was one until GamGUI #195 took GAM's order.
+    static let deviations: [String: (gamgui: [String], ours: [String])] = [:]
 
     @Test func eachDeviationIsStillGamGUIsAndOursIsGamsOrder() throws {
         for (name, deviation) in Self.deviations {

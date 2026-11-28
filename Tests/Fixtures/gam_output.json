@@ -1,6 +1,6 @@
 {
  "source": {
-  "gamgui_commit": "eb60f06",
+  "gamgui_commit": "f0a085f",
   "generator": "scripts/gen_fixtures.py"
  },
  "dialect": {
@@ -154,6 +154,10 @@
   {
    "stdout": "SendAs Address: <alice@example.com>\n  IsPrimary: True\n  Default: True\n  Signature:\n    Best,<br>Alice\n",
    "records": "[{\"SendAs Address: <alice@example.com>\": \"  IsPrimary: True\"}, {\"SendAs Address: <alice@example.com>\": \"  Default: True\"}, {\"SendAs Address: <alice@example.com>\": \"  Signature:\"}, {\"SendAs Address: <alice@example.com>\": \"    Best\"}]"
+  },
+  {
+   "stdout": "orgUnitPath,name,description\n/Sales,Sales,\n/Sales/West,West,\n/Staff,Staff,\n/Students,Students,\n",
+   "records": "[{\"orgUnitPath\": \"/Sales\", \"name\": \"Sales\", \"description\": \"\"}, {\"orgUnitPath\": \"/Sales/West\", \"name\": \"West\", \"description\": \"\"}, {\"orgUnitPath\": \"/Staff\", \"name\": \"Staff\", \"description\": \"\"}, {\"orgUnitPath\": \"/Students\", \"name\": \"Students\", \"description\": \"\"}]"
   },
   {
    "stdout": "User,displayName,sendAsEmail,replyToAddress,isPrimary,isDefault,treatAsAlias,verificationStatus,signature\nalice@example.com,,alice@example.com,,True,True,,,\"Best,<br>Alice\"\n",
