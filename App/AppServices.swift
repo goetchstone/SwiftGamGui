@@ -94,6 +94,9 @@ struct AppServices {
     let bucketReminders: BucketReminders
     /// Users' Department for Many…: one department for a group's members or pasted addresses, each previewed write through the executor.
     let departmentForMany: DepartmentForMany
+    /// A person's licenses, and Reports' Suspended → remove their licenses (roadmap 4.3).
+    let licenses: LicenseChanges
+    let suspendedLicenses: SuspendedLicenses
     /// Users' Org Unit for Many… (roadmap 4.2).
     let orgUnitMoves: OrgUnitForMany
     /// Onboard's From a CSV…: every row's hire held as one preview through the executor.
@@ -243,6 +246,9 @@ struct AppServices {
                            sharedDrives: SharedDriveChanges(executor: executor, setup: setup, access: UserAccess(setup: setup, runner: runner)),
                            bucketReminders: BucketReminders(executor: executor, setup: setup, directory: directory),
                            departmentForMany: DepartmentForMany(executor: executor, setup: setup, directory: directory, runner: runner),
+                           licenses: LicenseChanges(executor: executor, setup: setup, access: UserAccess(setup: setup, runner: runner)),
+                           suspendedLicenses: SuspendedLicenses(executor: executor, setup: setup, directory: directory,
+                                                                access: UserAccess(setup: setup, runner: runner)),
                            orgUnitMoves: OrgUnitForMany(executor: executor, setup: setup, directory: directory,
                                                         access: UserAccess(setup: setup, runner: runner), runner: runner),
                            hiresFromCSV: HiresFromCSV(executor: executor, setup: setup, directory: directory),

@@ -131,6 +131,8 @@ public enum WriteAction: String, Sendable, CaseIterable {
     case updatePhones
     /// A shared drive's members (roadmap 4.7, GamGUI #185).
     case addDriveMember, setDriveMemberRole, removeDriveMember
+    /// A person's license seats (roadmap 4.3, GamGUI #175).
+    case addLicense, swapLicense, removeLicense
     /// Org units (roadmap 4.2, GamGUI #169).
     case moveOrgUnit, createOrgUnit, renameOrgUnit, deleteOrgUnit
     /// Many signatures in one GAM call (roadmap 5.4, GamGUI #193).

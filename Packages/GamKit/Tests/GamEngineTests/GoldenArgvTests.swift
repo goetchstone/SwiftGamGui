@@ -134,9 +134,6 @@ struct GoldenArgvTests {
 
     /// GamGUI builders deliberately not ported.
     static let notPorted: [String: String] = [
-        "add_license": "A person's licenses from their page (GamGUI #175): not built here yet",
-        "swap_license": "A person's licenses from their page (GamGUI #175): not built here yet",
-        "remove_license": "A person's licenses from their page (GamGUI #175): not built here yet",
         "info_group_settings": "A group's settings from the Groups board (GamGUI #182): not built here yet; the mock refuses the read",
         "update_group_settings": "A group's settings from the Groups board (GamGUI #182): not built here yet",
         "set_archived": "Close out a leaver (GamGUI #183, roadmap 4.5): not built here yet",
@@ -278,6 +275,10 @@ struct GoldenArgvTests {
         "delete_send_as": { try GamCommands.deleteSendAs(email: $0.string("email"), address: $0.string("address")) },
         "print_admins": { try GamCommands.printAdmins(user: $0.string("email")) },
         "print_tokens": { _ in try GamCommands.printTokens() },
+        "add_license": { try GamCommands.addLicense(email: $0.text("email"), productID: $0.text("product_id"), skuID: $0.text("sku_id")) },
+        "swap_license": { try GamCommands.swapLicense(email: $0.text("email"), productID: $0.text("product_id"),
+                                                      oldSKUID: $0.text("old_sku_id"), newSKUID: $0.text("new_sku_id")) },
+        "remove_license": { try GamCommands.removeLicense(email: $0.text("email"), productID: $0.text("product_id"), skuID: $0.text("sku_id")) },
         "print_org_units": { _ in GamCommands.printOrgUnits() },
         "move_user_to_org_unit": { GamCommands.moveUserToOrgUnit(orgUnit: try $0.text("org_unit"), email: try $0.text("email")) },
         "create_org_unit": { GamCommands.createOrgUnit(path: try $0.text("path"), description: try $0.text("description")) },
