@@ -56,6 +56,11 @@ does_not_exist() {  # <entity> <name>; ENTITY_DOES_NOT_EXIST_RC
   printf '%s: %s, Does not exist\n' "$1" "$2" 1>&2
   exit 56
 }
+does_not_exist_exit() {  # <entity> <name>: a lookup that ends the command (entityDoesNotExistExit): the command
+  # line first, as a usage error has it (the bad argument's >>>marking<<< isn't modelled), then the error
+  printf 'Command: gam %s\n\nERROR: %s: %s, Does not exist\n' "$ARGS" "$1" "$2" 1>&2
+  exit 56
+}
 check_exists() {  # <entity> <name>: the *missing*/*nonexistent* trigger
   case "$2" in *missing*|*nonexistent*) does_not_exist "$1" "$2" ;; esac
 }
@@ -1148,10 +1153,88 @@ if [ "${1:-}" = "print" ] && { [ "${2:-}" = "orgs" ] || [ "${2:-}" = "ous" ]; } 
   done
   exit 0
 fi
-# Any other `print orgs` (GamGUI #169's org-unit tree, its fields list): not built here yet, so nothing reads it; refused
-# rather than answered in a guessed shape.
+# Ported from GamGUI's mock (#169): the org-unit tree read, a move, and the Builder's create, rename and delete.
+is_org_unit() { [ "$1" = "/" ] || org_units | grep -qxF -- "$1"; }
+# `gam print orgs fields <OrgUnitFieldNameList>` (doPrintOrgs, read from the vendored build): plain CSV, no formatjson, the
+# root never a row. With no unit below the root `_getOrgUnits` gives [] and GAM still writes the titles; when the read
+# fails it gives None and GAM writes nothing (the error and its code come first).
 if [ "${1:-}" = "print" ] && { [ "${2:-}" = "orgs" ] || [ "${2:-}" = "ous" ]; }; then
-  not_modelled "print orgs"
+  [ "${3:-}" = "fields" ] && [ $# -eq 4 ] || not_modelled "print orgs without exactly one fields list"
+  [ "$(lower "$4")" = "orgunitpath,name,description" ] || not_modelled "print orgs fields $4"
+  if [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/org_units_refused" ]; then
+    printf "\nERROR: Not Authorized to access this resource/api\n" 1>&2; exit 12
+  fi
+  if [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/org_units_notice" ]; then echo "A notice GAM printed"; fi
+  echo "orgUnitPath,name,description"
+  if [ -z "${GAM_MOCK_STATE:-}" ] || [ ! -e "$GAM_MOCK_STATE/no_org_units" ]; then
+    for path in $(org_units); do gam_row "$path" "${path##*/}" ""; done
+  fi
+  exit 0
+fi
+
+org_path() {  # getOrgUnitItem: `root` is the top-level unit, anything else is made absolute
+  case "$1" in root) printf '/' ;; /*) printf '%s' "$1" ;; *) printf '/%s' "$1" ;; esac
+}
+has_units_below() { org_units | awk -v p="$1/" 'index($0, p) == 1 { f = 1 } END { exit !f }'; }
+moved_into() {  # <path>: a user the mock's move put there (GAM_MOCK_STATE/moved/<user> holds the unit)
+  [ -n "${GAM_MOCK_STATE:-}" ] && [ -d "$GAM_MOCK_STATE/moved" ] && grep -rqxF -- "$1" "$GAM_MOCK_STATE/moved"
+}
+org_failed() {  # <path> <action> <reason>: entityActionFailedWarning, ACTION_FAILED_RC. Wording approximate.
+  printf 'Organizational Unit: %s, %s Failed: %s\n' "$1" "$2" "$3" 1>&2
+  exit 50
+}
+# `gam update org <OrgUnitItem> name <String>` (_doUpdateOrgs): the name is a getString, never empty; Google refuses a unit
+# it can't find, a name with a `/` (invalidOrgunitName), and a name a sibling already has. The root has no name to change.
+if [ "${1:-}" = "update" ] && { [ "${2:-}" = "org" ] || [ "${2:-}" = "ou" ]; } && [ "${4:-}" = "name" ]; then
+  [ -n "${3:-}" ] || missing_arg "OrgUnitItem"
+  [ $# -eq 5 ] || not_modelled "update org with more than a name"
+  [ -n "$5" ] || empty_arg "String"
+  ou=$(org_path "$3")
+  [ "$ou" != "/" ] || org_failed "$ou" "Update" "Invalid Org Unit"
+  is_org_unit "$ou" || org_failed "$ou" "Update" "Does not exist"
+  case "$5" in */*) org_failed "$ou" "Update" "Invalid Org Unit Name: $5" ;; esac
+  parent=${ou%/*}
+  ! is_org_unit "$parent/$5" || org_failed "$ou" "Update" "Invalid Org Unit: $parent/$5 already exists"
+  echo "Organizational Unit: $ou, Updated"
+  exit 0
+fi
+# `gam create org <OrgUnitPath> [description <String>]` (doCreateOrg): the parent is the path's own and must exist (no
+# `buildpath`); Google refuses a path that is already a unit, which GAM reports as a duplicate (entityDuplicateWarning,
+# ENTITY_DUPLICATE_RC).
+if { [ "${1:-}" = "create" ] || [ "${1:-}" = "add" ]; } && { [ "${2:-}" = "org" ] || [ "${2:-}" = "ou" ]; }; then
+  [ -n "${3:-}" ] || missing_arg "OrgUnitPath"
+  [ $# -eq 3 ] || { [ $# -eq 5 ] && [ "$4" = "description" ]; } || not_modelled "create org with more than a description"
+  ou=$(org_path "$3"); parent=${ou%/*}; [ -n "$parent" ] || parent="/"
+  is_org_unit "$parent" || org_failed "$ou" "Create" "Parent Organizational Unit: $parent, Does not exist"
+  if is_org_unit "$ou"; then printf 'Organizational Unit: %s, Duplicate\n' "$ou" 1>&2; exit 57; fi
+  echo "Organizational Unit: $ou, Created"
+  exit 0
+fi
+# `gam delete org <OrgUnitItem>` (_doDeleteOrgs): Google refuses (conditionNotMet) a unit that still holds people or units,
+# and one it can't find. The fixture users sit in /Staff and /Students, /Sales holds /Sales/West, and a user the mock moved
+# sits where it moved them. Devices aren't modelled.
+if [ "${1:-}" = "delete" ] && { [ "${2:-}" = "org" ] || [ "${2:-}" = "ou" ]; }; then
+  [ -n "${3:-}" ] || missing_arg "OrgUnitItem"
+  [ $# -eq 3 ] || usage_error "Unknown argument: $4"
+  ou=$(org_path "$3")
+  { [ "$ou" != "/" ] && is_org_unit "$ou"; } || org_failed "$ou" "Delete" "Does not exist"
+  if has_units_below "$ou" || moved_into "$ou" || grep -qF "\"orgUnitPath\": \"$ou\"" "$GAM_MOCK_FIXTURES/print_users.json"; then
+    org_failed "$ou" "Delete" "Cannot delete an organizational unit that has users or child organizational units"
+  fi
+  echo "Organizational Unit: $ou, Deleted"
+  exit 0
+fi
+# `gam update org <OrgUnitItem> move user <email>` (doUpdateOrgs): GAM resolves the unit first and refuses one it can't
+# find before moving anyone; then the user, who must exist. Wording approximate.
+if [ "${1:-}" = "update" ] && { [ "${2:-}" = "org" ] || [ "${2:-}" = "ou" ]; }; then
+  [ -n "${3:-}" ] || missing_arg "OrgUnitItem"
+  { [ "${4:-}" = "move" ] || [ "${4:-}" = "add" ]; } && [ "${5:-}" = "user" ] && [ $# -eq 6 ] \
+    || not_modelled "update org other than move user <email> or name <String>"
+  is_org_unit "$3" || does_not_exist_exit "Organizational Unit" "$3"
+  known_user "$(lower "$6")" || does_not_exist "User" "$6"
+  if [ -n "${GAM_MOCK_STATE:-}" ]; then mkdir -p "$GAM_MOCK_STATE/moved"; printf '%s\n' "$3" > "$GAM_MOCK_STATE/moved/$(lower "$6")"; fi
+  echo "User: $6, Organizational Unit: $3, Moved"
+  exit 0
 fi
 
 # `gam print domains formatjson` -> GAM's CSV, a `domainName` and a `JSON` column per domain (gam/__init__.py
