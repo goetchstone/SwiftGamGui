@@ -1,6 +1,6 @@
 {
  "source": {
-  "gamgui_commit": "eb60f06",
+  "gamgui_commit": "f0a085f",
   "generator": "scripts/gen_fixtures.py"
  },
  "dialect": {
@@ -158,6 +158,10 @@
   {
    "stdout": "SendAs Address: <alice@example.com>\n  IsPrimary: True\n  Default: True\n  Signature:\n    Best,<br>Alice\n",
    "records": "[{\"SendAs Address: <alice@example.com>\": \"  IsPrimary: True\"}, {\"SendAs Address: <alice@example.com>\": \"  Default: True\"}, {\"SendAs Address: <alice@example.com>\": \"  Signature:\"}, {\"SendAs Address: <alice@example.com>\": \"    Best\"}]"
+  },
+  {
+   "stdout": "orgUnitPath,name,description\n/Sales,Sales,\n/Sales/West,West,\n/Staff,Staff,\n/Students,Students,\n",
+   "records": "[{\"orgUnitPath\": \"/Sales\", \"name\": \"Sales\", \"description\": \"\"}, {\"orgUnitPath\": \"/Sales/West\", \"name\": \"West\", \"description\": \"\"}, {\"orgUnitPath\": \"/Staff\", \"name\": \"Staff\", \"description\": \"\"}, {\"orgUnitPath\": \"/Students\", \"name\": \"Students\", \"description\": \"\"}]"
   },
   {
    "stdout": "Owner,id,JSON\nadmin@example.com,0AFINANCEuk9PVA,\"{\"\"permissions\"\": [{\"\"deleted\"\": false, \"\"displayName\"\": \"\"Alice Anders\"\", \"\"domain\"\": \"\"example.com\"\", \"\"emailAddress\"\": \"\"alice@example.com\"\", \"\"id\"\": \"\"100000000000000000001\"\", \"\"kind\"\": \"\"drive#permission\"\", \"\"permissionDetails\"\": {\"\"inherited\"\": false, \"\"permissionType\"\": \"\"member\"\", \"\"role\"\": \"\"organizer\"\"}, \"\"role\"\": \"\"organizer\"\", \"\"type\"\": \"\"user\"\"},{\"\"deleted\"\": false, \"\"displayName\"\": \"\"Pat Partner\"\", \"\"domain\"\": \"\"partner.org\"\", \"\"emailAddress\"\": \"\"pat@partner.org\"\", \"\"id\"\": \"\"07001\"\", \"\"kind\"\": \"\"drive#permission\"\", \"\"permissionDetails\"\": {\"\"inherited\"\": false, \"\"permissionType\"\": \"\"member\"\", \"\"role\"\": \"\"writer\"\"}, \"\"role\"\": \"\"writer\"\", \"\"type\"\": \"\"user\"\"}]}\"\n",

@@ -84,9 +84,11 @@ struct WriteRouteTests {
         let records = file.lines.filter { $0.contains(".record(") }
         #expect(records.count == 1 && records.allSatisfy { $0.contains("log.record(Self.action,") }, "\(records)")
         #expect(file.lines.contains { $0.contains(#"public static let action = "read""#) })
+        // BuilderChanges hands it to `UserAccess.catalogRead` only, for a sequence's bound reads (roadmap 5.2), recorded as the
+        // Builder's own reads are.
         #expect(try Self.files(in: "Packages/GamKit/Sources", matching: ["ReadAudit"])
                 == ["Packages/GamKit/Sources/ChangeCore/ReadAudit.swift", "Packages/GamKit/Sources/Directory/AuditRunner.swift",
-                    "Packages/GamKit/Sources/Directory/UserAccess.swift"])
+                    "Packages/GamKit/Sources/Directory/BuilderChanges.swift", "Packages/GamKit/Sources/Directory/UserAccess.swift"])
         #expect(try Self.files(in: "App", matching: ["ReadAudit", "readAudit"])
                 == ["App/AppServices.swift", "App/BuilderView.swift", "App/DemoAudit.swift", "App/GamGUIApp.swift"])
     }

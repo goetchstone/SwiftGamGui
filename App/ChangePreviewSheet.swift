@@ -1735,8 +1735,10 @@ struct BuilderSequenceSheet: View {
             ForEach(Array(changes.sequence.enumerated()), id: \.element.id) { index, queued in
                 HStack(alignment: .firstTextBaseline) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("\(index + 1). \(queued.name)")
-                        Text(queued.step.commandLine).font(.caption.monospaced()).textSelection(.enabled)
+                        Text("\(index + 1). \(queued.name)"
+                             + (queued.source(in: changes.sequence).map { " \u{2014} \(queued.target) from step \($0)" } ?? "")
+                             + (queued.isRead ? " \u{2014} a read, for later steps to take from" : ""))
+                        Text(queued.commandLine).font(.caption.monospaced()).textSelection(.enabled)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                     .accessibilityElement(children: .combine)
@@ -2244,6 +2246,45 @@ struct SharedDriveSheet: View {
                 }
                 .disabled(model.isBusy)
             }
+        }
+    }
+}
+
+/// Close Out's review (roadmap 4.5, GamGUI's `_closeout_confirm.html`): each held step, a failed transfer named, the leaver's
+/// address typed, and the one button that runs exactly these steps.
+struct CloseOutReview: View {
+    let pending: CloseOutChanges.Pending
+    let model: CloseOutChanges
+    @State private var typed = ""
+
+    var body: some View {
+        Section {
+            ForEach(Array(pending.steps.enumerated()), id: \.offset) { _, step in
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(step.label).bold()
+                    Text(step.summary).font(.callout)
+                }
+                .accessibilityElement(children: .combine)
+            }
+            if !pending.failedTransfers.isEmpty {
+                Label("A transfer from \(pending.user) failed (\(pending.failedTransfers.joined(separator: ", "))): what it didn't move "
+                      + "is still only theirs.", systemImage: "exclamationmark.triangle.fill").symbolRenderingMode(.multicolor)
+            }
+        } header: {
+            Text("\(pending.preview.title): \(pending.steps.count) step\(pending.steps.count == 1 ? "" : "s")").accessibilityAddTraits(.isHeader)
+        } footer: {
+            Text("The transfer and the aliases are read again just before it runs. A refused step is reported and the rest still run.")
+        }
+        Section("Type \(pending.user) to run this") {
+            TextField("Their address", text: $typed, prompt: Text(verbatim: pending.user))
+                .autocorrectionDisabled()
+                .accessibilityLabel("Type \(pending.user) to confirm")
+            Button("Close Out \(pending.user)", role: .destructive) {
+                let pending = pending, model = model, typed = typed
+                Task { await model.confirm(pending, OperatorConfirmation(confirmed: true, typedAddresses: [typed])) }
+            }
+            .disabled(model.isBusy || typed.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() != pending.user.lowercased())
+            .accessibilityHint("Runs exactly the steps shown, once.")
         }
     }
 }

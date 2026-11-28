@@ -718,9 +718,9 @@ def output_fixture(mock: Path, oracle: GamOracle) -> dict:
 
 
 # GamGUI's reads whose GAM shape the mock doesn't model (the first two printed NDJSON, which GAM never prints for them;
-# the org-unit tree, GamGUI #169, and a group's settings, #182, are built on their own branches): the mock
-# refuses them, and they have no case here. No SwiftGamGui screen reads them yet.
-NOT_MODELLED = {"print_filelist", "print_all_calendars", "print_org_units", "info_group_settings"}
+# a group's settings, GamGUI #182, is built on its own branch; the org-unit tree, a shared drive's members and its files
+# are, since roadmap 4.2 and 4.7): the mock refuses them, and they have no case here. No SwiftGamGui screen reads them yet.
+NOT_MODELLED = {"print_filelist", "print_all_calendars", "info_group_settings"}
 
 
 def _keyed(key: str, name: str):

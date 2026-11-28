@@ -14,6 +14,8 @@ struct OffboardView: View {
     let setup: SetupModel
     let directory: DirectoryStore
     let changes: OffboardChanges
+    /// Close Out (roadmap 4.5): after the transfer has finished.
+    let closeOut: CloseOutChanges
     let templates: OffboardTemplates
     /// This build has GAM: a plan can run. Without it the plan is only shown.
     let hasGam: Bool
@@ -57,6 +59,7 @@ struct OffboardView: View {
                         PlanSection(plan: plan, canRun: plan.preview != nil && !changes.isRunning) { confirming = plan }
                             .id(Self.planAnchor)
                     }
+                    CloseOutSection(model: closeOut)
                 }
                 .formStyle(.grouped)
                 // A new plan, or a run, is what the operator asked to see: brought into view.
