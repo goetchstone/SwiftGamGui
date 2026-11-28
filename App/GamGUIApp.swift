@@ -220,7 +220,7 @@ struct ContentView: View {
                     UsersView(setup: services.setup, directory: services.directory, changes: services.userChanges,
                               access: services.userAccess, searches: services.mailboxSearches, chromeProfiles: services.chromeProfiles, personDevices: services.personDevices, drafts: services.siriDrafts, calendarReads: services.calendarReads,
                               classroom: services.classroom,
-                              departments: services.departmentForMany, orgUnitMoves: services.orgUnitMoves, groups: services.groups,
+                              departments: services.departmentForMany, licenses: services.licenses, orgUnitMoves: services.orgUnitMoves, groups: services.groups,
                               requested: $usersPerson,
                               openSignatures: { email in
                                   signaturesPerson = email
@@ -287,7 +287,7 @@ struct ContentView: View {
                         .navigationTitle("Builder")
                 case .reports:
                     ReportsView(setup: services.setup, directory: services.directory, usage: services.usage,
-                                apps: services.connectedApps, mail: services.mailReview, runs: services.auditRuns, suspend: services.inactiveSuspend, reminders: services.bucketReminders,
+                                apps: services.connectedApps, mail: services.mailReview, runs: services.auditRuns, suspend: services.inactiveSuspend, suspendedLicenses: services.suspendedLicenses, reminders: services.bucketReminders,
                                 schedules: services.runSchedules, requestedRun: $reportsRun,
                                 openCommand: { id in
                                     builderCommand = id

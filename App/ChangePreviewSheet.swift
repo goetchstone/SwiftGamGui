@@ -2013,6 +2013,122 @@ struct OrgUnitForManyReview: View {
     }
 }
 
+/// A person's license change (roadmap 4.3): what changes, what to know (a removal: Google's "you might lose their data", the wait
+/// before a seat can be reused, a failed transfer named), the command, and Run; a removal needs their address typed.
+struct LicensePreviewSheet: View {
+    let pending: LicenseChanges.Pending
+    let licenses: LicenseChanges
+    @State private var typed = ""
+
+    private var running: Bool { licenses.isBusy }
+    private var addressMatches: Bool {
+        guard let address = pending.typedAddress else { return true }
+        return typed.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == address.lowercased()
+    }
+
+    var body: some View {
+        Form {
+            Section(pending.preview.title) {
+                ForEach(Array(pending.preview.steps.enumerated()), id: \.offset) { _, step in
+                    Text(step.summary)
+                    Text(step.commandLine).font(.body.monospaced()).textSelection(.enabled)
+                }
+            }
+            Section {
+                ForEach(pending.notes, id: \.self) { Label($0, systemImage: "info.circle") }
+                Link("Google: Assign, remove, and reassign licenses", destination: URL(string: Licenses.source)!)
+            }
+            if let address = pending.typedAddress {
+                Section("Type \(address) to remove the license") {
+                    TextField("Their address", text: $typed, prompt: Text(verbatim: address))
+                        .autocorrectionDisabled()
+                        .accessibilityLabel("Type \(address) to confirm")
+                }
+            }
+            if running { Section { HStack { ProgressView().controlSize(.small); Text("Running…") } } }
+        }
+        .formStyle(.grouped)
+        .frame(minWidth: 480)
+        .interactiveDismissDisabled(running)
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) { Button("Cancel") { licenses.dismiss() }.disabled(running) }
+            ToolbarItem(placement: .primaryAction) {
+                Button(pending.typedAddress == nil ? "Run" : "Remove", role: pending.typedAddress == nil ? nil : .destructive) {
+                    let pending = pending, licenses = licenses, typed = typed
+                    Task { await licenses.confirm(pending, OperatorConfirmation(confirmed: true, typedAddresses: pending.typedAddress == nil ? [] : [typed])) }
+                }
+                .disabled(running || !addressMatches)
+            }
+        }
+    }
+}
+
+/// Reports' Suspended → Remove Their Licenses… (roadmap 3.3 and 4.3): the seats on suspended accounts read again, who keeps
+/// theirs and why (a transfer unfinished, failed or unread), Google's words, the word and count typed as the guard asks.
+struct SuspendedLicensesSheet: View {
+    let model: SuspendedLicenses
+    let close: () -> Void
+    @State private var word = ""
+    @State private var count = ""
+
+    var body: some View {
+        Form {
+            switch model.state {
+            case .previewing(let pending):
+                Section {
+                    Text("Remove \(pending.count) license\(pending.count == 1 ? "" : "s") from suspended accounts, read again just now.")
+                    Label(Licenses.mightLoseData, systemImage: "exclamationmark.triangle.fill").symbolRenderingMode(.multicolor)
+                    Text(Licenses.reassignWait).font(.callout)
+                    Text(Licenses.onlySeatsRead).font(.callout).foregroundStyle(.secondary)
+                } header: {
+                    Text(pending.preview.title).accessibilityAddTraits(.isHeader)
+                }
+                if !pending.kept.isEmpty {
+                    Section("Kept (\(pending.kept.count))") { ForEach(pending.kept, id: \.email) { Text($0.why).font(.callout) } }
+                }
+                Section("What it removes") {
+                    ForEach(pending.seats.prefix(SuspendedLicenses.shown), id: \.seat.id) { held in
+                        Text("\(held.email) \u{B7} \(held.seat.sku)").accessibilityElement(children: .combine)
+                    }
+                }
+                Section {
+                    if pending.needsWord {
+                        TextField("The word confirm", text: $word, prompt: Text(verbatim: Guard.typedWord))
+                            .onChange(of: word) { model.typingChanged() }
+                    }
+                    if pending.needsCount {
+                        TextField("Number of licenses", text: $count, prompt: Text(verbatim: String(pending.count)))
+                            .onChange(of: count) { model.typingChanged() }
+                    }
+                    if let problem = model.typedProblem { Label(problem, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.red) }
+                    Button("Remove \(pending.count) License\(pending.count == 1 ? "" : "s")", role: .destructive) {
+                        let pending = pending, model = model, word = word, count = count
+                        Task { await model.confirm(pending, OperatorConfirmation(confirmed: true, typedWord: pending.needsWord ? word : "",
+                                                                                 typedCount: pending.needsCount ? count : "")) }
+                    }
+                    .keyboardShortcut(.return, modifiers: .command)
+                }
+            case .checking:
+                HStack { ProgressView().controlSize(.small); Text("Reading the directory, the licenses and each person's transfers…") }
+            case .running:
+                HStack { ProgressView().controlSize(.small); Text("Removing the licenses…") }
+            case .done(let words), .problem(let words):
+                Text(words).textSelection(.enabled)
+            case .idle:
+                Text("Reads the licenses and the directory again, then shows every seat on a suspended account before anything changes.")
+            }
+        }
+        .formStyle(.grouped)
+        .frame(minWidth: 520, minHeight: 360)
+        .task { if case .idle = model.state { await model.preview() } }
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+                Button("Close") { model.dismiss(); close() }.disabled(model.isBusy)
+            }
+        }
+    }
+}
+
 /// A group's settings (roadmap 4.4, GamGUI's settings card): the seven read now, each a picker; Preview reads them again and
 /// holds only what changes (old → new in words); Change reads them once more and writes only those. A value Google gives that
 /// isn't one offered is shown as Google's and left alone.
