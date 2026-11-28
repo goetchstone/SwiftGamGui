@@ -322,6 +322,29 @@ public final class UserAccess {
         }
     }
 
+    /// The domains an internal address ends in (GamGUI's `tenant_domains`): the primary, then every secondary and domain alias
+    /// from one `print domains formatjson` (`AuditRuns.domainsFrom`), kept for the tenant read. A failed read (the grant may lack
+    /// the domain scope) is the primary alone, read again after `domainsRetry`, not on every toggle. External Only's lens.
+    public func tenantDomains() async -> [String] {
+        guard let tenant else { return [] }
+        let primary = tenant.domain.name
+        if let held = domainsHeld, held.domain == tenant.domain, held.generation == tenant.generation,
+           held.ok || Date().timeIntervalSince(held.at) < Self.domainsRetry {
+            return held.domains
+        }
+        let found = await readNow(GamCommands.printDomains(), in: tenant.domain) { AuditRuns.domainsFrom(GamOutput.records($0)) }
+        var domains = [primary]
+        for name in (try? found.get()) ?? [] where !name.isEmpty && !domains.contains(name) { domains.append(name) }
+        let ok = (try? found.get()) != nil
+        guard self.tenant.map({ $0.domain == tenant.domain && $0.generation == tenant.generation }) == true else { return domains }
+        domainsHeld = (tenant.domain, tenant.generation, domains, ok, Date())
+        return domains
+    }
+
+    @ObservationIgnored private var domainsHeld: (domain: Domain, generation: Int, domains: [String], ok: Bool, at: Date)?
+    /// GamGUI's `DOMAINS_RETRY`.
+    public nonisolated static let domainsRetry: TimeInterval = 600
+
     /// Every license seat (roadmap 4.3), read now: `print licenses`, no product named. It passes over a product Google won't let
     /// it read without a word, so only what it lists is acted on (`Licenses`).
     public func licenses(in pinned: Domain? = nil) async -> Result<[Licenses.Seat], Problem> {

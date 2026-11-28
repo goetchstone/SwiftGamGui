@@ -38,6 +38,9 @@ struct BuilderView: View {
     @State private var sequencing = false
     @State private var drafted: FinderDraft?
     @State private var draftedPage = ""
+    /// A result address's follow-up (GamGUI's `ROW_ACTIONS`): the command it opens and the field it fills. `id` changes with
+    /// each click, so a page already open takes it.
+    @State private var followed: (command: String, values: [String: String], id: UUID)?
 
     struct CatalogProblem: Error, Sendable { let why: String }
 
@@ -98,11 +101,12 @@ struct BuilderView: View {
             Group {
                 if let selected, let curated = CuratedCommand.all.first(where: { $0.id == selected }) {
                     CuratedDetail(command: curated, setup: setup, access: access, directory: directory, groups: groups, changes: changes,
-                                  readAudit: readAudit, exports: exports, drafted: drafted(selected), taken: drafted(selected) == nil ? nil : { drafted = nil })
-                        .id(curated.id + draftedPage)
+                                  readAudit: readAudit, exports: exports, drafted: drafted(selected), taken: drafted(selected) == nil ? nil : { drafted = nil },
+                                  followUp: followUp, followed: followed(selected))
+                        .id(curated.id + draftedPage + (followed?.id.uuidString ?? ""))
                 } else if case .success(let catalog)? = catalog, let selected, let command = catalog.commands.first(where: { $0.id == selected }) {
                     CommandDetail(command: command, setup: setup, access: access, readAudit: readAudit, exports: exports, drafted: drafted(selected),
-                                  taken: drafted(selected) == nil ? nil : { drafted = nil })
+                                  taken: drafted(selected) == nil ? nil : { drafted = nil }, followUp: followUp)
                         .id(command.id + draftedPage)
                 } else {
                     ContentUnavailableView("Pick a Command", systemImage: "terminal",
@@ -159,6 +163,8 @@ struct BuilderView: View {
             openRequested()
         }
         .onChange(of: requested) { openRequested() }
+        // A follow-up fills its command's page once: picking another command lets it go.
+        .onChange(of: selected) { if followed?.command != selected { followed = nil } }
         // Export to a Google Sheet…: its preview, then its result (plan F4). Confirming is the sheet's.
         .sheet(isPresented: Binding(get: { exports.isShown }, set: { if !$0 { exports.dismiss() } })) {
             SheetExportSheet(exports: exports)
@@ -175,6 +181,17 @@ struct BuilderView: View {
         area = ""
         selected = id
     }
+
+    /// A result's address clicked for one of its follow-ups (GamGUI's `ROW_ACTIONS`): that curated command opens with the address
+    /// in its field, as Ask in Plain English opens a draft. Nothing runs: a change is previewed and confirmed on its page.
+    private func followUp(_ action: RowAction, _ address: String) {
+        followed = (action.command, [action.field: address], UUID())
+        requested = action.command
+    }
+
+    /// A follow-up's values for `id`, when it's the command the click opened. Not a `FinderDraft`: only Ask in Plain English
+    /// makes one (`WriteRouteTests`); this is the operator's own click.
+    private func followed(_ id: String) -> [String: String]? { followed?.command == id ? followed?.values : nil }
 
     /// The values Ask in Plain English found for `id`, when it's the command it found.
     private func drafted(_ id: String) -> FinderDraft? { drafted?.command == id ? drafted : nil }
@@ -348,6 +365,8 @@ private struct CommandDetail: View {
     let exports: SheetExports
     /// Tells the Builder the page has taken Ask in Plain English's values, so it lets them go.
     let taken: (() -> Void)?
+    /// Opens a result address's follow-up.
+    let followUp: (RowAction, String) -> Void
     @State private var values: [String: String]
     @State private var reading = ReadRun()
     @Environment(\.appearsActive) private var appearsActive
@@ -356,13 +375,14 @@ private struct CommandDetail: View {
 
     /// `drafted`: the fields Ask in Plain English found, the page's first values. Shown, never run: Run is the operator's.
     init(command: CommandCatalog.Command, setup: SetupModel, access: UserAccess, readAudit: ReadAudit, exports: SheetExports,
-         drafted: FinderDraft?, taken: (() -> Void)?) {
+         drafted: FinderDraft?, taken: (() -> Void)?, followUp: @escaping (RowAction, String) -> Void) {
         self.command = command
         self.setup = setup
         self.access = access
         self.readAudit = readAudit
         self.exports = exports
         self.taken = taken
+        self.followUp = followUp
         _values = State(initialValue: drafted?.values ?? [:])
     }
 
@@ -421,7 +441,7 @@ private struct CommandDetail: View {
                                && reading.read.map { GamCommands.takesToDrive($0.argv) } == true && reading.readOn == setup.active
                                && setup.active != nil
                                ? { reading.previewSheet(exports, command: command.id, name: sheetName) } : nil,
-                           sheetBusy: exports.isBusy)
+                           sheetBusy: exports.isBusy, followUp: followUp, domains: { await access.tenantDomains() })
             }
         }
         .onAppear { taken?() }
@@ -487,6 +507,8 @@ private struct CuratedDetail: View {
     let exports: SheetExports
     /// Tells the Builder the page has taken Ask in Plain English's values, so it lets them go.
     let taken: (() -> Void)?
+    /// Opens a result address's follow-up.
+    let followUp: (RowAction, String) -> Void
     @State private var values: [String: String]
     @State private var reading = ReadRun()
     @State private var debugApplied = false
@@ -500,7 +522,9 @@ private struct CuratedDetail: View {
     /// `drafted`: the fields Ask in Plain English found, the page's first values. Shown, never previewed or run: Preview… and
     /// Run are the operator's.
     init(command: CuratedCommand, setup: SetupModel, access: UserAccess, directory: DirectoryStore, groups: GroupStore,
-         changes: BuilderChanges, readAudit: ReadAudit, exports: SheetExports, drafted: FinderDraft?, taken: (() -> Void)?) {
+         changes: BuilderChanges, readAudit: ReadAudit, exports: SheetExports, drafted: FinderDraft?, taken: (() -> Void)?,
+         followUp: @escaping (RowAction, String) -> Void, followed: [String: String]? = nil) {
+        self.followUp = followUp
         self.command = command
         self.setup = setup
         self.access = access
@@ -511,6 +535,7 @@ private struct CuratedDetail: View {
         self.exports = exports
         self.taken = taken
         _values = State(initialValue: drafted?.values ?? [:])
+        if let followed { _values = State(initialValue: followed) }
     }
 
     /// What it does here, for the list.
@@ -577,7 +602,7 @@ private struct CuratedDetail: View {
                                && reading.read.map { GamCommands.takesToDrive($0.argv) } == true
                                && reading.readOn == setup.active && setup.active != nil
                                ? { reading.previewSheet(exports, command: command.id, name: command.name) } : nil,
-                           sheetBusy: exports.isBusy)
+                           sheetBusy: exports.isBusy, followUp: followUp, domains: { await access.tenantDomains() })
             }
         }
         .onChange(of: reading.result?.rows.count) { exportForSnapshot() }
@@ -819,6 +844,14 @@ private struct ResultView: View {
     /// Previews the table's export to a new Google Sheet; nil when the read can't go to one.
     var toSheet: (() -> Void)?
     var sheetBusy = false
+    /// Opens a curated command with an address from the table filled in (GamGUI's `ROW_ACTIONS`).
+    var followUp: ((RowAction, String) -> Void)?
+    /// The tenant's domains, read when External Only is first turned on.
+    var domains: (() async -> [String])?
+    /// External Only (GamGUI's sharing-audit lens): rows naming "anyone" or an address outside the tenant's domains.
+    @State private var externalOnly = false
+    @State private var tenantDomains: [String]?
+    @State private var picked: Set<Int> = []
 
     struct Row: Identifiable {
         let id: Int
@@ -827,19 +860,30 @@ private struct ResultView: View {
 
     var body: some View {
         if result.isTable {
-            let matching = result.matching(filter)
+            let lens = externalOnly ? (tenantDomains ?? []) : nil
+            let matching = result.matching(filter, externalTo: lens)
+            let filtered = !filter.isEmpty || externalOnly
             VStack(alignment: .leading, spacing: 6) {
                 HStack {
                     TextField("Filter the rows", text: $filter, prompt: Text("Any value in a row"))
                         .textFieldStyle(.roundedBorder)
                         .frame(maxWidth: 320)
-                    Text(filter.isEmpty ? "\(result.rows.count.formatted()) rows" : "\(matching.count.formatted()) of \(result.rows.count.formatted()) rows")
+                    if domains != nil {
+                        Toggle("External Only", isOn: $externalOnly)
+                            .toggleStyle(.checkbox)
+                            .help("Only rows that name “anyone”, or an address outside this domain's own domains and their subdomains")
+                            .accessibilityHint("Keeps only rows that share with anyone, or name an address outside the domain. The export follows it.")
+                    }
+                    Text(!filtered ? "\(result.rows.count.formatted()) rows" : "\(matching.count.formatted()) of \(result.rows.count.formatted()) rows")
                         .foregroundStyle(.secondary)
                         .accessibilityAddTraits(.updatesFrequently)
                     Spacer()
-                    Button(filter.isEmpty ? "Export CSV…" : "Export Matches…", systemImage: "square.and.arrow.up") { export(matching) }
-                        .disabled(matching.isEmpty)
-                        .help(filter.isEmpty ? "Save every row as a CSV file" : "Save the rows that match as a CSV file")
+                    Button(!filtered ? "Export CSV…" : "Export Matches…", systemImage: "square.and.arrow.up") { export(matching) }
+                        .disabled(matching.isEmpty || (externalOnly && tenantDomains == nil))
+                        .help(!filtered ? "Save every row as a CSV file" : "Save the rows that match as a CSV file")
+                }
+                .task(id: externalOnly) {
+                    if externalOnly, tenantDomains == nil, let domains { tenantDomains = await domains() }
                 }
                 .padding(.horizontal)
                 if let toSheet {
@@ -855,13 +899,22 @@ private struct ResultView: View {
                     }
                     .padding(.horizontal)
                 }
-                Table(matching.map { Row(id: $0, record: result.rows[$0]) }) {
+                Table(matching.map { Row(id: $0, record: result.rows[$0]) }, selection: $picked) {
                     TableColumnForEach(result.columns, id: \.self) { column in
                         TableColumn(column) { row in
                             let text = CatalogResult.cell(row.record[column])
                             Text(text).lineLimit(1).help(text).textSelection(.enabled)
                         }
                     }
+                }
+                .contextMenu(forSelectionType: Int.self) { rows in
+                    if let followUp, let row = rows.first {
+                        followUps(result.addresses(inRow: row), followUp)
+                    }
+                }
+                if followUp != nil {
+                    Text("Control-click a row for what to do with an address in it.").font(.caption).foregroundStyle(.secondary)
+                        .padding(.horizontal)
                 }
             }
             .padding(.top, 8)
@@ -871,6 +924,27 @@ private struct ResultView: View {
                     .font(.body.monospaced()).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading).padding()
             }
             .accessibilityLabel("GAM's output")
+        }
+    }
+
+    /// Each address in the row, its user and group follow-ups (GamGUI's menu): a curated command opened with it filled in.
+    @ViewBuilder private func followUps(_ addresses: [String], _ open: @escaping (RowAction, String) -> Void) -> some View {
+        if addresses.isEmpty {
+            Text("No address in this row")
+        }
+        ForEach(addresses.prefix(5), id: \.self) { address in
+            Menu(address) {
+                Section("As a person") {
+                    ForEach(RowAction.all.filter { !$0.forGroup }, id: \.command) { action in
+                        Button(action.label) { open(action, address) }
+                    }
+                }
+                Section("As a group") {
+                    ForEach(RowAction.all.filter(\.forGroup), id: \.command) { action in
+                        Button(action.label) { open(action, address) }
+                    }
+                }
+            }
         }
     }
 }
