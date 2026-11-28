@@ -61,9 +61,13 @@ public final class BuilderChanges {
     }
 
     public var isBusy: Bool {
+        if resolving { return true }
         if case .running = state { return true }
         return false
     }
+
+    /// A sequence's bound reads running for its preview (roadmap 5.2): busy, so a second Preview doesn't read again.
+    public private(set) var resolving = false
 
     /// Whether the current state is about `command`.
     public func concerns(_ command: CuratedCommand) -> Bool { subject == command.id }
@@ -287,7 +291,9 @@ public final class BuilderChanges {
         let bound = Set(binds.map(\.0.key))
         var fields: [String: String] = [:]
         for field in command.fields where !bound.contains(field.key) {
-            let value = PythonText.strip(values[field.key] ?? "")
+            var value = PythonText.strip(values[field.key] ?? "")
+            // A choice left as the form showed it is its default, as `CuratedCommand.built` reads it (#222's review).
+            if value.isEmpty, field.kind == .choice { value = field.defaultValue }
             if field.required, value.isEmpty { return .failure(Refusal(words: "\(field.label) is required.")) }
             fields[field.key] = value
         }
@@ -301,6 +307,8 @@ public final class BuilderChanges {
     /// one step built by its command's own builder. A read alone, that nothing takes from, isn't a change and isn't held.
     private func resolved(in domain: Domain) async -> Result<(steps: [WriteStep], labels: [String], notes: [String]), Refusal> {
         var steps: [WriteStep] = [], labels: [String] = [], notes: [String] = []
+        /// Each filled-in step's own warning (`step`'s: an update that clears a field, say), by step, said once with its count.
+        var warned: [(step: Int, warning: String, count: Int)] = []
         var rows: [Int: [GamOutput.Record]?] = [:]
         let feeding = Set(sequence.compactMap { $0.source(in: sequence) })
         for (offset, queued) in sequence.enumerated() {
@@ -342,15 +350,23 @@ public final class BuilderChanges {
                     var filled = bound.fields
                     for (bind, cell) in zip(bound.binds, value) { filled[bind.field] = cell }
                     switch step(bound.command, values: filled) {
-                    case .success(let (step, _)):
+                    case .success(let (step, warning)):
                         steps.append(step)
                         labels.append(queued.name)
+                        if let warning {
+                            // The same words for each row but the person: counted, the first said.
+                            if let index = warned.firstIndex(where: { $0.step == i }) { warned[index].count += 1 } else { warned.append((i, warning, 1)) }
+                        }
+                        if steps.count > SequenceBinds.maxResolvedSteps { return .failure(Refusal(words: SequenceBinds.tooMany)) }
                     case .failure(let why):
                         return .failure(Refusal(words: "Step \(i) can't take “\(value.joined(separator: ", "))” from step \(j): \(why.words)"))
                     }
                 }
             }
             if steps.count > SequenceBinds.maxResolvedSteps { return .failure(Refusal(words: SequenceBinds.tooMany)) }
+        }
+        for (i, warning, count) in warned {
+            notes.append("Step \(i): \(warning)" + (count > 1 ? " (and the same for \(count - 1) more of its \(count) people)" : ""))
         }
         return .success((steps, labels, notes))
     }
@@ -399,7 +415,9 @@ public final class BuilderChanges {
             return
         }
         // Roadmap 5.2: what is shown, held, guarded, run and exported is the sequence filled in from its reads.
+        resolving = true
         let filled = await resolved(in: tenant.domain)
+        resolving = false
         guard request == asked else { return }
         let steps: [WriteStep], labels: [String], notes: [String]
         switch filled {

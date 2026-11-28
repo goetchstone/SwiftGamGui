@@ -329,4 +329,5 @@ list is what is shown, held, guarded, run and exported. A failed read, output th
 a value the builder refuses blocks the preview; a read with no rows fills the step in for no one, said aloud. At most 500
 steps once filled in; with a bound step, past 25 the count is typed. **Deviation:** Swift's sequences hold only changes, so a
 read runs at the preview and not again at Run, and isn't one of the guard's targets (GamGUI runs it again as the job's step
-and counts it). Held to `SequenceBindsTests` and `BuilderSequenceBindsTests`. Not run live.
+and counts it). A bound step must be a change (GamGUI also lets a read take values, which feeds nothing). A filled-in step's
+own warning (an update that clears a field) is said once, with how many people it covers. Held to `SequenceBindsTests` and `BuilderSequenceBindsTests`. Not run live.

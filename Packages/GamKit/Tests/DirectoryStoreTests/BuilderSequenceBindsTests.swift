@@ -161,4 +161,25 @@ final class BuilderSequenceBindsTests {
         let file = try await changes.exportSequence(try pending()).get()
         #expect(file.contains("add member") && !file.contains("=step1"))
     }
+
+    /// #222's review: the role left as the form showed it is its default, as an unbound step reads it.
+    @Test func anUntouchedChoiceTakesItsDefault() async throws {
+        try await connect()
+        try queueTheRead()
+        changes.addToSequence(try command("build.add_group_member"), values: ["group": "staff@example.com", "member": "=step1.primaryEmail"])
+        #expect(changes.sequenceRefusal == nil, "\(changes.sequenceRefusal ?? "")")
+        await changes.previewSequence()
+        #expect(try pending().preview.steps.allSatisfy { $0.shownArgv.contains("member") })
+    }
+
+    /// #222's review: a filled-in step's own warning (the update that clears a department) is said, once, with its count.
+    @Test func aFilledInStepsWarningIsSaid() async throws {
+        try await connect()
+        try queueTheRead()
+        changes.addToSequence(try command("build.set_organization"), values: ["email": "=step1.primaryEmail", "title": "Lead", "department": ""])
+        #expect(changes.sequenceRefusal == nil, "\(changes.sequenceRefusal ?? "")")
+        await changes.previewSequence()
+        let warning = try #require(try pending().warning)
+        #expect(warning.contains("Step 2:") && warning.contains("clears"), "\(warning)")
+    }
 }
