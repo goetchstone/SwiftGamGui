@@ -150,4 +150,16 @@ final class BulkCSVChangesTests {
         }
         #expect(writes().isEmpty)
     }
+
+    /// Review of #220: a Stop between a person's profile and their move says their title changed, never "not attempted".
+    @Test func aStopBetweenTheProfileAndTheMoveSaysWhatChanged() async throws {
+        try await connect()
+        await changes.preview(Array("email,title,org_unit\nalice@example.com,Head of IT,/\n".utf8))
+        let pending = try pending()
+        let done = BulkCSVChanges.done(pending, [.succeeded(output: ""), .skipped(reason: Executor.stopped)], note: "")
+        #expect(done.partial && done.failedCount == 1)
+        #expect(done.failures == ["alice@example.com \u{2014} Their title changed; the move to / wasn't attempted: \(Executor.stopped)"])
+        #expect(!done.message.contains("not attempted"), "\(done.message)")
+        changes.dismiss()
+    }
 }

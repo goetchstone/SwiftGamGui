@@ -298,7 +298,10 @@ It reads only through `DirectoryStore`, so it shares Home's tenant rules. Writes
 - **The run**: per person the profile, then the move (needing it). The first carries `KeepFirst.unchanged`: the person read
   again just before (`info user … primaryEmail,organizations,phones,orgUnitPath`), and nothing changes for them if their lists
   or unit moved since (`BulkProfile.held`). **Deviation:** Swift's guard counts writes, GamGUI's people, so past 25 the number
-  of changes is typed (never fewer than GamGUI asks).
+  of changes is typed (never fewer than GamGUI asks), and the review says how many changes for how many people. A Stop
+  between a person's profile and their move says what changed (the executor stops before any step; GamGUI only between
+  people). Two harmless reader departures: a file with two byte-order marks is read (`RosterLines` drops a second; GamGUI
+  refuses it), and a NUL byte refuses the whole file in the roster reader's words (GamGUI refuses that row).
 - **The undo**: Save the Before File… writes each changed value as it was, in the same columns, guarded; Files lists it. An
   empty value before can't be put back, and the review counts those.
 - Held to `BulkCSVTests` and `BulkCSVChangesTests`. Not run live (a throwaway account with a second organization first).

@@ -2183,7 +2183,9 @@ struct BulkCSVReview: View {
         }
         Section {
             if pending.needsCount {
-                TextField("Number of changes", text: $typedCount, prompt: Text(verbatim: String(pending.writes)))
+                // The guard counts each write: a person whose profile changes and who moves is two.
+                Text("That's \(pending.writes) changes for \(n) \(n == 1 ? "person" : "people"). Type \(pending.writes) to confirm.")
+                TextField("Number of changes", text: $typedCount)
                     .accessibilityLabel("Type the number of changes, \(pending.writes), to confirm")
                     .onChange(of: typedCount) { model.typingChanged() }
             }

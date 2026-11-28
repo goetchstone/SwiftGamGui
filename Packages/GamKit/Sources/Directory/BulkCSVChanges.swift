@@ -280,9 +280,19 @@ public final class BulkCSVChanges {
             }).first {
                 failedCount += 1
                 let partly = mine.count > 1 && results.first??.isSucceeded == true
-                    ? "Their \(BulkCSV.columns.filter { $0 != "org_unit" && change.after[$0] != nil }.map { PythonText.lower(BulkCSV.labels[$0]!) }.joined(separator: " and ")) changed; the move to \(change.orgUnit) failed: "
-                    : ""
+                    ? "Their \(Self.profileWords(change)) changed; the move to \(change.orgUnit) failed: " : ""
                 if failures.count < failuresKept { failures.append("\(change.email) \u{2014} \(partly)\(failure)") }
+                continue
+            }
+            // Their profile changed and a Stop (or a domain switch, or an account-wide failure) came before their move: said as
+            // partly changed, never "not attempted" (review of #220).
+            if mine.count > 1, results.first??.isSucceeded == true, case .skipped(let reason)?? = results.last {
+                failedCount += 1
+                if failures.count < failuresKept {
+                    failures.append("\(change.email) \u{2014} Their \(Self.profileWords(change)) changed; the move to \(change.orgUnit) "
+                                    + "wasn't attempted: \(reason)")
+                }
+                if stoppedBy == nil { stoppedBy = reason }
                 continue
             }
             notRun += 1
@@ -298,6 +308,12 @@ public final class BulkCSVChanges {
             message = "\(why) " + message
         }
         return Done(message: message + note, failures: failures, failedCount: failedCount, partial: notRun > 0 || failedCount > 0)
+    }
+
+    /// What a person's profile write changes, in words ("title and phone").
+    nonisolated static func profileWords(_ change: BulkCSV.Change) -> String {
+        BulkCSV.columns.filter { $0 != "org_unit" && change.after[$0] != nil }
+            .map { PythonText.lower(BulkCSV.labels[$0]!) }.joined(separator: " and ")
     }
 
     public func stop() async {
