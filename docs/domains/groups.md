@@ -195,3 +195,10 @@ holds the ticked people still in it, with their roles from that read, owners nam
 `update group <g> remove <m>` each through the executor: a confirm always, the count typed past 25, in the jobs tray with Stop.
 A finished run that failed for some offers **Retry the N That Failed…** on the tenant it ran on. A failed read offers nothing.
 Held to `GroupChangesTests`. Not run live.
+## Group settings (roadmap 4.4, 2026-11-27; GamGUI #182)
+Group Settings… on a group's page (`GroupSettingsSheet`, `Directory/GroupSettingsChanges.swift`, `GamEngine/GroupSettings.swift`):
+seven of Google's (who can post, join, see the members; outside members; moderation; web posting; history), read with `info
+group <g> quick fields … formatjson`. A record missing any is unread (GAM skips abuse@ and postmaster@ groups without a word;
+those are refused outright). Preview reads them again and holds only what changes, in the table's order; just before the run
+they're read once more and one changed since refuses it. Google's refusal (`Group: <g>, Update Failed: <why>`) is said in its
+words. The mock reads and writes `mock_gam/group_settings.tsv` (ported). Held to `GroupSettingsTests`. Not run live.
