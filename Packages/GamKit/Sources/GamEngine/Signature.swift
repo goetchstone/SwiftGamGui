@@ -245,3 +245,18 @@ public enum Signature {
         return nil
     }
 }
+
+/// Here, not in SignaturesFast.swift, which the fuzz build compiles alone (`scripts/fuzz.sh`): this needs `Signature`.
+extension SignaturesFast {
+    /// GamGUI's `refusal`: why one person's row can't go through `gam csv`, or nil.
+    public static func refusal(email: String, body: String) -> String? {
+        if PythonText.strip(body).isEmpty { return "An empty signature: GAM's csv would clear theirs. Use the per-person run to clear one." }
+        if Signature.readAsKeyword(body) != nil { return "GAM would read this signature as a file to load. Change the text." }
+        if asSent(body).unicodeScalars.count >= fieldLimit { return "Too long for GAM's csv in one go. Set this one with the per-person run." }
+        if body.unicodeScalars.contains("\0") || !email.unicodeScalars.allSatisfy(\.isASCII)
+            || email.unicodeScalars.contains(where: { ",\"\r\n".unicodeScalars.contains($0) }) {
+            return "This can't be written as one row of GAM's csv."
+        }
+        return nil
+    }
+}

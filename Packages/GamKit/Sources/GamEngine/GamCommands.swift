@@ -1,3 +1,4 @@
+import Foundation
 /// GAM argv builders: Swift ports of GamGUI's `GAMCommands` (`core/gam/commands.py`). Each returns a
 /// `GamRead` or a `GamWrite` (`GamCommand.swift`) whose argv is **byte-identical** to GamGUI's live-proven
 /// builder for the same inputs, held to
@@ -561,6 +562,24 @@ public enum GamCommands {
     /// `User,delegateName,delegateAddress,delegationStatus`, each account announced ("Getting all Delegates for <u>").
     public static func allUsersPrintDelegates() -> GamRead {
         GamRead(["all", "users", "print", "delegates", "shownames"])
+    }
+
+    // MARK: many signatures in one call (roadmap 5.4, GamGUI #193)
+
+    /// Every listed person's stored signature in one call, the addresses one a line on GAM's standard input (`file -`).
+    public static func printSignaturesFromStdin(emails: [String] = []) -> GamRead {
+        GamRead(["file", "-", "print", "signature"], input: Data(SignaturesFast.emailsStdin(emails).utf8))
+    }
+
+    /// GAM's own `csv` loop sets each row's signature, the rows (`User`, `signature`) on standard input. The delimiter, no
+    /// escape character and quote are said here, not left to gam.cfg (a `\\` escape would eat backslashes), in the order
+    /// `openCSVFileReader` checks them, each once: GamGUI's order leaves `noescapechar` unread and GAM exits 2 (a listed
+    /// deviation, `GoldenArgvTests.deviations`). `~User` and
+    /// `~signature` are whole-argument substitutions. An empty cell would clear a signature: `SignaturesFast.refusal` refuses one.
+    public static func setSignaturesCSV(rows: [(email: String, body: String)] = []) -> GamWrite {
+        GamWrite(["csv", "-", "columndelimiter", ",", "noescapechar", "true", "quotechar", "\"",
+                  "gam", "user", "~User", "signature", "~signature", "html"],
+                 action: .setSignaturesFast, input: Data(SignaturesFast.rowsCSV(rows).utf8))
     }
 
     /// The apps people have given access to their account (9119-9128; _printShowTokens): every account but the suspended

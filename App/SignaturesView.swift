@@ -638,6 +638,12 @@ private struct SignatureResult: View {
 
     var body: some View {
         switch changes.state {
+        case .running(let pending) where pending.isOneCall:
+            // One GAM call: no count to show, nothing to stop (roadmap 5.4).
+            banner(tint: .blue) {
+                ProgressView().controlSize(.small)
+                Text("Setting \(pending.people.count) signatures in one GAM call\u{2026}").frame(maxWidth: .infinity, alignment: .leading)
+            }
         case .running(let pending) where pending.isScoped:
             ScopeProgress(pending: pending, changes: changes)
         case .running(let pending):

@@ -238,6 +238,7 @@ public final class BuilderChanges {
         }
         let n = sequence.count
         let warning = sequence.compactMap { queued in queued.warning.map { "\(queued.name): \($0)" } }.joined(separator: "\n")
+        heldLabels = sequence.map(\.name)
         let held = await executor.preview(sequence.map(\.step), confirmStep: true, expecting: tenant,
                                           title: "Builder sequence \u{2014} \(n) step\(n == 1 ? "" : "s")")
         guard request == asked else {
@@ -250,6 +251,19 @@ public final class BuilderChanges {
                                         warning: warning.isEmpty ? nil : warning))
         case .failure(let refusal):
             state = .problem(refusal.message)
+        }
+    }
+
+    /// Each step's name as the sequence held it when previewed: what the exported file calls them.
+    private var heldLabels: [String] = []
+
+    /// The previewed sequence as a batch file (roadmap 5.3): the steps the preview held, never what is queued now; the preview
+    /// stays held, so it can still run. Audited first, as `sequence_export`; refused in words.
+    public func exportSequence(_ pending: Pending) async -> Result<String, Refusal> {
+        guard let executor, pending.command == Self.sequenceSubject else { return .failure(Refusal(words: "Preview the sequence first.")) }
+        switch await executor.exportBatch(pending.id, labels: heldLabels) {
+        case .success(let file): return .success(file)
+        case .failure(let refusal): return .failure(Refusal(words: refusal.message))
         }
     }
 
