@@ -3,6 +3,7 @@ import Foundation
 import GamEngine
 import Observation
 import Setup
+import Vault
 
 /// The Builder's curated writes (GamGUI's `/builder/preview` and `/builder/run`), through ChangeCore, one at a time: a command's
 /// values built as GamGUI builds them (`CuratedCommand`), held by the executor exactly as it will run, confirmed from its sheet
@@ -46,17 +47,27 @@ public final class BuilderChanges {
     /// Counts previews asked for: one that comes back after a newer one was asked for is dropped, never shown on its page.
     private var asked = 0
 
-    public init(executor: Executor?, setup: SetupModel, directory: DirectoryStore) {
+    /// The reads a bound step's source runs through at the preview (roadmap 5.2), each recorded as the Builder's reads are.
+    private let access: UserAccess?
+    private let readAudit: ReadAudit?
+
+    public init(executor: Executor?, setup: SetupModel, directory: DirectoryStore, access: UserAccess? = nil, readAudit: ReadAudit? = nil) {
         self.executor = executor
         self.setup = setup
         self.directory = directory
+        self.access = access
+        self.readAudit = readAudit
         setup.onTenantChange { [weak self] in self?.dismiss() }
     }
 
     public var isBusy: Bool {
+        if resolving { return true }
         if case .running = state { return true }
         return false
     }
+
+    /// A sequence's bound reads running for its preview (roadmap 5.2): busy, so a second Preview doesn't read again.
+    public private(set) var resolving = false
 
     /// Whether the current state is about `command`.
     public func concerns(_ command: CuratedCommand) -> Bool { subject == command.id }
@@ -155,13 +166,54 @@ public final class BuilderChanges {
 
     // MARK: a sequence (GamGUI's `/builder/sequence/*`, roadmap 2.5)
 
-    /// A step in the sequence: one curated change, built and checked when it was added.
+    /// A step in the sequence: one curated change, built and checked when it was added; a read, whose result a later step can
+    /// take its values from (roadmap 5.2); or a step bound to one, filled in at the preview.
     public struct Queued: Sendable, Identifiable {
         public let id = UUID()
         public let name: String
-        public let step: WriteStep
+        let kind: Kind
         public let warning: String?
-        public var target: String { step.target }
+
+        enum Kind: Sendable {
+            case write(WriteStep)
+            case read(GamRead, command: String, target: String)
+            case bound(Bound)
+        }
+
+        /// A step whose fields take `=stepN.Column` values: the source is a read, by its id, so a move keeps it.
+        struct Bound: Sendable {
+            let command: CuratedCommand
+            /// Each bound field and the column it takes, in the command's field order.
+            let binds: [(field: String, column: String)]
+            /// Every other field, as typed.
+            let fields: [String: String]
+            let source: UUID
+        }
+
+        public var step: WriteStep? { if case .write(let step) = kind { step } else { nil } }
+        public var isRead: Bool { if case .read = kind { true } else { false } }
+        public var target: String {
+            switch kind {
+            case .write(let step): step.target
+            case .read(_, _, let target): target
+            case .bound(let bound): "each \(bound.binds.map(\.column).joined(separator: ", "))"
+            }
+        }
+
+        /// What the sequence shows for it.
+        public var commandLine: String {
+            switch kind {
+            case .write(let step): step.commandLine
+            case .read(let read, _, _): GamCommandLine.text(read.argv)
+            case .bound(let bound): "once for each \(bound.binds.map(\.column).joined(separator: ", ")) in a read's result"
+            }
+        }
+
+        /// The step whose read this one takes its values from, by its place in `sequence` (1-based), or nil.
+        public func source(in sequence: [Queued]) -> Int? {
+            guard case .bound(let bound) = kind, let index = sequence.firstIndex(where: { $0.id == bound.source }) else { return nil }
+            return index + 1
+        }
     }
 
     /// GamGUI's `MAX_SEQUENCE_STEPS`.
@@ -187,14 +239,136 @@ public final class BuilderChanges {
             sequenceRefusal = "Sequence is capped at \(Self.maxSequenceSteps) steps."
             return
         }
-        switch step(command, values: values) {
-        case .success(let (step, warning)):
-            sequence.append(Queued(name: command.name, step: step, warning: warning))
+        let binds = command.fields.compactMap { field in SequenceBinds.parse(values[field.key] ?? "").map { (field, $0) } }
+        let queued: Result<Queued, Refusal>
+        if !binds.isEmpty {
+            queued = boundStep(command, binds: binds, values: values)
+        } else if command.reads {
+            do {
+                guard case .read(let read) = try command.built(values) else { throw GamCommands.Invalid.argument("not a read") }
+                queued = .success(Queued(name: command.name, kind: .read(read, command: command.id, target: command.target(values)),
+                                         warning: nil))
+            } catch GamCommands.Invalid.argument(let why) {
+                queued = .failure(Refusal(words: why + "."))
+            } catch {
+                queued = .failure(Refusal(words: "\(command.name) couldn't be built."))
+            }
+        } else {
+            queued = step(command, values: values).map { Queued(name: command.name, kind: .write($0.0), warning: $0.1) }
+        }
+        switch queued {
+        case .success(let step):
+            sequence.append(step)
             sequenceRefusal = nil
             sequenceEdited()
         case .failure(let why):
             sequenceRefusal = why.words
         }
+    }
+
+    /// GamGUI's `_bound_step`: a step whose fields take `=stepN.Column` values, checked now (step N is an earlier read with no
+    /// bindings of its own), kept unfilled: its writes are built per row at the preview.
+    private func boundStep(_ command: CuratedCommand, binds: [(CuratedCommand.Field, (step: Int, column: String))],
+                           values: [String: String]) -> Result<Queued, Refusal> {
+        let sources = Set(binds.map(\.1.step))
+        guard sources.count == 1, let n = sources.first else {
+            return .failure(Refusal(words: "A step can take its values from one earlier step, not several."))
+        }
+        guard (1...max(sequence.count, 1)).contains(n), n <= sequence.count else {
+            return .failure(Refusal(words: "There's no step \(n) before this one."))
+        }
+        let source = sequence[n - 1]
+        guard source.isRead else {
+            return .failure(Refusal(words: "Step \(n) isn't a read with its own values, so it can't feed a later step: only a read's "
+                                    + "result can, since a change's doesn't exist until it runs."))
+        }
+        guard !command.reads else {
+            return .failure(Refusal(words: "Only a change can take its values from a read here: run \(command.name) on its own."))
+        }
+        if binds.contains(where: { $0.0.kind == .choice }) {
+            return .failure(Refusal(words: "A choice can't come from another step's result."))
+        }
+        let bound = Set(binds.map(\.0.key))
+        var fields: [String: String] = [:]
+        for field in command.fields where !bound.contains(field.key) {
+            var value = PythonText.strip(values[field.key] ?? "")
+            // A choice left as the form showed it is its default, as `CuratedCommand.built` reads it (#222's review).
+            if value.isEmpty, field.kind == .choice { value = field.defaultValue }
+            if field.required, value.isEmpty { return .failure(Refusal(words: "\(field.label) is required.")) }
+            fields[field.key] = value
+        }
+        return .success(Queued(name: command.name, kind: .bound(Queued.Bound(command: command, binds: binds.map { ($0.0.key, $0.1.column) },
+                                                                               fields: fields, source: source.id)),
+                               warning: nil))
+    }
+
+    /// GamGUI's `_resolve`: the sequence with each bound step filled in from its read, `(steps, labels, notes)`, or the
+    /// refusal. Each read a later step binds to runs now, once, recorded as the Builder's reads are; each distinct row becomes
+    /// one step built by its command's own builder. A read alone, that nothing takes from, isn't a change and isn't held.
+    private func resolved(in domain: Domain) async -> Result<(steps: [WriteStep], labels: [String], notes: [String]), Refusal> {
+        var steps: [WriteStep] = [], labels: [String] = [], notes: [String] = []
+        /// Each filled-in step's own warning (`step`'s: an update that clears a field, say), by step, said once with its count.
+        var warned: [(step: Int, warning: String, count: Int)] = []
+        var rows: [Int: [GamOutput.Record]?] = [:]
+        let feeding = Set(sequence.compactMap { $0.source(in: sequence) })
+        for (offset, queued) in sequence.enumerated() {
+            let i = offset + 1
+            switch queued.kind {
+            case .write(let step):
+                steps.append(step)
+                labels.append(queued.name)
+            case .read:
+                // Swift's sequences hold only changes: a read runs here, at the preview, for the steps that take from it.
+                notes.append(feeding.contains(i) ? "Step \(i) only reads: it ran just now to fill in the steps that take from it, "
+                             + "and doesn't run again." : "Step \(i) only reads, and no step takes values from it, so it doesn't run.")
+            case .bound(let bound):
+                guard let j = queued.source(in: sequence), j < i else {
+                    return .failure(Refusal(words: "Step \(i) takes its values from a step that isn't before it any more. Remove it and "
+                                            + "queue it again."))
+                }
+                guard case .read(let read, let command, let target) = sequence[j - 1].kind else {
+                    return .failure(Refusal(words: "Step \(j) isn't a read, so step \(i) can't take values from it."))
+                }
+                if rows[j] == nil {
+                    guard let access, let readAudit else {
+                        return .failure(Refusal(words: "Step \(j)'s read can't run here, so who step \(i) runs for isn't known. Nothing will run."))
+                    }
+                    switch await access.catalogRead(read, command: command, target: target, in: domain, recordingTo: readAudit) {
+                    case .success(let result): rows[j] = .some(result.tableRows == nil ? nil : result.rows)
+                    case .failure(let problem):
+                        return .failure(Refusal(words: "Step \(j)'s read failed, so who step \(i) runs for isn't known. Nothing will run. "
+                                                + problem.summary))
+                    }
+                }
+                let values: [[String]]
+                switch SequenceBinds.values(from: rows[j] ?? nil, columns: bound.binds.map(\.column), source: j, step: i) {
+                case .success(let found): values = found
+                case .failure(let refusal): return .failure(Refusal(words: refusal.message))
+                }
+                if values.isEmpty { notes.append("Step \(j) found nothing, so step \(i) runs for no one.") }
+                for value in values {
+                    var filled = bound.fields
+                    for (bind, cell) in zip(bound.binds, value) { filled[bind.field] = cell }
+                    switch step(bound.command, values: filled) {
+                    case .success(let (step, warning)):
+                        steps.append(step)
+                        labels.append(queued.name)
+                        if let warning {
+                            // The same words for each row but the person: counted, the first said.
+                            if let index = warned.firstIndex(where: { $0.step == i }) { warned[index].count += 1 } else { warned.append((i, warning, 1)) }
+                        }
+                        if steps.count > SequenceBinds.maxResolvedSteps { return .failure(Refusal(words: SequenceBinds.tooMany)) }
+                    case .failure(let why):
+                        return .failure(Refusal(words: "Step \(i) can't take “\(value.joined(separator: ", "))” from step \(j): \(why.words)"))
+                    }
+                }
+            }
+            if steps.count > SequenceBinds.maxResolvedSteps { return .failure(Refusal(words: SequenceBinds.tooMany)) }
+        }
+        for (i, warning, count) in warned {
+            notes.append("Step \(i): \(warning)" + (count > 1 ? " (and the same for \(count - 1) more of its \(count) people)" : ""))
+        }
+        return .success((steps, labels, notes))
     }
 
     public func removeFromSequence(_ id: Queued.ID) {
@@ -236,10 +410,32 @@ public final class BuilderChanges {
             state = .problem("This build has no GAM. Build the app again after running scripts/fetch_gam.sh.")
             return
         }
-        let n = sequence.count
-        let warning = sequence.compactMap { queued in queued.warning.map { "\(queued.name): \($0)" } }.joined(separator: "\n")
-        heldLabels = sequence.map(\.name)
-        let held = await executor.preview(sequence.map(\.step), confirmStep: true, expecting: tenant,
+        guard let tenant else {
+            state = .problem("Connect a domain on Setup first.")
+            return
+        }
+        // Roadmap 5.2: what is shown, held, guarded, run and exported is the sequence filled in from its reads.
+        resolving = true
+        let filled = await resolved(in: tenant.domain)
+        resolving = false
+        guard request == asked else { return }
+        let steps: [WriteStep], labels: [String], notes: [String]
+        switch filled {
+        case .success(let value): (steps, labels, notes) = value
+        case .failure(let refusal):
+            state = .problem(refusal.words)
+            return
+        }
+        guard !steps.isEmpty else {
+            state = .problem((notes + ["There's nothing to change."]).joined(separator: " "))
+            return
+        }
+        let n = steps.count
+        let warning = (sequence.compactMap { queued in queued.warning.map { "\(queued.name): \($0)" } } + notes).joined(separator: "\n")
+        heldLabels = labels
+        // A step filled in from a read counts toward the guard's typed count, as a bulk run's people do.
+        let bound = sequence.contains { if case .bound = $0.kind { true } else { false } }
+        let held = await executor.preview(steps, confirmStep: true, typedCountAbove: bound ? Guard.countConfirmAbove : nil, expecting: tenant,
                                           title: "Builder sequence \u{2014} \(n) step\(n == 1 ? "" : "s")")
         guard request == asked else {
             if case .success(let preview) = held { await executor.discard(preview.id) }

@@ -599,9 +599,15 @@ private struct CuratedDetail: View {
         }
     }
 
+    /// A field holding `=stepN.Column` (roadmap 5.2): this is a step for the sequence, filled in from step N's read.
+    private var bound: Bool {
+        command.fields.contains { SequenceBinds.parse(values[$0.key] ?? "") != nil }
+    }
+
     @ViewBuilder private var fieldsSection: some View {
         let built = built
         let ready = (try? built.get()) != nil
+        let bound = bound
         Section {
             ForEach(command.fields) { field in
                 FieldRow(field: field, value: Binding(get: { values[field.key] ?? "" }, set: { values[field.key] = $0 }),
@@ -632,6 +638,11 @@ private struct CuratedDetail: View {
                 }
                 Spacer()
                 if command.reads {
+                    // A read in a sequence is a source: a later step's field can take `=stepN.Column` from its result.
+                    Button("Add to Sequence") { changes.addToSequence(command, values: values) }
+                        .disabled(changes.isBusy || !ready)
+                        .help("Adds this read to the sequence, for a later step to take its values from")
+                        .accessibilityHint("A later step can name a column of its result as =step and its number, a dot, then the column.")
                     Button("Run", action: run)
                         .keyboardShortcut("r")
                         .disabled(reading.running || !ready || setup.active == nil)
@@ -639,12 +650,13 @@ private struct CuratedDetail: View {
                         .accessibilityHint("Runs the command shown on the connected domain. It only reads.")
                 } else {
                     Button("Add to Sequence") { changes.addToSequence(command, values: values) }
-                        .disabled(changes.isBusy || !ready)
-                        .help("Adds this change as the sequence's next step, to preview and run with the rest")
+                        .disabled(changes.isBusy || !(ready || bound))
+                        .help("Adds this change as the sequence's next step, to preview and run with the rest. A field can take "
+                              + "=step1.primaryEmail: the step then runs once for each value in that column of step 1's read.")
                         .accessibilityHint("Nothing runs until the sequence is previewed and confirmed.")
                     Button("Preview…", action: preview)
                         .keyboardShortcut("r")
-                        .disabled(changes.isBusy || !ready || setup.active == nil)
+                        .disabled(changes.isBusy || !ready || bound || setup.active == nil)
                         .help(setup.active == nil ? "Connect a domain on Setup first" : "Show exactly what will change, to confirm or cancel")
                         .accessibilityHint("Shows the change and the exact command. Nothing changes until you confirm it.")
                 }

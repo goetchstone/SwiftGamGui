@@ -260,7 +260,7 @@ final class BuilderChangesTests {
         changes.addToSequence(try command("build.transfer_data"),
                               values: ["old_owner": "carol@example.com", "service": "drive", "new_owner": "alice@example.com"])
         changes.moveInSequence(from: 1, to: 0)
-        #expect(changes.sequence.first?.step.shownArgv.first == "create")
+        #expect(changes.sequence.first?.step?.shownArgv.first == "create")
         changes.removeFromSequence(changes.sequence[0].id)
         #expect(changes.sequence.count == 1)
     }
