@@ -35,6 +35,25 @@ struct MockSignatureTests {
         return Signature.parseShown(result.stdout)
     }
 
+    /// PR #218's review: GAM's `csv -` reads its options in `openCSVFileReader`'s order, each once, so GamGUI's order (`quotechar`
+    /// before `noescapechar`) leaves `noescapechar` for the required `gam` and exits 2 before any row. The mock once took it.
+    @Test func aCSVLoopWithItsOptionsOutOfOrderFailsLikeGam() async throws {
+        try await withState { state in
+            let config = try Fixtures.placeholderConfigDirectory()
+            defer { try? FileManager.default.removeItem(at: config) }
+            var environment = Fixtures.mockEnvironment
+            environment["GAM_MOCK_STATE"] = state.path
+            let rows = Data(SignaturesFast.rowsCSV([("alice@example.com", "A")]).utf8)
+            let gamgui = ["csv", "-", "columndelimiter", ",", "quotechar", "\"", "noescapechar", "true",
+                          "gam", "user", "~User", "signature", "~signature", "html"]
+            let refused = try await mock.runRaw(gamgui, configDirectory: config, extraEnvironment: environment, input: rows)
+            #expect(refused.exitCode == 2 && refused.stderr.contains("Invalid choice (noescapechar)"), "\(refused.stderr)")
+            let write = GamCommands.setSignaturesCSV(rows: [("alice@example.com", "A")])
+            let ran = try await mock.runRaw(write.argv, configDirectory: config, extraEnvironment: environment, input: write.input)
+            #expect(ran.exitCode == 0 && SignaturesFast.updated(stdout: ran.stdout) == ["alice@example.com"], "\(ran.stderr)")
+        }
+    }
+
     @Test func aSetForANonUserFailsLikeGam() async throws {
         let result = try await run(GamCommands.setSignature(email: "nobody@example.com", signature: "Hi").argv)
         #expect(result.exitCode == 50)

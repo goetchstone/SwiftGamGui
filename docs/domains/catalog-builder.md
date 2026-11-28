@@ -303,6 +303,15 @@ B4 in docs/live-verification.md).
 - The first live Sheet export, on the operator's yes (plan F4): the mock's upload lines are read from GAM's source, never seen
   live. Files doesn't list an incident report's folder or a roster hand-over ZIP.
 
+## Export a sequence as a batch file (roadmap 5.3, 2026-11-27; GamGUI's `core/sequence_export.py`)
+On the sequence's review, Export as a Batch File… writes the steps the preview held (never what is queued now; the preview stays
+held and can still run) as GamGUI's file, byte for byte (`GamEngine/SequenceExport.swift`, held to
+`Tests/Fixtures/sequence_export.txt`): a header, each step as `gam` plus each element in Python's `shlex.quote`, `commit-batch`
+between steps. A step that sets a password, or a value with a line break or NUL (checked by scalar: Swift reads `\r\n` as one
+character), is refused. `Executor.exportBatch` records `sequence_export` (each step's command and argv) before giving the file,
+and a record that can't be written gives none. The file runs outside the guard and audit, and the sheet says so. Held to
+`SequenceExportTests` and `BuilderChangesTests`.
+
 ## The closed list of writes (roadmap 5.1, 2026-11-27; GamGUI #189)
 Rename a user (`update user <u> primaryemail <new> noactionifalias`), delete a group (`delete group <g> noactionifalias`) and add
 an admin role (`create admin <holder> <role> customer|org_unit <unit>`), each destructive and curated. `noactionifalias` makes GAM

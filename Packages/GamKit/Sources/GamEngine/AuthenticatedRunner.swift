@@ -35,7 +35,7 @@ public struct AuthenticatedRunner: Sendable {
         // Only the mock's own variables (passed in debug builds only): a caller outside GamKit can't
         // change HOME, PATH or a proxy for a credentialed call.
         return try await run(argv: read.argv, as: domain, timeout: timeout,
-                             extraEnvironment: extraEnvironment.filter { GamEnvironment.mockOnly.contains($0.key) })
+                             extraEnvironment: extraEnvironment.filter { GamEnvironment.mockOnly.contains($0.key) }, input: read.input)
     }
 
     /// A write, for ChangeCore's executor only: it takes a `WriteTicket`, which nothing else can make. `launched` is told once
@@ -49,7 +49,8 @@ public struct AuthenticatedRunner: Sendable {
         launched: (@Sendable () -> Void)? = nil
     ) async throws -> GamResult {
         try await run(argv: write.argv, as: domain, timeout: timeout,
-                      extraEnvironment: extraEnvironment.filter { GamEnvironment.mockOnly.contains($0.key) }, launched: launched)
+                      extraEnvironment: extraEnvironment.filter { GamEnvironment.mockOnly.contains($0.key) }, launched: launched,
+                      input: write.input)
     }
 
     /// Any argv, with the domain's credentials. `private`: a write must not reach it except through the
@@ -59,7 +60,8 @@ public struct AuthenticatedRunner: Sendable {
         as domain: Domain,
         timeout: Duration,
         extraEnvironment: [String: String],
-        launched: (@Sendable () -> Void)? = nil
+        launched: (@Sendable () -> Void)? = nil,
+        input: Data? = nil
     ) async throws -> GamResult {
         let secrets = try await vault.credentials(for: domain)
         let files = Dictionary(uniqueKeysWithValues: secrets.map { ($0.key.fileName, $0.value.bytes) })
@@ -68,7 +70,7 @@ public struct AuthenticatedRunner: Sendable {
         let outcome: Result<GamResult, any Error>
         do {
             outcome = .success(try await runner.runRaw(argv, configDirectory: config.url, timeout: timeout,
-                                                    extraEnvironment: extraEnvironment, launched: launched))
+                                                    extraEnvironment: extraEnvironment, launched: launched, input: input))
         } catch {
             outcome = .failure(error)
         }

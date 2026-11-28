@@ -52,6 +52,10 @@ public final class SignatureChanges {
         public let notes: [String]
         /// A Put Back of a kept run (GamGUI's `/signatures/putback`); nil for a new signature.
         public let putBack: PutBack?
+        /// Roadmap 5.4's opt-in: the same people held as one GAM call (`Fast`); nil for one person, a retry, a Put Back.
+        public var fast: Fast? = nil
+        /// Running as one GAM call: no live count and no Stop.
+        public internal(set) var isOneCall = false
 
         public var id: UUID { preview.id }
         /// One write per person, run in the jobs tray with Stop, a sample on the sheet: a scope's, or a Put Back's.
@@ -59,6 +63,19 @@ public final class SignatureChanges {
         public var isPutBack: Bool { putBack != nil }
         /// The signature the run will send: the held argv element itself, not a copy made beside it.
         public var body: String { preview.steps.first?.signatureBody ?? "" }
+    }
+
+    /// A scope's run as one GAM call (roadmap 5.4, GamGUI #193): its own held preview of one `csv -` write whose rows are
+    /// every person's render, everyone's current signature read in one call and kept first. Held beside the per-person
+    /// preview so a confirm runs what was held; confirming either drops the other. `refusal` says why it isn't offered.
+    public struct Fast: Sendable {
+        let preview: HeldPreview?
+        public let refusal: String?
+        public var isOffered: Bool { preview != nil }
+        /// Whether `typed` is the count the guard wants for this preview (the per-person preview's, the same people).
+        public func typedCountMatches(_ typed: String) -> Bool { preview?.decision.typedCountMatches(typed) ?? false }
+        /// The one command, as the audit keeps it; the rows go on GAM's standard input, never in the argv.
+        public var shownCommand: String { preview?.steps.first?.shownArgv.joined(separator: " ") ?? "" }
     }
 
     /// The kept run a Put Back sets again, and who it leaves out.
@@ -343,16 +360,57 @@ public final class SignatureChanges {
         let held = await executor.preview(steps, confirmStep: true, typedCountAbove: typedCountAbove, expecting: expecting,
                                           title: jobTitle)
         guard await isCurrent(serial, held, executor) else { return }
+        var fast: Fast?
+        if case .success = held, !isRetry, count > 1 {
+            fast = await holdFast(people, steps: steps, executor: executor, expecting: expecting, title: jobTitle)
+            // A newer preview began while this one was held: both are dropped, never shown.
+            guard serial == self.serial else {
+                if let other = fast?.preview { await executor.discard(other.id) }
+                _ = await isCurrent(serial, held, executor)
+                return
+            }
+        }
         let whom = "\(count) \(count == 1 ? "person" : "people")"
         switch held {
         case .success(let preview):
-            state = .previewing(Pending(
+            var pending = Pending(
                 preview: preview, person: sample,
                 title: isRetry ? "Retry the signature for \(whom) in \(scope.who)" : "Set the signature for \(whom) in \(scope.who)",
                 confirmLabel: "Replace \(count) Signature\(count == 1 ? "" : "s")", current: nil, warnings: warnings,
-                scope: scope, people: people, template: template, isRetry: isRetry, notes: notes, putBack: nil))
+                scope: scope, people: people, template: template, isRetry: isRetry, notes: notes, putBack: nil)
+            pending.fast = fast
+            state = .previewing(pending)
         case .failure(let refusal):
             state = .problem(Problem(refusal.message))
+        }
+    }
+
+    /// The one-call preview of `steps` (each person's held render), or why it isn't offered: a render GAM's csv can't carry
+    /// (`SignaturesFast.refusal`) keeps the whole run on the per-person path, said on the sheet, so its count stays the
+    /// operator's. The same confirm step and typed count as the per-person preview; the guard counts each person.
+    private func holdFast(_ people: [GamUser], steps: [WriteStep], executor: Executor,
+                          expecting: (domain: Domain, generation: Int)?, title: String) async -> Fast {
+        var rows: [WriteStep.KeepFirst.Person] = [], refused: [String] = []
+        for (person, step) in zip(people, steps) {
+            let body = step.signatureBody ?? ""
+            if let why = SignaturesFast.refusal(email: person.primaryEmail, body: body) {
+                refused.append("\(person.primaryEmail) (\(why))")
+            } else {
+                rows.append(.init(email: person.primaryEmail, setting: body))
+            }
+        }
+        guard refused.isEmpty else {
+            return Fast(preview: nil, refusal: "One GAM call isn't offered: \(refused.count) of them can't go that way: "
+                        + Self.named(refused) + ".")
+        }
+        let step = WriteStep(GamCommands.setSignaturesCSV(rows: rows.map { ($0.email, $0.setting) }),
+                             target: "\(rows.count) people", summary: "Replace \(rows.count) Gmail signatures in one GAM call.",
+                             about: ["count": String(rows.count)], timeout: max(GamRunner.defaultTimeout, .seconds(5 * rows.count)),
+                             keepFirst: .signatures(people: rows))
+        switch await executor.preview([step], confirmStep: true, typedCountAbove: typedCountAbove, expecting: expecting,
+                                      title: title + ", one GAM call") {
+        case .success(let preview): return Fast(preview: preview, refusal: nil)
+        case .failure(let refusal): return Fast(preview: nil, refusal: refusal.message)
         }
     }
 
@@ -614,6 +672,7 @@ public final class SignatureChanges {
         }
         typedProblem = nil
         state = .running(pending)
+        if let other = pending.fast?.preview { await executor.discard(other.id) }
         if pending.isScoped { return await confirmScope(pending, confirmation, executor: executor) }
         let outcome = await executor.run(pending.preview, confirmation: confirmation)
         if outcome.refusal == nil, outcome.steps.first?.isSucceeded == true { finished += 1 }
@@ -621,6 +680,64 @@ public final class SignatureChanges {
         state = outcome.refusal == nil && !setup.isConnected(to: pending.preview) ? .idle : Self.personResult(pending, outcome)
         // Whatever it kept shows, a write whose outcome is unknown included.
         await loadKept()
+    }
+
+    /// Roadmap 5.4's opt-in: runs `pending`'s one-call preview, exactly as held, and drops the per-person one. No live count
+    /// and no Stop: the result names who GAM said it set, and everyone else is failed, for a per-person Retry.
+    public func confirmFast(_ pending: Pending, _ confirmation: OperatorConfirmation) async {
+        guard !isBusy, let executor, case .previewing(let shown) = state, shown.id == pending.id,
+              let fast = pending.fast?.preview else { return }
+        if !fast.decision.typedCountMatches(confirmation.typedCount) {
+            typedProblem = Self.typedCountRefusal(fast.decision.affectedCount)
+            typedRefusals += 1
+            return
+        }
+        typedProblem = nil
+        var running = pending
+        running.isOneCall = true
+        state = .running(running)
+        await executor.discard(pending.preview.id)
+        let outcome = await executor.run(fast, confirmation: confirmation)
+        if let refusal = outcome.refusal {
+            state = .problem(Problem(refusal))
+            return
+        }
+        guard setup.isConnected(to: fast) else {
+            state = .idle
+            return await loadKept()
+        }
+        let done = Self.fastDone(pending, outcome)
+        if done.failedCount < pending.people.count { finished += 1 }
+        state = .done(done)
+        await loadKept()
+    }
+
+    /// A one-call run's result: only GAM's own "Set" line (`GamWrite.noted`'s `set`) says a person was set, whatever the
+    /// exit; anyone else is failed, with GAM's error when it gave one, and Retry runs them one at a time. A run stopped
+    /// before the write (unread, not kept, a domain switch) set nobody.
+    nonisolated static func fastDone(_ pending: Pending, _ outcome: RunOutcome) -> Done {
+        let said = Set((outcome.noted[0]?["set"] ?? "").split(separator: ",").map(String.init))
+        let step = outcome.steps.first
+        var failures: [String] = [], failed: [String] = [], set = 0
+        for person in pending.people {
+            if said.contains(PythonText.lower(person.primaryEmail)) {
+                set += 1
+                continue
+            }
+            let why: String = switch step {
+            case .failed(let message, let kind)?: remediation(message, kind: kind, for: person)
+            case .skipped(let reason)?, .waiting(let reason)?: reason
+            case .succeeded?, nil: SignaturesFast.notSaid
+            }
+            failed.append(person.primaryEmail)
+            if failures.count < failuresKept { failures.append("\(person.primaryEmail) \u{2014} \(why)") }
+        }
+        let total = pending.people.count, note = outcome.auditProblem.map { " \($0)" } ?? ""
+        let retry = failed.isEmpty ? nil
+            : pending.scope.map { Retry(template: pending.template, failed: failed, scope: $0, domain: pending.preview.domain,
+                                        generation: pending.preview.generation) }
+        return Done(message: "Applied to \(set) of \(total) users in one GAM call." + note, keptRun: outcome.kept,
+                    failures: failures, failedCount: failed.count, partial: !failed.isEmpty, retry: retry)
     }
 
     /// One person's run in words: done with its kept run, or why not. A write whose outcome is unknown (a timeout, an

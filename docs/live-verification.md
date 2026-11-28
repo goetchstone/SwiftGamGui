@@ -45,6 +45,8 @@ Dates are 2026, and the last time the command ran from any screen.
 - **Ran:** set a signature (11-13).
 - **Not run:** set it for a group's members, an org unit or the whole company, as a job with Stop, and retry the ones that
   failed (new 2026-11-13; GamGUI's bulk apply never ran live either). Try it first on a small org unit.
+- **Not run:** the same in one GAM call (new 2026-11-27, roadmap 5.4): check that GAM prints one "Set" line per person and
+  that a body with é and a line break reads back as it showed. Two people in a small org unit first.
 
 ### Onboard
 - **Ran:** one hire, end to end (11-13): create the account, its signature, two groups, the task checklist, the welcome
@@ -72,6 +74,10 @@ Dates are 2026, and the last time the command ran from any screen.
 ### Phishing
 - **Ran:** trash an email from each mailbox that has it (10-23). A copy in Trash hasn't been looked at in Gmail yet.
 - **Not run:** copies in Spam, several emails in one preview (Pull All).
+
+### Reports
+- **Not run:** No 2SV / No recovery reminder emails (new 2026-11-27, roadmap 3.3; the same `sendemail` as onboarding's
+  welcome email, which ran).
 
 ### Builder
 - **Not run:** rename a user, delete a group, add an admin role (new 2026-11-27, roadmap 5.1).

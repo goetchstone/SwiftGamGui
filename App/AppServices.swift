@@ -88,6 +88,8 @@ struct AppServices {
     let runSchedules: RunSchedules
     /// Inactive users' Suspend these…: the directory read again, one previewed write through the executor.
     let inactiveSuspend: InactiveSuspend
+    /// Reports' No 2SV / No recovery reminder emails.
+    let bucketReminders: BucketReminders
     /// Users' Department for Many…: one department for a group's members or pasted addresses, each previewed write through the executor.
     let departmentForMany: DepartmentForMany
     /// Users' Org Unit for Many… (roadmap 4.2).
@@ -236,6 +238,7 @@ struct AppServices {
                            auditRuns: auditRuns,
                            runSchedules: runSchedules,
                            inactiveSuspend: InactiveSuspend(executor: executor, setup: setup, directory: directory),
+                           bucketReminders: BucketReminders(executor: executor, setup: setup, directory: directory),
                            departmentForMany: DepartmentForMany(executor: executor, setup: setup, directory: directory, runner: runner),
                            orgUnitMoves: OrgUnitForMany(executor: executor, setup: setup, directory: directory,
                                                         access: UserAccess(setup: setup, runner: runner), runner: runner),
