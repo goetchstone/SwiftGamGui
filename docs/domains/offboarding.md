@@ -347,3 +347,27 @@ Users → a person → Actions → **Delete Account…** (`UserChanges.previewDe
 - **The manager is optional** when no running step acts on one (`needsManager`): otherwise the preview names the steps that do.
 - Templates keep the services and the room release (file version 3); versions 1 and 2 read as Drive and Calendar.
 - Held to `OffboardChangesTests` (options) and `OffboardTemplateStoreTests`. Not run live.
+
+## Close Out (roadmap 4.5, 2026-11-28; GamGUI #183, plan D2)
+- **Where**: a section under Offboard's plan (`App/CloseOutView.swift`, `Directory/CloseOutChanges.swift`, `GamEngine/CloseOut.swift`).
+  The routine itself stays one fixed list with no delete; the delete is the person page's (Delete Account, above).
+- **Check**: the account read (`CloseOut.recordFields`; an alias is refused for its primary), the connected admin refused
+  by account ID (asked as the account's suspend would be: `Executor`'s cut-off check, and an unconfirmed admin refuses too),
+  then the transfers. **A transfer unfinished, or unread, offers nothing**; one that failed is named. Then groups, direct admin
+  roles, org units and seats, each read on its own and strict (`GamOutput.titled`: output without its titles is unread,
+  never none); one that fails is said and offers nothing.
+- **Picks**: each group, role, the org unit, suspend or archive (archive only when the record says `archived: false`; it
+  swaps the license, so archive and a license removal together are refused), each seat, each alias (to the manager, who must
+  be an account, not an alias, not them). Preview reads everything again; a pick no longer there refuses ("changed since the
+  check"), and one in a section now unread is said as unread.
+- **Run**: every step destructive, the leaver's address typed, none waiting on another (a refused one is reported, the rest
+  run). The preview's `precondition` reads the transfer, the aliases and the manager again right before the first write;
+  each alias move reads the alias as theirs again just before it (`KeepFirst.aliasOf`), since `update alias` takes it from
+  whoever holds it. A failed move says the alias may be on nobody.
+- **New builders**: `setArchived` (a cut-off, like suspend), `deleteAdminRole` (digits only), `moveAlias` (one address each).
+- **Deviations**: GamGUI refuses the check while that person's offboarding runs; here the executor's in-flight lock refuses
+  the run instead. GamGUI writes a `closeout` record before the job; here each step is audited as it runs, under the
+  preview's title.
+- **Fixed on the way** (GamGUI #183's): `UserAccess.dataTransfers` read output without its `id` title as no transfers; it is
+  unread now, which the delete zone and Licenses refuse on.
+- Held to `CloseOutTests` and `CloseOutChangesTests`. Not run live (a throwaway account after its transfer first).

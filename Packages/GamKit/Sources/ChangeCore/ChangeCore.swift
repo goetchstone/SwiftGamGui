@@ -70,6 +70,17 @@ public struct WriteStep: Sendable {
         /// The fast path (roadmap 5.4): everyone's stored signature read in one call (`printSignaturesFromStdin`) and each kept,
         /// with the body the step's rows set for them, before the one `csv` write. Anyone unread: nothing is written.
         case signatures(people: [Person])
+        /// Close Out (roadmap 4.5, GamGUI's `move_alias`): `alias` read again as `email`'s right before the move, and the step
+        /// fails, moving nothing, when it isn't: `update alias` takes it from whoever holds it now. Keeps nothing.
+        case aliasOf(email: String, alias: String)
+
+        /// Whether this keeps a signature (a kept run, `SignatureKeeper`), rather than only checking.
+        var keepsSignature: Bool {
+            switch self {
+            case .aliasOf: false
+            case .signature, .signatures: true
+            }
+        }
 
         public struct Person: Sendable, Equatable {
             public let email: String
@@ -220,7 +231,7 @@ extension WriteAction {
         switch self {
         case .deleteUser, .suspendUser, .removeCalendar, .deleteEvent, .createDataTransfer, .deprovisionUser,
              .resetPassword, .removeAllCalendarACLs, .deleteAlias, .clearRecovery, .transferCalendarOwnership, .deleteFilters,
-             .trashMessage, .deleteSendAs, .deleteMessages, .setPassword, .deleteDeviceUser, .removeLicense, .renameUser, .deleteGroup, .createAdmin, .deleteOrgUnit:
+             .trashMessage, .deleteSendAs, .deleteMessages, .setPassword, .deleteDeviceUser, .removeLicense, .renameUser, .deleteGroup, .createAdmin, .deleteOrgUnit, .archiveUser, .deleteAdminRole, .moveAlias:
             .destructive
         default:
             .low
@@ -608,6 +619,11 @@ public actor Executor {
             let built = GamCommands.setSignaturesCSV(rows: people.map { ($0.email, $0.setting) })
             return step.action == .setSignaturesFast && !people.isEmpty && step.newAccountFrom == nil && step.listedTask == nil
                 && same(built.argv, step.write.argv) && built.input == step.write.input
+        case .aliasOf(_, let alias):
+            // The alias the step's own `update alias <alias> user <to>` moves.
+            let argv = step.write.argv
+            return step.action == .moveAlias && argv.count == 5 && same(argv[2], alias) && step.newAccountFrom == nil
+                && step.listedTask == nil
         }
     }
 
@@ -789,7 +805,7 @@ public actor Executor {
     /// The kept run for `preview`'s signatures, when a step keeps one: nil when none does. Throws when there's no keeper or
     /// it can't start one.
     private func startKept(for preview: HeldPreview) throws -> (any KeptSignatureRun)? {
-        guard preview.steps.contains(where: { $0.keepFirst != nil }) else { return nil }
+        guard preview.steps.contains(where: { $0.keepFirst?.keepsSignature == true }) else { return nil }
         guard let signatureKeeper else { throw NoSignatureKeeper() }
         let restoring = Set(preview.steps.compactMap { step -> String? in
             guard case .signature(_, _, _, let source)? = step.keepFirst else { return nil }
@@ -808,6 +824,28 @@ public actor Executor {
     private func keepFirst(_ keep: WriteStep.KeepFirst, of preview: HeldPreview, into kept: (any KeptSignatureRun)?) async
         -> (result: RunOutcome.Step, stop: String?)? {
         switch keep {
+        case .aliasOf(let email, let alias):
+            let unread = "Couldn't read \(email)'s aliases, so \(alias) wasn't moved: moving it would take it from whoever has it now."
+            let now: GamUser
+            do {
+                let read = try await runner.run(GamCommands.infoUser(email: email, fields: ["primaryEmail", "aliases"]), as: preview.domain,
+                                                extraEnvironment: extraEnvironment)
+                guard read.exitCode == 0 else { throw GamError(exitCode: read.exitCode, stderr: read.stderr) }
+                now = GamUser(record: GamOutput.one(read.stdout))
+            } catch is CancellationError {
+                return (.skipped(reason: Self.cancelledBeforeRun), Self.cancelledBeforeRun)
+            } catch let error as GamError {
+                let stop = error.kind.isAccountWide && preview.stopsAtAccountWideFailure ? "Stopped: \(error.kind.remediation)" : nil
+                return (.failed(message: unread, kind: nil), stop)
+            } catch {
+                return (.failed(message: unread, kind: nil), nil)
+            }
+            let mine = Set(now.aliases.map { PythonText.lower(PythonText.strip($0)) })
+            guard Self.same(PythonText.lower(now.primaryEmail), PythonText.lower(email)), mine.contains(PythonText.lower(alias)) else {
+                return (.failed(message: "\(alias) isn't \(email)'s alias any more, so it wasn't moved: moving it would take it from "
+                                + "whoever has it now.", kind: nil), nil)
+            }
+            return nil
         case .signature(let email, let setting, let expectedNow, _):
             guard let kept else { return (.skipped(reason: Self.notKept), Self.notKept) }
             let previous: String
@@ -1188,7 +1226,7 @@ public actor Executor {
             }
             var base = extra(for: step, of: preview, index: index, attempt: attempt)
             // Where the signature it replaces is kept, for whoever reads the audit.
-            if step.keepFirst != nil, let kept { base["kept"] = .string(kept.id) }
+            if step.keepFirst?.keepsSignature == true, let kept { base["kept"] = .string(kept.id) }
             let secrets = step.secretTexts
             // No begin record, no write: a write that can't be audited doesn't run, and a crash mid-call
             // must leave its "outcome unknown" record.

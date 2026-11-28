@@ -683,6 +683,31 @@ public enum GamCommands {
         return GamWrite(["delete", "group", group, "noactionifalias"], action: .deleteGroup)
     }
 
+    // MARK: Close Out (roadmap 4.5, GamGUI #183)
+
+    /// `archived` is a boolean of `update user` (getUserAttributes). Google swaps the person's license for an Archived User
+    /// one, and refuses without one to give.
+    public static func setArchived(email: String) -> GamWrite {
+        GamWrite(["update", "user", email, "archived", "on"], action: .archiveUser)
+    }
+
+    /// `delete admin <RoleAssignmentId>` (doDeleteAdmin): the ID `print admins` lists, digits only. A failure is a warning,
+    /// exit 50.
+    public static func deleteAdminRole(assignmentID: String) throws -> GamWrite {
+        guard !assignmentID.isEmpty, assignmentID.unicodeScalars.allSatisfy({ ("0"..."9").contains($0) }) else {
+            throw Invalid.argument("a role assignment is named by its numeric ID")
+        }
+        return GamWrite(["delete", "admin", assignmentID], action: .deleteAdminRole)
+    }
+
+    /// `update alias <a> user <u>` (doCreateUpdateAliases at the 7.52.04 tag): checks the new owner exists, deletes the alias
+    /// from whoever holds it, waits 2s, then adds it to `to`. An add that fails after the delete leaves the alias on nobody,
+    /// exit 50. Both are one address: a list here would move them all.
+    public static func moveAlias(alias: String, to: String) throws -> GamWrite {
+        guard isOneAddress(alias), isOneAddress(to) else { throw Invalid.argument("an alias is moved to one account, each one address") }
+        return GamWrite(["update", "alias", alias, "user", to], action: .moveAlias)
+    }
+
     public static func printTokens(user: String? = nil) throws -> GamRead {
         guard user.map(isOneAddress) ?? true else { throw Invalid.argument("“\(user ?? "")” isn't one email address") }
         return GamRead((user.map { ["user", $0] } ?? []) + ["print", "tokens"])
