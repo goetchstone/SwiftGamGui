@@ -134,11 +134,6 @@ struct GoldenArgvTests {
 
     /// GamGUI builders deliberately not ported.
     static let notPorted: [String: String] = [
-        "print_org_units": "Org units (GamGUI #169): not built here yet; the mock refuses the read",
-        "move_user_to_org_unit": "Org units (GamGUI #169): not built here yet",
-        "create_org_unit": "Org units (GamGUI #169): not built here yet",
-        "rename_org_unit": "Org units (GamGUI #169): not built here yet",
-        "delete_org_unit": "Org units (GamGUI #169): not built here yet",
         "add_license": "A person's licenses from their page (GamGUI #175): not built here yet",
         "swap_license": "A person's licenses from their page (GamGUI #175): not built here yet",
         "remove_license": "A person's licenses from their page (GamGUI #175): not built here yet",
@@ -288,6 +283,11 @@ struct GoldenArgvTests {
         "delete_send_as": { try GamCommands.deleteSendAs(email: $0.string("email"), address: $0.string("address")) },
         "print_admins": { try GamCommands.printAdmins(user: $0.string("email")) },
         "print_tokens": { _ in try GamCommands.printTokens() },
+        "print_org_units": { _ in GamCommands.printOrgUnits() },
+        "move_user_to_org_unit": { GamCommands.moveUserToOrgUnit(orgUnit: try $0.text("org_unit"), email: try $0.text("email")) },
+        "create_org_unit": { GamCommands.createOrgUnit(path: try $0.text("path"), description: try $0.text("description")) },
+        "rename_org_unit": { GamCommands.renameOrgUnit(orgUnit: try $0.text("org_unit"), name: try $0.text("name")) },
+        "delete_org_unit": { GamCommands.deleteOrgUnit(orgUnit: try $0.text("org_unit")) },
         "rename_user": { try GamCommands.renameUser(email: $0.string("email"), newEmail: $0.string("new_email")) },
         "delete_group": { try GamCommands.deleteGroup(group: $0.string("group")) },
         "create_admin": { try GamCommands.createAdmin(email: $0.string("email"), role: $0.string("role"), orgUnit: $0.text("org_unit")) },
@@ -350,6 +350,7 @@ struct GoldenArgvTests {
         "add_group_member": { GamCommands.addGroupMember(group: "<group>", member: "<member>") },
         "create_datatransfer": { GamCommands.createDataTransfer(oldOwner: "<old_owner>", service: "<service>", newOwner: "<new_owner>") },
         "create_group": { GamCommands.createGroup(email: "<email>") },
+        "create_org_unit": { GamCommands.createOrgUnit(path: "<path>") },
         "create_admin": { try! GamCommands.createAdmin(email: "person@example.com", role: "_HELP_DESK_ADMIN_ROLE") },
         "create_task": { GamCommands.createTask(assignee: "<assignee>", taskListID: "<tasklist_id>", title: "<title>") },
         "create_user": { GamCommands.createUser(email: "<email>", firstName: "<first_name>", lastName: "<last_name>", password: "<password>") },

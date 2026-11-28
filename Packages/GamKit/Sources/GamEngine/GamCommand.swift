@@ -123,6 +123,8 @@ public enum WriteAction: String, Sendable, CaseIterable {
     case trashMessage, deleteMessages, setPassword
     case blockDeviceUser, deleteDeviceUser
     case updatePhones
+    /// Org units (roadmap 4.2, GamGUI #169).
+    case moveOrgUnit, createOrgUnit, renameOrgUnit, deleteOrgUnit
     /// Many signatures in one GAM call (roadmap 5.4, GamGUI #193).
     case setSignaturesFast = "set_signatures_fast"
     /// The closed list of Builder writes (roadmap 5.1, GamGUI #189).

@@ -25,6 +25,8 @@ struct UsersView: View {
     let classroom: ClassroomReads
     /// Department for Many… (roadmap 2.1): one department for a group's members or pasted addresses.
     let departments: DepartmentForMany
+    /// Org Unit for Many… (roadmap 4.2).
+    let orgUnitMoves: OrgUnitForMany
     /// The groups Department for Many… chooses from.
     let groups: GroupStore
     /// A person another screen asked to open (Reports' Show in Users), cleared once their page is open.
@@ -50,6 +52,7 @@ struct UsersView: View {
     @State private var sortOrder = [KeyPathComparator(\GamUser.fullName, comparator: .localizedStandard)]
     @State private var selection: GamUser.ID?
     @State private var settingDepartments = false
+    @State private var movingMany = false
 
     var body: some View {
         content
@@ -76,10 +79,19 @@ struct UsersView: View {
                     .accessibilityIdentifier("users.load")
                 }
                 ToolbarItem {
+                    Button("Org Unit for Many\u{2026}", systemImage: "building.2") { movingMany = true }
+                        .help("Move a group's members or a list of addresses to one org unit")
+                        .disabled(directory.users == nil)
+                }
+                ToolbarItem {
                     Button("Department for Many\u{2026}", systemImage: "person.3") { settingDepartments = true }
                         .help("Set one department for a group's members or a list of addresses")
                         .disabled(directory.users == nil)
                 }
+            }
+            .sheet(isPresented: $movingMany) {
+                OrgUnitForManySheet(model: orgUnitMoves, access: access, groups: groups) { movingMany = false }
+                    .interactiveDismissDisabled(orgUnitMoves.isBusy)
             }
             .sheet(isPresented: $settingDepartments) {
                 DepartmentForManySheet(model: departments, groups: groups) { settingDepartments = false }
@@ -434,6 +446,7 @@ private struct UserDetail: View {
     @State private var tab = PersonTab.initial
     @State private var editingRole = false
     @State private var editingPhone = false
+    @State private var movingOrgUnit = false
     @State private var newGroup = ""
     @State private var newDelegate = ""
     @State private var editingAutoReply = false
@@ -503,6 +516,9 @@ private struct UserDetail: View {
         }
         .sheet(isPresented: $editingPhone) {
             PhoneEditor(user: user, changes: changes, access: access) { editingPhone = false }
+        }
+        .sheet(isPresented: $movingOrgUnit) {
+            OrgUnitEditor(user: user, changes: changes, access: access) { movingOrgUnit = false }
         }
         .onChange(of: editingRole || editingPhone || editingAutoReply, initial: true) { _, open in editorOpen = open }
         .onDisappear { editorOpen = false }
@@ -629,6 +645,9 @@ private struct UserDetail: View {
             }
             Section("Details") {
                 LabeledContent("Organizational unit", value: user.orgUnitPath)
+                Button("Move to Another Org Unit…") { movingOrgUnit = true }
+                    .disabled(changes.isBusy)
+                    .accessibilityHint("Picks a unit from the tree, read now, and shows the move before anything changes.")
                 LabeledContent("Location", value: user.location.isEmpty ? "—" : user.location)
                 LabeledContent("Phone", value: user.phone.isEmpty ? "—" : user.phone)
                 Button("Edit Phone…") { editingPhone = true }
@@ -1088,6 +1107,54 @@ private struct PhoneEditor: View {
                     close()
                     Task { await changes.previewPhone(of: user, phone: phone, origin: .form) { try await access.phones(of: email) } }
                 }
+            }
+        }
+    }
+}
+
+/// Move a person to another org unit (roadmap 4.2): the tree read when the sheet opens, a unit picked, then the preview,
+/// which reads the tree and their account again.
+private struct OrgUnitEditor: View {
+    let user: GamUser
+    let changes: UserChanges
+    let access: UserAccess
+    let close: () -> Void
+    @State private var units: Result<[String], UserAccess.Problem>?
+    @State private var picked = ""
+
+    var body: some View {
+        Form {
+            Section("Move \(user.fullName)") {
+                LabeledContent("Now in", value: user.orgUnitPath)
+                switch units {
+                case nil:
+                    HStack { ProgressView().controlSize(.small); Text("Reading the org units…") }
+                        .accessibilityElement(children: .combine)
+                case .failure(let problem)?:
+                    Label("Couldn't read the org units: \(problem.summary)", systemImage: "exclamationmark.triangle.fill")
+                        .symbolRenderingMode(.multicolor)
+                case .success(let paths)?:
+                    Picker("Move to", selection: $picked) {
+                        Text("Choose a unit…").tag("")
+                        ForEach(paths.filter { $0 != user.orgUnitPath }, id: \.self) { Text($0).tag($0) }
+                    }
+                }
+            }
+            Text("Settings and policies follow the org unit: what applies to them changes with the move.")
+                .font(.caption).foregroundStyle(.secondary)
+        }
+        .formStyle(.grouped)
+        .frame(minWidth: 380)
+        .task { units = await access.orgUnits() }
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) { Button("Cancel", action: close) }
+            ToolbarItem(placement: .confirmationAction) {
+                Button("Preview") {
+                    let user = user, picked = picked, changes = changes, access = access
+                    close()
+                    Task { await changes.previewMoveOrgUnit(user, to: picked, access: access) }
+                }
+                .disabled(picked.isEmpty)
             }
         }
     }

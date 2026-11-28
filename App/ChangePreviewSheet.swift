@@ -1961,3 +1961,54 @@ struct ReminderSheet: View {
         }
     }
 }
+
+/// Move many people to an org unit: the review (roadmap 4.2). Who, from where to where, the addresses with no account, a nested
+/// group or the whole organization not expanded, the count typed past 25, and the one button that moves exactly this.
+struct OrgUnitForManyReview: View {
+    let pending: OrgUnitForMany.Pending
+    let model: OrgUnitForMany
+    @State private var typedCount = ""
+
+    var body: some View {
+        let n = pending.count
+        Section {
+            Text("Move \(n) \(n == 1 ? "person" : "people") to \(pending.orgUnit). Settings and policies follow the org unit.")
+            if pending.missingCount > 0 {
+                Label("No account here for \(pending.missingCount): \(pending.missing.joined(separator: ", "))"
+                      + (pending.missingCount > pending.missing.count ? " and more" : "") + ".", systemImage: "info.circle")
+            }
+            if !pending.nested.isEmpty {
+                Label("Groups inside it aren't expanded: \(pending.nested.joined(separator: ", ")).", systemImage: "info.circle")
+            }
+            if pending.everyone {
+                Label("It holds the whole organization as a member, which isn't expanded.", systemImage: "info.circle")
+            }
+        } header: {
+            Text(pending.preview.title).accessibilityAddTraits(.isHeader)
+        }
+        Section("Who it moves") {
+            ForEach(pending.people.prefix(OrgUnitForMany.shown)) { person in
+                Text("\(person.primaryEmail) \u{B7} from \(person.orgUnitPath.isEmpty ? "?" : person.orgUnitPath)"
+                     + (person.suspended ? " \u{B7} suspended" : ""))
+                    .accessibilityElement(children: .combine)
+            }
+            if n > OrgUnitForMany.shown { Text("\u{2026} and \(n - OrgUnitForMany.shown) more.").foregroundStyle(.secondary) }
+        }
+        Section {
+            if pending.needsCount {
+                TextField("Number of people", text: $typedCount, prompt: Text(verbatim: String(n)))
+                    .accessibilityLabel("Type the number of people, \(n), to confirm")
+                    .onChange(of: typedCount) { model.typingChanged() }
+            }
+            if let problem = model.typedProblem {
+                Label(problem, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.red)
+            }
+            Button("Move \(n) \(n == 1 ? "Person" : "People")") {
+                let pending = pending, model = model, typed = typedCount
+                Task { await model.confirm(pending, OperatorConfirmation(confirmed: true, typedCount: pending.needsCount ? typed : "")) }
+            }
+            .keyboardShortcut(.return, modifiers: .command)
+            .accessibilityHint("Moves exactly the people shown, once.")
+        }
+    }
+}
