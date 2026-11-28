@@ -70,6 +70,15 @@ public struct WriteStep: Sendable {
         /// The fast path (roadmap 5.4): everyone's stored signature read in one call (`printSignaturesFromStdin`) and each kept,
         /// with the body the step's rows set for them, before the one `csv` write. Anyone unread: nothing is written.
         case signatures(people: [Person])
+        /// Roadmap 4.6 (GamGUI's `bulk_csv._one`): `email` read again right before the write (`BulkProfile.fields`), and the
+        /// step fails, writing nothing, unless their organizations, phones and org unit are still `held` (`BulkProfile.held`
+        /// of the record the preview planned from): a list sent from the old read would undo what changed. Keeps nothing.
+        case unchanged(email: String, held: String)
+
+        /// Whether this keeps a signature (a kept run, `SignatureKeeper`), rather than only checking.
+        var keepsSignature: Bool {
+            if case .unchanged = self { false } else { true }
+        }
 
         public struct Person: Sendable, Equatable {
             public let email: String
@@ -608,6 +617,16 @@ public actor Executor {
             let built = GamCommands.setSignaturesCSV(rows: people.map { ($0.email, $0.setting) })
             return step.action == .setSignaturesFast && !people.isEmpty && step.newAccountFrom == nil && step.listedTask == nil
                 && same(built.argv, step.write.argv) && built.input == step.write.input
+        case .unchanged(let email, _):
+            // The check is of the account the step's own write changes: a profile's `update user <email>`, a move's
+            // `update org <unit> move user <email>`.
+            let argv = step.write.argv
+            let target: String? = switch step.action {
+            case .updateProfile where argv.count > 3 && argv[0] == "update" && argv[1] == "user": argv[2]
+            case .moveOrgUnit where argv.count == 6 && argv[0] == "update" && argv[1] == "org" && argv[3] == "move": argv[5]
+            default: nil
+            }
+            return target.map { same($0, email) } == true && step.newAccountFrom == nil && step.listedTask == nil
         }
     }
 
@@ -765,6 +784,8 @@ public actor Executor {
     public static let notKept = "Couldn't keep a copy of the old signatures on this Mac, so the run stopped."
     /// GamGUI's words for a Put Back's person whose signature isn't what the run being put back left there: left as it is.
     public static let changedSince = "Changed since that run, so it's left as it is: put it back by hand if you mean to."
+    /// GamGUI's words when the check before a CSV change couldn't read the person (roadmap 4.6).
+    static func notReadAgain(_ email: String) -> String { "Couldn't read \(email) again, so nothing changed for them." }
     static let cancelledBeforeRun = "Cancelled before it ran."
     /// A step whose domain was removed or imported again during the run (its generation changed): it, and the rest, stop.
     public static let domainChanged = "Stopped: the active domain changed during the run."
@@ -789,7 +810,7 @@ public actor Executor {
     /// The kept run for `preview`'s signatures, when a step keeps one: nil when none does. Throws when there's no keeper or
     /// it can't start one.
     private func startKept(for preview: HeldPreview) throws -> (any KeptSignatureRun)? {
-        guard preview.steps.contains(where: { $0.keepFirst != nil }) else { return nil }
+        guard preview.steps.contains(where: { $0.keepFirst?.keepsSignature == true }) else { return nil }
         guard let signatureKeeper else { throw NoSignatureKeeper() }
         let restoring = Set(preview.steps.compactMap { step -> String? in
             guard case .signature(_, _, _, let source)? = step.keepFirst else { return nil }
@@ -808,6 +829,30 @@ public actor Executor {
     private func keepFirst(_ keep: WriteStep.KeepFirst, of preview: HeldPreview, into kept: (any KeptSignatureRun)?) async
         -> (result: RunOutcome.Step, stop: String?)? {
         switch keep {
+        case .unchanged(let email, let held):
+            let now: GamOutput.Record
+            do {
+                let read = try await runner.run(GamCommands.infoUser(email: email, fields: BulkProfile.fields), as: preview.domain,
+                                                extraEnvironment: extraEnvironment)
+                guard read.exitCode == 0 else { throw GamError(exitCode: read.exitCode, stderr: read.stderr) }
+                now = GamOutput.one(read.stdout)
+            } catch is CancellationError {
+                return (.skipped(reason: Self.cancelledBeforeRun), Self.cancelledBeforeRun)
+            } catch let error as GamError {
+                let stop = error.kind.isAccountWide && preview.stopsAtAccountWideFailure ? "Stopped: \(error.kind.remediation)" : nil
+                return (.failed(message: Self.notReadAgain(email), kind: error.kind), stop)
+            } catch {
+                return (.failed(message: Self.notReadAgain(email), kind: nil), nil)
+            }
+            // An answer that isn't their record is unread, never a person with none (GamGUI's `profile_now`).
+            guard Self.same(PythonText.lower(PythonText.strip(now["primaryEmail"]?.string ?? "")), PythonText.lower(PythonText.strip(email))) else {
+                return (.failed(message: Self.notReadAgain(email), kind: nil), nil)
+            }
+            guard Self.same(BulkProfile.held(now), held) else {
+                return (.failed(message: "\(email)'s profile changed since the preview, so nothing changed for them. Preview again.",
+                                kind: nil), nil)
+            }
+            return nil
         case .signature(let email, let setting, let expectedNow, _):
             guard let kept else { return (.skipped(reason: Self.notKept), Self.notKept) }
             let previous: String
@@ -1188,7 +1233,7 @@ public actor Executor {
             }
             var base = extra(for: step, of: preview, index: index, attempt: attempt)
             // Where the signature it replaces is kept, for whoever reads the audit.
-            if step.keepFirst != nil, let kept { base["kept"] = .string(kept.id) }
+            if step.keepFirst?.keepsSignature == true, let kept { base["kept"] = .string(kept.id) }
             let secrets = step.secretTexts
             // No begin record, no write: a write that can't be audited doesn't run, and a crash mid-call
             // must leave its "outcome unknown" record.
