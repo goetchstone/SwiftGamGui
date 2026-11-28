@@ -1734,8 +1734,10 @@ struct BuilderSequenceSheet: View {
             ForEach(Array(changes.sequence.enumerated()), id: \.element.id) { index, queued in
                 HStack(alignment: .firstTextBaseline) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("\(index + 1). \(queued.name)")
-                        Text(queued.step.commandLine).font(.caption.monospaced()).textSelection(.enabled)
+                        Text("\(index + 1). \(queued.name)"
+                             + (queued.source(in: changes.sequence).map { " \u{2014} \(queued.target) from step \($0)" } ?? "")
+                             + (queued.isRead ? " \u{2014} a read, for later steps to take from" : ""))
+                        Text(queued.commandLine).font(.caption.monospaced()).textSelection(.enabled)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                     .accessibilityElement(children: .combine)

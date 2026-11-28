@@ -234,7 +234,8 @@ struct AppServices {
                            nobodyHas: nobodyHas,
                            incidents: incidents,
                            usage: UsageStore(setup: setup, runner: runner),
-                           builderChanges: BuilderChanges(executor: executor, setup: setup, directory: directory),
+                           builderChanges: BuilderChanges(executor: executor, setup: setup, directory: directory,
+                                                          access: UserAccess(setup: setup, runner: runner), readAudit: ReadAudit(log: audit)),
                            readAudit: ReadAudit(log: audit),
                            // Its own reader: the scope check is the export's, live.
                            sheetExports: SheetExports(executor: executor, setup: setup, access: UserAccess(setup: setup, runner: runner)),

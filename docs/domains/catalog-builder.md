@@ -318,3 +318,15 @@ an admin role (`create admin <holder> <role> customer|org_unit <unit>`), each de
 refuse an alias (51), said as `alias_refused`; a rename is a cut-off (`GamWrite.cutsOff`), so the connected admin is refused; a
 run that exits 0 without GAM's own line reads as unconfirmed (`GamWrite.notDone`). Create and rename a shared drive follow once
 the Shared Drives screen (4.7) is in. Held to `BuilderChangesTests`. Not run live.
+
+## A step takes its values from an earlier read (roadmap 5.2, 2026-11-28; GamGUI #194's `core/sequence_binds.py`)
+A curated read can now join a sequence (Add to Sequence on a read's page), and a later change's field can take
+`=stepN.Column` (`GamEngine/SequenceBinds.swift`, GamGUI's syntax and words): that step runs once for each distinct row of step
+N's result. **Only an earlier read with no bindings of its own feeds a step**, one source a step, never a choice field, every
+other required field filled (`BuilderChanges.boundStep`). **At the preview** each read a step binds to runs once, recorded as
+the Builder's reads are (`UserAccess.catalogRead`), and each row's step is built by its command's own builder; the filled-in
+list is what is shown, held, guarded, run and exported. A failed read, output that isn't a table, a row missing the column or
+a value the builder refuses blocks the preview; a read with no rows fills the step in for no one, said aloud. At most 500
+steps once filled in; with a bound step, past 25 the count is typed. **Deviation:** Swift's sequences hold only changes, so a
+read runs at the preview and not again at Run, and isn't one of the guard's targets (GamGUI runs it again as the job's step
+and counts it). Held to `SequenceBindsTests` and `BuilderSequenceBindsTests`. Not run live.
