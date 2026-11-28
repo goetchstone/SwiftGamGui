@@ -95,6 +95,8 @@ struct AppServices {
     /// A person's licenses, and Reports' Suspended → remove their licenses (roadmap 4.3).
     let licenses: LicenseChanges
     let suspendedLicenses: SuspendedLicenses
+    /// Users' Org Unit for Many… (roadmap 4.2).
+    let orgUnitMoves: OrgUnitForMany
     /// Onboard's From a CSV…: every row's hire held as one preview through the executor.
     let hiresFromCSV: HiresFromCSV
     /// This app's audit log: Home reads it (off the main actor) for writes that never ended, and Audit shows it.
@@ -244,6 +246,8 @@ struct AppServices {
                            licenses: LicenseChanges(executor: executor, setup: setup, access: UserAccess(setup: setup, runner: runner)),
                            suspendedLicenses: SuspendedLicenses(executor: executor, setup: setup, directory: directory,
                                                                 access: UserAccess(setup: setup, runner: runner)),
+                           orgUnitMoves: OrgUnitForMany(executor: executor, setup: setup, directory: directory,
+                                                        access: UserAccess(setup: setup, runner: runner), runner: runner),
                            hiresFromCSV: HiresFromCSV(executor: executor, setup: setup, directory: directory),
                            auditURL: auditURL, savedFiles: savedFiles, lockVault: { await vault.lock() })
     }

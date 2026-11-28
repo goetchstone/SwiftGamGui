@@ -125,6 +125,8 @@ public enum WriteAction: String, Sendable, CaseIterable {
     case updatePhones
     /// A person's license seats (roadmap 4.3, GamGUI #175).
     case addLicense, swapLicense, removeLicense
+    /// Org units (roadmap 4.2, GamGUI #169).
+    case moveOrgUnit, createOrgUnit, renameOrgUnit, deleteOrgUnit
     /// Many signatures in one GAM call (roadmap 5.4, GamGUI #193).
     case setSignaturesFast = "set_signatures_fast"
     /// The closed list of Builder writes (roadmap 5.1, GamGUI #189).

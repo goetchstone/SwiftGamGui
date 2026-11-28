@@ -255,6 +255,16 @@ public final class UserAccess {
         }
     }
 
+    /// The org unit tree (roadmap 4.2): every path, the root first. Output without GAM's titles never answered: a problem,
+    /// never "only /".
+    public func orgUnits(in pinned: Domain? = nil) async -> Result<[String], Problem> {
+        switch await readNow(GamCommands.printOrgUnits(), in: pinned, parse: OrgUnits.paths) {
+        case .success(let paths?): .success(paths)
+        case .success(nil): .failure(Problem(summary: "GAM answered without the org units, so where people can go can't be told."))
+        case .failure(let problem): .failure(problem)
+        }
+    }
+
     /// The phones and tablets syncing the account (`GamCommands.printMobileDevices`).
     public func mobileDevices(of email: String) async -> Result<[Compromised.MobileDevice], Problem> {
         guard let read = try? GamCommands.printMobileDevices(user: email) else {
