@@ -198,18 +198,19 @@ public final class InactiveSuspend {
             ended(.problem(refusal))
             return
         }
-        var suspended = 0, failed: [(email: String, why: String)] = []
+        var suspended: [String] = [], failed: [(email: String, why: String)] = []
         for (target, step) in zip(pending.targets, outcome.steps) {
             switch step {
             case .succeeded:
-                suspended += 1
-                directory.patch(target.email, on: pending.preview.domain, generation: pending.preview.generation) { $0.with(suspended: true) }
+                suspended.append(target.email)
             case .failed(let message, let kind):
                 failed.append((target.email, kind?.remediation ?? message))
             case .skipped(let reason), .waiting(let reason):
                 failed.append((target.email, reason))
             }
         }
+        // Once for the whole run, not once a person (GamGUI #196).
+        directory.patchMany(suspended, on: pending.preview.domain, generation: pending.preview.generation) { $0.with(suspended: true) }
         let unrun = pending.count - outcome.steps.count
         if !failed.isEmpty, setup.active == pending.preview.domain, setup.generation == pending.preview.generation {
             let directory = directory
@@ -217,7 +218,7 @@ public final class InactiveSuspend {
         }
         let note = outcome.auditProblem.map { " \($0)" } ?? ""
         let total = pending.count
-        var words = "Suspended \(suspended) of \(total) account\(total == 1 ? "" : "s")."
+        var words = "Suspended \(suspended.count) of \(total) account\(total == 1 ? "" : "s")."
         if !failed.isEmpty || unrun > 0 {
             let said = failed.prefix(Self.failuresSaid).map { "\($0.email): \($0.why)" }
             let more = failed.count - said.count

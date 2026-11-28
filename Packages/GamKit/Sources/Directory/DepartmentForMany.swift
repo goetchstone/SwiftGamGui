@@ -278,9 +278,9 @@ public final class DepartmentForMany {
             return
         }
         let (domain, generation) = (pending.preview.domain, pending.preview.generation)
-        for (person, step) in zip(pending.people, outcome.steps) where step.isSucceeded {
-            directory.patch(person.primaryEmail, on: domain, generation: generation) { $0.with(department: pending.department) }
-        }
+        // Once for the whole run, not once a person (GamGUI #196).
+        let set = zip(pending.people, outcome.steps).filter { $0.1.isSucceeded }.map { $0.0.primaryEmail }
+        directory.patchMany(set, on: domain, generation: generation) { $0.with(department: pending.department) }
         if outcome.steps.count < pending.count || !outcome.steps.allSatisfy(\.isSucceeded),
            setup.isConnected(to: pending.preview) {
             let directory = directory

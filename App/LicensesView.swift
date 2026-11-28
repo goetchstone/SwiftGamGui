@@ -15,11 +15,11 @@ struct PersonLicensesSection: View {
             case nil:
                 Button(licenses.isReading ? "Reading…" : "Read Their Licenses") { Task { await licenses.load(user.primaryEmail) } }
                     .disabled(licenses.isReading)
-                    .accessibilityHint("Reads every license seat in the domain once. Nothing changes.")
+                    .accessibilityHint("Reads every license seat in the domain, or uses a read from the last five minutes. Nothing changes.")
             case .failure(let problem)?:
                 Label("Couldn't read the licenses: \(problem.summary)", systemImage: "exclamationmark.triangle.fill")
                     .symbolRenderingMode(.multicolor)
-                Button("Read Again") { Task { await licenses.load(user.primaryEmail) } }
+                Button("Read Again") { Task { await licenses.load(user.primaryEmail, fresh: true) } }
             case .success(let choices)?:
                 if choices.held.isEmpty { Text("The read found no license for them.").foregroundStyle(.secondary) }
                 ForEach(choices.held, id: \.seat.id) { held in
