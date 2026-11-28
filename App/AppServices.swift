@@ -97,6 +97,8 @@ struct AppServices {
     let suspendedLicenses: SuspendedLicenses
     /// Users' Org Unit for Many… (roadmap 4.2).
     let orgUnitMoves: OrgUnitForMany
+    /// Offboard's Close Out (roadmap 4.5).
+    let closeOut: CloseOutChanges
     /// Users' Change from a CSV… (roadmap 4.6).
     let bulkCSV: BulkCSVChanges
     /// Onboard's From a CSV…: every row's hire held as one preview through the executor.
@@ -250,6 +252,8 @@ struct AppServices {
                                                                 access: UserAccess(setup: setup, runner: runner)),
                            orgUnitMoves: OrgUnitForMany(executor: executor, setup: setup, directory: directory,
                                                         access: UserAccess(setup: setup, runner: runner), runner: runner),
+                           closeOut: CloseOutChanges(executor: executor, setup: setup, directory: directory,
+                                                     access: UserAccess(setup: setup, runner: runner), runner: runner),
                            bulkCSV: BulkCSVChanges(executor: executor, setup: setup, directory: directory,
                                                    access: UserAccess(setup: setup, runner: runner), runner: runner),
                            hiresFromCSV: HiresFromCSV(executor: executor, setup: setup, directory: directory),

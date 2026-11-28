@@ -100,7 +100,8 @@ public struct GamWrite: GamCommand {
         switch action {
         // A new primary address (roadmap 5.1): whether the token and the service account's sign-in as that address outlive a
         // rename isn't proven, so it counts.
-        case .deleteUser, .suspendUser, .resetPassword, .setPassword, .renameUser: argv[2]
+        // Archived can't sign in either (Close Out, roadmap 4.5).
+        case .deleteUser, .suspendUser, .resetPassword, .setPassword, .renameUser, .archiveUser: argv[2]
         case .signOutUser, .deprovisionUser: argv[1]
         default: nil
         }
@@ -123,6 +124,8 @@ public enum WriteAction: String, Sendable, CaseIterable {
     case trashMessage, deleteMessages, setPassword
     case blockDeviceUser, deleteDeviceUser
     case updatePhones
+    /// Close Out (roadmap 4.5, GamGUI #183).
+    case archiveUser, deleteAdminRole, moveAlias
     /// A person's whole organizations and phones lists from a CSV (roadmap 4.6, GamGUI #184).
     case updateProfile
     /// A person's license seats (roadmap 4.3, GamGUI #175).

@@ -691,6 +691,15 @@ if [ "${1:-}" = "info" ] && [ "${2:-}" = "user" ]; then
   if [ -n "${GAM_MOCK_STATE:-}" ] && [ -f "$GAM_MOCK_STATE/phones/$addr" ]; then
     record="{\"phones\": $(tr -d '\n' < "$GAM_MOCK_STATE/phones/$addr"), ${record#\{}"
   fi
+  # Close Out's check asks for `archived` (roadmap 4.5): the Directory API answers it for every account, false unless one is
+  # archived ($GAM_MOCK_STATE/archived/<user>, set by a test: the mock's `update user … archived on` keeps no state, as its
+  # suspend keeps none). No fixture record has it.
+  case " $* " in *archived*)
+    case "$record" in *'"archived":'*) ;; *)
+      if [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/archived/$addr" ]; then flag=true; else flag=false; fi
+      record="{\"archived\": $flag, ${record#\{}" ;;
+    esac ;;
+  esac
   printf '%s\n' "$record"
   exit 0
 fi
@@ -3043,7 +3052,64 @@ if [ "${1:-}" = "print" ] && [ "${2:-}" = "admins" ]; then
   in_directory "$user" || does_not_exist "Administrator" "$4"
   printf 'roleAssignmentId,roleId,role,assignedTo,assignedToUser,assignedToGroup,assignedToServiceAccount,assignedToUnknown,'
   printf 'scopeType,orgUnitId,orgUnit,expirationDetails.expireTime\n'
-  case "$user" in alice@example.com) printf '9170001,9170000,_SEED_ADMIN_ROLE,1001,alice@example.com,,,False,CUSTOMER,,,\n' ;; esac
+  # Ported from GamGUI #183: under GAM_MOCK_STATE an assignment `delete admin` removed is gone.
+  case "$user" in alice@example.com)
+    if [ -z "${GAM_MOCK_STATE:-}" ] || ! grep -qx 9170001 "$GAM_MOCK_STATE/admins_deleted" 2>/dev/null; then
+      printf '9170001,9170000,_SEED_ADMIN_ROLE,1001,alice@example.com,,,False,CUSTOMER,,,\n'
+    fi ;;
+  esac
+  exit 0
+fi
+# `gam delete admin <RoleAssignmentId>` (doDeleteAdmin at the 7.52.04 tag): exactly one argument, then the API. An ID Google
+# doesn't have is notFound/invalidInput -> entityActionFailedWarning on stderr, exit ACTION_FAILED_RC (50); the assignments
+# are the ones `print admins` lists. Under GAM_MOCK_STATE a deleted one is gone from `print admins user` and a second delete
+# fails the same way. (Ported from GamGUI #183.)
+if [ "${1:-}" = "delete" ] && [ "${2:-}" = "admin" ]; then
+  [ -n "${3:-}" ] || missing_arg "RoleAssignmentId"
+  [ $# -eq 3 ] || invalid_arg "$4"
+  gone=""
+  if [ -n "${GAM_MOCK_STATE:-}" ] && grep -qx "$3" "$GAM_MOCK_STATE/admins_deleted" 2>/dev/null; then gone=1; fi
+  case "$3" in
+    9170001|9170002|9170003|9170004|9170005) ;;
+    *) gone=1 ;;
+  esac
+  if [ -n "$gone" ]; then
+    printf 'Admin Role Assignment: %s, Delete Failed: Does not exist\n' "$3" 1>&2; exit 50
+  fi
+  if [ -n "${GAM_MOCK_STATE:-}" ]; then printf '%s\n' "$3" >> "$GAM_MOCK_STATE/admins_deleted"; fi
+  printf 'Admin Role Assignment: %s, Deleted\n' "$3"
+  exit 0
+fi
+# `gam update alias|aliases <EmailAddressEntity> user|group|target <UniqueID>|<EmailAddress> [notargetverify]
+#  [waitafterdelete <Integer>]` (doCreateUpdateAliases at the 7.52.04 tag): the new owner is checked first (entityUnknownWarning,
+# 56, nothing changed), then the alias deleted from whoever holds it (one no user has: "User Alias: <a>, Does not exist", 56),
+# then added to the new owner. An alias with *addfail* in it is the add refused after the delete: the alias is on nobody, exit
+# 50. The aliases are the directory's (print_users.json); a user target only, the one the app sends. (Ported from GamGUI #183.)
+if [ "${1:-}" = "update" ] && { [ "${2:-}" = "alias" ] || [ "${2:-}" = "aliases" ]; }; then
+  [ -n "${3:-}" ] || missing_arg "EmailAddressEntity"
+  case "${4:-}" in
+    user) ;;
+    group|target) not_modelled "update alias to a $4" ;;
+    "") missing_arg "user|group|target" ;;
+    *) invalid_choice "$4" "user|group|target" ;;
+  esac
+  [ -n "${5:-}" ] || missing_arg "UniqueID|EmailAddress"
+  alias=$(lower "$3"); to=$(lower "$5"); shift 5
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      notargetverify|waitafterdelete) not_modelled "update alias with $1" ;;   # GAM bounds waitafterdelete to 2..10
+      *) invalid_arg "$1" ;;
+    esac
+  done
+  in_directory "$to" || does_not_exist "Alias Target" "$to"
+  case "$alias" in *addfail*) ;; *)
+    grep -o '"aliases": \[[^]]*\]' "$GAM_MOCK_FIXTURES/print_users.json" | grep -qF "\"$alias\"" || does_not_exist "User Alias" "$alias" ;;
+  esac
+  printf 'User Alias: %s, Deleted\n' "$alias"
+  case "$alias" in *addfail*)
+    printf 'User Alias: %s, User: %s, Add Failed: Invalid alias\n' "$alias" "$to" 1>&2; exit 50 ;;
+  esac
+  printf 'User Alias: %s, User: %s, Added\n' "$alias" "$to"
   exit 0
 fi
 

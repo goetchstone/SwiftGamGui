@@ -27,6 +27,17 @@ public enum GamOutput {
         return csvRecords(text)
     }
 
+    /// GamGUI's `_rows_from_titles`: the records of a CSV GAM writes its titles for even with no row, or nil when no line
+    /// before the records names `column`: output without its titles never answered, and is unread, never "none" (invariant
+    /// 10). A notice before the titles is passed over.
+    public static func titled(_ stdout: String, column: String) -> [Record]? {
+        let lines = stdout.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
+        guard let start = lines.firstIndex(where: { line in
+            line.split(separator: ",", omittingEmptySubsequences: false).contains { PythonText.strip(String($0)) == column }
+        }) else { return nil }
+        return records(lines[start...].joined(separator: "\n"))
+    }
+
     /// The first record, or none.
     public static func one(_ stdout: String) -> Record {
         records(stdout).first ?? [:]
