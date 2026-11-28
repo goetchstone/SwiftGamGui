@@ -281,6 +281,22 @@ public final class UserAccess {
         return .success((GamOutput.records(result.stdout), accounted))
     }
 
+    /// A group's seven settings (roadmap 4.4), read now. A run without one record never answered; a record missing any setting
+    /// (an abuse@ or postmaster@ group's, which GAM skips) is unread: neither is "the defaults".
+    public func groupSettings(_ group: String, in pinned: Domain? = nil) async -> Result<[GroupSettings.Setting], Problem> {
+        guard let read = try? GamCommands.infoGroupSettings(group: group) else {
+            return .failure(Problem(summary: "“\(group)” isn't one group address."))
+        }
+        switch await readNow(read, in: pinned, parse: { GamOutput.records($0) }) {
+        case .failure(let problem): return .failure(problem)
+        case .success(let records):
+            guard records.count == 1, let settings = GroupSettings.read(records[0]) else {
+                return .failure(Problem(summary: "GAM answered without the group's settings, so they can't be told."))
+            }
+            return .success(settings)
+        }
+    }
+
     /// Every license seat (roadmap 4.3), read now: `print licenses`, no product named. It passes over a product Google won't let
     /// it read without a word, so only what it lists is acted on (`Licenses`).
     public func licenses(in pinned: Domain? = nil) async -> Result<[Licenses.Seat], Problem> {

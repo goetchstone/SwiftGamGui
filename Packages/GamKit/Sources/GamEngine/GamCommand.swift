@@ -124,6 +124,8 @@ public enum WriteAction: String, Sendable, CaseIterable {
     case trashMessage, deleteMessages, setPassword
     case blockDeviceUser, deleteDeviceUser
     case updatePhones
+    /// A group's settings (roadmap 4.4, GamGUI #182).
+    case updateGroupSettings
     /// Close Out (roadmap 4.5, GamGUI #183).
     case archiveUser, deleteAdminRole, moveAlias
     /// A person's whole organizations and phones lists from a CSV (roadmap 4.6, GamGUI #184).
