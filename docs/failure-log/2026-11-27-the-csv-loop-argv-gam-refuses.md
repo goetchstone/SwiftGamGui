@@ -9,7 +9,8 @@
   line) lists the same order; nobody read it for order.
 - **Why not caught:** the mock lies (CLAUDE.md): parity held to GamGUI's fixture, and the mock held to the argv, never to
   GAM's parse.
-- **Fix:** GAM's order, as a listed deviation (`GoldenArgvTests.deviations`, invariant 11) until GamGUI's fixture changes;
-  the mock parses `csv -` options in GAM's order and exits 2 on one left over (`MockSignatureTests`).
+- **Fix:** GAM's order, a listed deviation (`GoldenArgvTests.deviations`, invariant 11) until GamGUI #195 took it too and
+  the fixtures were regenerated (2026-11-28); the mock parses `csv -` options in GAM's order and exits 2 on one left
+  over (`MockSignatureTests`), and since #195 reads the rows with the options it parsed.
 - **Prevention:** a mock loop parses options as GAM's function does, read to the end, never by matching one argv. GamGUI
   was told the same day.
