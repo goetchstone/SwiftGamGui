@@ -22,6 +22,8 @@ struct ReportsView: View {
     /// The audit runs, and Inactive users' Suspend these….
     let runs: AuditRunner
     let suspend: InactiveSuspend
+    /// Suspended → Remove Their Licenses… (roadmap 3.3, 4.3).
+    let suspendedLicenses: SuspendedLicenses
     /// No 2SV / No recovery's reminder email (roadmap 3.3).
     let reminders: BucketReminders
     /// The audit runs' schedules on the connected domain (plan F7a): when each is due, and what it keeps.
@@ -352,7 +354,7 @@ struct ReportsView: View {
         case .report(let key):
             if let reports = directory.reports {
                 if let report = reports.first(where: { $0.key == key }) {
-                    ReportPeople(report: report, selection: $person, open: openPerson, reminders: reminders)
+                    ReportPeople(report: report, selection: $person, open: openPerson, licenses: suspendedLicenses, reminders: reminders)
                 }
             } else {
                 directoryStatus
@@ -521,6 +523,9 @@ private struct ReportPeople: View {
     let report: DirectoryReport
     @Binding var selection: GamUser.ID?
     let open: (String) -> Void
+    /// Suspended's Remove Their Licenses…; nil for the other reports.
+    var licenses: SuspendedLicenses? = nil
+    @State private var removingLicenses = false
     /// No 2SV and No recovery's Email Them a Reminder… (roadmap 3.3); nil for the other reports.
     var reminders: BucketReminders? = nil
     @State private var reminding = false
@@ -531,6 +536,14 @@ private struct ReportPeople: View {
                 Text(report.title).font(.title2.bold()).accessibilityAddTraits(.isHeader)
                 Text(report.description).foregroundStyle(.secondary)
                 Text("\(report.count.formatted()) account\(report.count == 1 ? "" : "s")")
+                if let licenses, report.key == "suspended", !report.users.isEmpty {
+                    Button("Remove Their Licenses\u{2026}") { removingLicenses = true }
+                        .accessibilityHint("Reads the licenses again and shows each seat on a suspended account before anything changes.")
+                        .sheet(isPresented: $removingLicenses) {
+                            SuspendedLicensesSheet(model: licenses) { removingLicenses = false }
+                                .interactiveDismissDisabled(licenses.isBusy)
+                        }
+                }
                 if let reminders, BucketReminders.reminders[report.key] != nil, !report.users.isEmpty {
                     Button("Email Them a Reminder\u{2026}") { reminding = true }
                         .accessibilityHint("Writes a reminder to everyone on this list. The list is read again and shown before anything is sent.")

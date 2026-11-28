@@ -585,6 +585,38 @@ public enum GamCommands {
     /// The apps people have given access to their account (9119-9128; _printShowTokens): every account but the suspended
     /// ones (GAM's default, all users), or one person's. CSV `user,clientId,displayText,anonymous,nativeApp,userKey,scopes`,
     /// the scopes space-joined (csv_output_field_delimiter's default). A refusal is ClientAPIAccessDeniedExit, exit 12.
+    // MARK: license seats (roadmap 4.3, GamGUI #175)
+
+    /// GamGUI's `license_sku`: a seat as GAM's `nv:<productId>:<skuId>`, the IDs `print licenses` gave, so GAM's own SKU table never
+    /// picks the product (GAM ignores `product`, and refuses a SKU its table lacks unless it is `nv:`). GAM splits at the first `:`
+    /// after `nv:`, a list at `,`, and strips spaces: an ID those would change is refused here.
+    public static func licenseSKU(productID: String, skuID: String) throws -> String {
+        if productID.isEmpty || productID.contains(":") || productID.contains(",") || productID != PythonText.strip(productID) {
+            throw Invalid.argument("'\(productID)' isn't a product ID GAM can be given")
+        }
+        if skuID.isEmpty || skuID.contains(",") || skuID != PythonText.strip(skuID) {
+            throw Invalid.argument("'\(skuID)' isn't a SKU ID GAM can be given")
+        }
+        return "nv:\(productID):\(skuID)"
+    }
+
+    /// licenseAssignments.insert: Google refuses a seat they hold (duplicate) and one with none left (conditionNotMet).
+    public static func addLicense(email: String, productID: String, skuID: String) throws -> GamWrite {
+        GamWrite(["user", email, "add", "license", try licenseSKU(productID: productID, skuID: skuID)], action: .addLicense)
+    }
+
+    /// licenseAssignments.patch: "a different SKU in the same product". GAM takes the product from the old SKU. No `archive`
+    /// (that archives the account too) and never `sync` (it removes what the preview didn't name).
+    public static func swapLicense(email: String, productID: String, oldSKUID: String, newSKUID: String) throws -> GamWrite {
+        GamWrite(["user", email, "update", "license", try licenseSKU(productID: productID, skuID: newSKUID), "from",
+                  try licenseSKU(productID: productID, skuID: oldSKUID)], action: .swapLicense)
+    }
+
+    /// licenseAssignments.delete: Google refuses a seat they don't hold (notFound).
+    public static func removeLicense(email: String, productID: String, skuID: String) throws -> GamWrite {
+        GamWrite(["user", email, "delete", "license", try licenseSKU(productID: productID, skuID: skuID)], action: .removeLicense)
+    }
+
     // MARK: org units (roadmap 4.2, GamGUI #169)
 
     /// The org unit tree (`print orgs ... fields <OrgUnitFieldNameList>`): plain CSV, no formatjson; the root is never a row.

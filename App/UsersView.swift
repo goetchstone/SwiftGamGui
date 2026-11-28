@@ -25,6 +25,8 @@ struct UsersView: View {
     let classroom: ClassroomReads
     /// Department for Many… (roadmap 2.1): one department for a group's members or pasted addresses.
     let departments: DepartmentForMany
+    /// A person's licenses (roadmap 4.3).
+    let licenses: LicenseChanges
     /// Org Unit for Many… (roadmap 4.2).
     let orgUnitMoves: OrgUnitForMany
     /// The groups Department for Many… chooses from.
@@ -242,7 +244,7 @@ struct UsersView: View {
                     UserDetail(user: user, directory: directory, changes: changes, access: access, searches: searches,
                                chromeProfiles: chromeProfiles, personDevices: personDevices, editorOpen: $editorOpen,
                                openSignatures: openSignatures, calendarReads: calendarReads, openCalendars: openCalendars,
-                               openCompromised: openCompromised, setup: setup, classroom: classroom, openClass: openClass)
+                               openCompromised: openCompromised, setup: setup, classroom: classroom, licenses: licenses, openClass: openClass)
                 }
             }
         } else {
@@ -442,6 +444,7 @@ private struct UserDetail: View {
     let openCompromised: (String) -> Void
     let setup: SetupModel
     let classroom: ClassroomReads
+    let licenses: LicenseChanges
     let openClass: (String) -> Void
     @State private var tab = PersonTab.initial
     @State private var editingRole = false
@@ -513,6 +516,9 @@ private struct UserDetail: View {
         }
         .sheet(isPresented: $editingRole) {
             RoleEditor(user: user, changes: changes) { editingRole = false }
+        }
+        .sheet(item: Binding(get: { licenses.sheetPending(for: user.primaryEmail) }, set: { if $0 == nil { licenses.dismiss() } })) { pending in
+            LicensePreviewSheet(pending: pending, licenses: licenses)
         }
         .sheet(isPresented: $editingPhone) {
             PhoneEditor(user: user, changes: changes, access: access) { editingPhone = false }
@@ -655,6 +661,7 @@ private struct UserDetail: View {
                     .accessibilityHint("Previews the change to the phone their signature shows. Their other phones stay as they are.")
                 LabeledContent("Last sign-in", value: Self.signIn(user.lastLoginTime))
             }
+            PersonLicensesSection(user: user, licenses: licenses)
             if !user.aliases.isEmpty {
                 Section("Aliases") {
                     ForEach(user.aliases, id: \.self) { Text($0).textSelection(.enabled) }
