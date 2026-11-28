@@ -190,7 +190,8 @@ struct CSVField {
 
 /// `csv.reader(lines, strict=True)` in the `excel` dialect (comma, double quote, doubled quotes, no escape), state for
 /// state as CPython 3.14's `Modules/_csv.c` reads it, over `RosterLines`. Strict: text after a closing quote, or the end of
-/// the input inside quotes, is an error. A field past the module's default limit (131,072 characters) is the module's own
+/// the input inside quotes, is an error. `strict: false` is `csv.reader`'s default (the text is kept, as `_csv.c` keeps
+/// it), and `delimiter` another one-byte delimiter (`;`, roadmap 4.6's Excel in some regions). A field past the module's default limit (131,072 characters) is the module's own
 /// error: GamGUI never raises that limit for this reader, and the fixtures are made with it at its default.
 struct RosterCSV {
     private enum State { case startRecord, startField, inField, inQuotedField, quoteInQuotedField, eatCRNL }
@@ -204,7 +205,13 @@ struct RosterCSV {
     private var fields: [CSVField] = []
     private var field = CSVField()
 
-    init(_ lines: RosterLines) { self.lines = lines }
+    /// The delimiter byte (`,` by default) and whether the reader is strict.
+    let delimiter: UInt8
+    let strict: Bool
+
+    init(_ lines: RosterLines, delimiter: UInt8 = 0x2C, strict: Bool = true) {
+        (self.lines, self.delimiter, self.strict) = (lines, delimiter, strict)
+    }
 
     /// The next record, or nil at the end.
     mutating func next() throws -> [CSVField]? {
@@ -213,7 +220,13 @@ struct RosterCSV {
         state = .startRecord
         repeat {
             guard let line = try lines.next() else {
-                if field.characters != 0 || state == .inQuotedField { throw CSVError(message: "unexpected end of data") }
+                if field.characters != 0 || state == .inQuotedField {
+                    guard !strict else { throw CSVError(message: "unexpected end of data") }
+                    // `_csv.c` without strict: the field so far is saved and the record ends.
+                    save()
+                    state = .startRecord
+                    return fields
+                }
                 return nil
             }
             lineNumber += 1
@@ -225,7 +238,7 @@ struct RosterCSV {
                     if state == .inField || state == .inQuotedField {
                         var end = index, characters = 0
                         if state == .inField {
-                            while end < line.upperBound, buffer[end] != 0x2C, buffer[end] != 0x0A, buffer[end] != 0x0D {
+                            while end < line.upperBound, buffer[end] != delimiter, buffer[end] != 0x0A, buffer[end] != 0x0D {
                                 if buffer[end] & 0xC0 != 0x80 { characters += 1 }
                                 end += 1
                             }
@@ -285,7 +298,7 @@ struct RosterCSV {
                 state = .eatCRNL
             } else if byte == 0x22 {
                 state = .inQuotedField
-            } else if byte == 0x2C {
+            } else if byte == delimiter {
                 save()
             } else {
                 try add(byte)
@@ -295,7 +308,7 @@ struct RosterCSV {
             if isBreak {
                 save()
                 state = .eatCRNL
-            } else if byte == 0x2C {
+            } else if byte == delimiter {
                 save()
                 state = .startField
             } else {
@@ -307,14 +320,18 @@ struct RosterCSV {
             if byte == 0x22 {
                 try add(byte)
                 state = .inQuotedField
-            } else if byte == 0x2C {
+            } else if byte == delimiter {
                 save()
                 state = .startField
             } else if isBreak {
                 save()
                 state = .eatCRNL
+            } else if strict {
+                throw CSVError(message: "'\(Character(Unicode.Scalar(delimiter)))' expected after '\"'")
             } else {
-                throw CSVError(message: "',' expected after '\"'")
+                // `_csv.c` without strict: the character is the field's, read on as an unquoted one.
+                try add(byte)
+                state = .inField
             }
         case .eatCRNL:
             if !isBreak {
