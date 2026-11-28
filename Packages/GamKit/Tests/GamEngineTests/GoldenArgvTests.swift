@@ -223,7 +223,7 @@ struct GoldenArgvTests {
         "delete_calendar_acl": { try GamCommands.deleteCalendarACL(email: $0.string("email"), scope: $0.string("scope"), calendar: $0.string("calendar")) },
         "print_resources": { try GamCommands.printResources(query: $0.string("query")) },
         "print_user_calendars": { try GamCommands.printUserCalendars(email: $0.string("email")) },
-        "print_all_calendars": { _ in GamCommands.printAllCalendars() },
+        "parallel_print_calendars": { _ in GamCommands.parallelPrintCalendars(people: []) },
         "print_calendar_acls_cal": { try GamCommands.printCalendarACLs(calendarID: $0.string("calendar_id")) },
         "print_calendar_data_owner": { try GamCommands.printCalendarSettings(calendarID: $0.string("calendar_id")) },
         "add_calendar_acl_cal": {
@@ -321,7 +321,7 @@ struct GoldenArgvTests {
         "print_send_as": { try GamCommands.printSendAs(email: $0.string("email")) },
         "delete_send_as": { try GamCommands.deleteSendAs(email: $0.string("email"), address: $0.string("address")) },
         "print_admins": { try GamCommands.printAdmins(user: $0.string("email")) },
-        "print_tokens": { _ in try GamCommands.printTokens() },
+        "parallel_print_tokens": { _ in GamCommands.parallelPrintTokens(people: []) },
         "info_group_settings": { try GamCommands.infoGroupSettings(group: $0.string("group")) },
         "update_group_settings": { try GamCommands.updateGroupSettings(group: $0.string("group"), changes: $0.settings("changes")) },
         "add_license": { try GamCommands.addLicense(email: $0.text("email"), productID: $0.text("product_id"), skuID: $0.text("sku_id")) },

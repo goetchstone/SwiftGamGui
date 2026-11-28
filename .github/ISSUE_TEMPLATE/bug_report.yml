@@ -67,7 +67,7 @@ body:
     id: gam
     attributes:
       label: GAM version
-      description: Shown on Home, e.g. `7.52.05`.
+      description: Shown on Home, e.g. `7.53.01`.
   - type: input
     id: macos
     attributes:

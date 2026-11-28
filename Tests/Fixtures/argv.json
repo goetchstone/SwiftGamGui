@@ -1,7 +1,7 @@
 {
  "source": {
-  "gamgui_commit": "a0dfba4",
-  "gam_version": "7.52.05",
+  "gamgui_commit": "83e5533",
+  "gam_version": "7.53.01",
   "generator": "scripts/gen_fixtures.py"
  },
  "builders": [
@@ -51,12 +51,13 @@
   "move_alias",
   "move_folder_to_shared_drive",
   "move_user_to_org_unit",
+  "parallel_print_calendars",
   "parallel_print_delegates",
   "parallel_print_forward",
+  "parallel_print_tokens",
   "pop_off",
   "print_admins",
   "print_all_admins",
-  "print_all_calendars",
   "print_all_course_participants",
   "print_calendar_acls",
   "print_calendar_acls_cal",
@@ -91,7 +92,6 @@
   "print_shared_drives",
   "print_signature",
   "print_signatures_from_stdin",
-  "print_tokens",
   "print_tokens_of",
   "print_user_calendars",
   "print_user_tokens",
@@ -565,8 +565,10 @@
     "name": "email"
    }
   ],
+  "parallel_print_calendars": [],
   "parallel_print_delegates": [],
   "parallel_print_forward": [],
+  "parallel_print_tokens": [],
   "pop_off": [
    {
     "name": "email"
@@ -578,7 +580,6 @@
    }
   ],
   "print_all_admins": [],
-  "print_all_calendars": [],
   "print_all_course_participants": [
    {
     "name": "states"
@@ -788,7 +789,6 @@
    }
   ],
   "print_signatures_from_stdin": [],
-  "print_tokens": [],
   "print_tokens_of": [
    {
     "name": "users"
@@ -14477,6 +14477,31 @@
    ]
   },
   {
+   "builder": "parallel_print_calendars",
+   "kwargs": {},
+   "argv": [
+    "config",
+    "num_threads",
+    "10",
+    "redirect",
+    "csv",
+    "-",
+    "multiprocess",
+    "csv",
+    "-",
+    "showcmds",
+    "true",
+    "gam",
+    "user",
+    "~primaryEmail",
+    "print",
+    "calendars",
+    "fields",
+    "id,summary,accessrole,primary",
+    "formatjson"
+   ]
+  },
+  {
    "builder": "parallel_print_delegates",
    "kwargs": {},
    "argv": [
@@ -14520,6 +14545,28 @@
     "print",
     "forward",
     "enabledonly"
+   ]
+  },
+  {
+   "builder": "parallel_print_tokens",
+   "kwargs": {},
+   "argv": [
+    "config",
+    "num_threads",
+    "10",
+    "redirect",
+    "csv",
+    "-",
+    "multiprocess",
+    "csv",
+    "-",
+    "showcmds",
+    "true",
+    "gam",
+    "user",
+    "~primaryEmail",
+    "print",
+    "tokens"
    ]
   },
   {
@@ -14841,19 +14888,6 @@
     "print",
     "admins",
     "recursive"
-   ]
-  },
-  {
-   "builder": "print_all_calendars",
-   "kwargs": {},
-   "argv": [
-    "all",
-    "users",
-    "print",
-    "calendars",
-    "fields",
-    "id,summary,accessrole,primary",
-    "formatjson"
    ]
   },
   {
@@ -29416,14 +29450,6 @@
     "-",
     "print",
     "signature"
-   ]
-  },
-  {
-   "builder": "print_tokens",
-   "kwargs": {},
-   "argv": [
-    "print",
-    "tokens"
    ]
   },
   {

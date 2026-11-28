@@ -93,7 +93,9 @@ final class CompromisedChangesTests {
     }
 
     private func writes() -> [String] {
-        ran().filter { !["print", "info", "show", "report"].contains($0.first ?? "") && !($0.count > 2 && ["print", "info", "show"].contains($0[2])) }
+        // A parallel read (`config … csv - … gam user ~primaryEmail print …`) is read by the command after its `gam`.
+        ran().map { $0.first == "config" ? Array($0.drop { $0 != "gam" }.dropFirst()) : $0 }
+            .filter { !["print", "info", "show", "report"].contains($0.first ?? "") && !($0.count > 2 && ["print", "info", "show"].contains($0[2])) }
             .map { GamCommandLine.text($0, masked: ArgvRedaction.redact($0)) }
     }
 
@@ -500,7 +502,9 @@ final class CompromisedChangesTests {
         try await connect()
         let reads = ConnectedAppsRead(setup: setup, access: access)
         await reads.read()
-        guard case .read(.success(let apps), _)? = reads.state else { Issue.record("\(String(describing: reads.state))"); return }
+        guard case .read(.success(let everyone), _)? = reads.state else { Issue.record("\(String(describing: reads.state))"); return }
+        let apps = everyone.apps
+        #expect(everyone.unread == 0)
         #expect(apps.map(\.name) == ["ChatGPT", "Read AI Notetaker", "Mail Sync Pro", "Zoom", "macOS"])
         #expect(apps.first { $0.name == "Zoom" }?.users == ["alice@example.com", "dana@example.com"], "bob@ is suspended")
         #expect(ConnectedApps.Summary(apps).sentences == [
@@ -516,6 +520,22 @@ final class CompromisedChangesTests {
         guard case .read(.failure(let problem), _)? = reads.state else { Issue.record("not refused"); return }
         #expect(problem.summary.contains("exit=12"), "\(problem.summary)")
         #expect(writes().isEmpty)
+    }
+
+    /// GamGUI #200: each active person is read by their own worker. One deleted mid-read is counted unread and the others' apps
+    /// kept, never "no apps" for them; the read runs on exactly the active people, in parallel.
+    @Test func aPersonNotReadIsCountedAndTheRestKept() async throws {
+        try await connect()
+        try FileManager.default.createDirectory(at: state.appending(path: "tokens_gone"), withIntermediateDirectories: true)
+        FileManager.default.createFile(atPath: state.appending(path: "tokens_gone/carol@example.com").path, contents: Data())
+        let reads = ConnectedAppsRead(setup: setup, access: access)
+        await reads.read()
+        guard case .read(.success(let everyone), _)? = reads.state else { Issue.record("\(String(describing: reads.state))"); return }
+        #expect(everyone.unread == 1)
+        #expect(everyone.apps.contains { $0.name == "Zoom" } && !everyone.apps.contains { $0.users.contains("carol@example.com") })
+        let read = GamCommands.parallelPrintTokens(people: ["a@example.com"])
+        #expect(Array(read.argv.prefix(3)) == ["config", "num_threads", "10"] && Array(read.argv.suffix(3)) == ["~primaryEmail", "print", "tokens"])
+        #expect(read.input.map { String(decoding: $0, as: UTF8.self) } == "primaryEmail\na@example.com\n")
     }
 
     /// A person's Chrome profiles read from their page: reads only, kept per person on this tenant, a failure in GAM's words.

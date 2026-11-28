@@ -1,6 +1,6 @@
 {
  "source": {
-  "gamgui_commit": "a0dfba4",
+  "gamgui_commit": "83e5533",
   "generator": "scripts/gen_fixtures.py"
  },
  "lines": {
@@ -29,7 +29,7 @@
    "gam update svcacct <UserTypeEntity> (scope|scopes <APIScopeURLList>)*",
    "gam create sakey",
    "gam update sakey",
-   "gam create [gcpserviceaccount|signjwtserviceaccount]",
+   "gam create [gcpserviceaccount|signjwtserviceaccount] [<EmailAddress>] [project <ProjectID>]",
    "gam create adminrole <String> [description <String>]",
    "gam update adminrole <RoleItem> [name <String>] [description <String>]",
    "gam create|add admin <EmailAddress>|<UniqueID> <RoleItem> customer|(org_unit <OrgUnitItem>)",

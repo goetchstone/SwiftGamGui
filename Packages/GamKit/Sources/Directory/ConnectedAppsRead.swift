@@ -12,7 +12,7 @@ import Vault
 public final class ConnectedAppsRead {
     public enum State: Sendable {
         case reading
-        case read(Result<[ConnectedApps.App], UserAccess.Problem>, at: Date)
+        case read(Result<ConnectedApps.Everyone, UserAccess.Problem>, at: Date)
     }
 
     private var kept: (state: State, domain: Domain, generation: Int, serial: Int)?
@@ -36,14 +36,14 @@ public final class ConnectedAppsRead {
         return false
     }
 
-    /// Reads every account's apps; a newer read replaces one still reading.
+    /// Reads every active person's apps (in parallel, GamGUI #200); a newer read replaces one still reading.
     public func read(now: @escaping @Sendable () -> Date = Date.init) async {
         guard let domain = setup.active else { return }
         let generation = setup.generation
         serial += 1
         let mine = serial
         kept = (.reading, domain, generation, mine)
-        let result = await access.connectedApps(in: domain)
+        let result = await access.everyonesConnectedApps(in: domain)
         guard kept?.serial == mine, setup.active == domain, setup.generation == generation else { return }
         kept = (.read(result, at: now()), domain, generation, mine)
     }

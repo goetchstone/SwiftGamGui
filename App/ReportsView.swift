@@ -75,7 +75,9 @@ struct ReportsView: View {
             .onChange(of: apps.isReading) { _, reading in
                 guard !reading, case .read(let result, _)? = apps.state else { return }
                 switch result {
-                case .success(let read): announce("Connected apps read: \(read.count) app\(read.count == 1 ? "" : "s").")
+                case .success(let read):
+                    announce("Connected apps read: \(read.apps.count) app\(read.apps.count == 1 ? "" : "s")."
+                             + (read.unread > 0 ? " \(read.unread) \(read.unread == 1 ? "person" : "people") couldn't be read." : ""))
                 case .failure(let problem): announce("Couldn't read the connected apps. \(problem.summary)")
                 }
             }

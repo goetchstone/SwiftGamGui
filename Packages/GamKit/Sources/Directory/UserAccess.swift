@@ -225,15 +225,70 @@ public final class UserAccess {
         }
     }
 
-    /// The apps given access to `email`'s account, or to every account's (nil): one Directory API call per account, so every
-    /// account's gets the long timeout.
-    public func connectedApps(of email: String? = nil, in pinned: Domain? = nil) async -> Result<[ConnectedApps.App], Problem> {
+    /// The apps given access to `email`'s account.
+    public func connectedApps(of email: String, in pinned: Domain? = nil) async -> Result<[ConnectedApps.App], Problem> {
         guard let read = try? GamCommands.printTokens(user: email) else {
-            return .failure(Problem(summary: "Couldn't read the connected apps: “\(email ?? "")” isn't one email address."))
+            return .failure(Problem(summary: "Couldn't read the connected apps: “\(email)” isn't one email address."))
         }
-        return await readNow(read, in: pinned, timeout: email == nil ? ActivityLogs.timeout : GamRunner.defaultTimeout) {
-            ConnectedApps.apps(ConnectedApps.grants($0))
+        return await readNow(read, in: pinned) { ConnectedApps.apps(ConnectedApps.grants($0)) }
+    }
+
+    /// Every active person's connected apps and AI agents (GamGUI's `connected_apps`, #200), from a fresh directory read: one
+    /// Directory API call a person, `gamParallel` at once. One process visiting each in turn took ~2.6 hours at 20,000 people and
+    /// was cut off at its hour. Someone whose worker didn't end cleanly is counted unread; the parent's own failure, or nobody
+    /// read with their workers failing (a refused admin token), is a problem, never "no apps".
+    public func everyonesConnectedApps(in pinned: Domain? = nil) async -> Result<ConnectedApps.Everyone, Problem> {
+        let people: [String]
+        switch await activePeople(in: pinned) {
+        case .success(let found): people = found
+        case .failure(let problem): return .failure(problem)
         }
+        switch await parallelRead(GamCommands.parallelPrintTokens(people: people), people: people, "apps", in: pinned) {
+        case .failure(let problem): return .failure(problem)
+        case .success(let (stdout, unread)):
+            // Off the main actor: on a large tenant this is hundreds of thousands of rows.
+            let apps = await Task.detached { ConnectedApps.apps(ConnectedApps.grants(stdout)) }.value
+            return .success(ConnectedApps.Everyone(apps: apps, unread: unread))
+        }
+    }
+
+    /// GamGUI's `_parallel_read` (#200): a parallel read's merged CSV, and how many of `people` didn't end with 0
+    /// (`MailReview.ends`). The parent exits 0 whatever its workers did, so any other exit is its own failure. Nobody ended 0
+    /// and some failed: GAM's own error, the most common code with what the workers said. People ended 0 but no table (GAM
+    /// writes the merged titles once anyone ran): a problem, never "none".
+    private func parallelRead(_ read: GamRead, people: [String], _ what: String, in pinned: Domain?)
+        async -> Result<(stdout: String, unread: Int), Problem> {
+        guard let domain = pinned ?? setup.active, let runner else { return .failure(Problem(summary: "Connect a domain on Setup first.")) }
+        let result: GamResult
+        do {
+            result = try await runner.run(read, as: domain, timeout: MailReview.parallelTimeout(people: people.count),
+                                          extraEnvironment: environment)
+        } catch is CancellationError {
+            return .failure(Self.interrupted)
+        } catch GamRunnerError.timedOut {
+            return .failure(Problem(summary: GamError(exitCode: nil, stderr: "", argv: read.argv).message))
+        } catch {
+            return .failure(Problem(summary: SetupModel.message(for: error)))
+        }
+        guard result.exitCode == 0 else {
+            return .failure(Problem(summary: GamError(exitCode: result.exitCode, stderr: result.stderr, argv: read.argv).message))
+        }
+        guard !result.stdoutTruncated, !result.stderrTruncated else {
+            return .failure(Problem(summary: "GAM printed more than this app reads at once, so not every person's \(what) was read."))
+        }
+        let ends = MailReview.ends(result.stderr)
+        let everyone = Set(people.map { PythonText.lower(PythonText.strip($0)) }.filter { !$0.isEmpty })
+        let failed = everyone.compactMap { ends[$0] }.filter { $0 != 0 }
+        let anyRead = everyone.contains { ends[$0] == 0 }
+        if !anyRead, !failed.isEmpty {
+            let counts = Dictionary(grouping: failed, by: { $0 }).mapValues(\.count)
+            let code = counts.max { a, b in a.value != b.value ? a.value < b.value : a.key > b.key }!.key
+            return .failure(Problem(summary: GamError(exitCode: Int32(code), stderr: MailReview.said(result.stderr), argv: read.argv).message))
+        }
+        if anyRead, PythonText.strip(result.stdout).isEmpty {
+            return .failure(Problem(summary: "GAM read people's \(what) but wrote no table, so it can't be told."))
+        }
+        return .success((result.stdout, everyone.filter { ends[$0] != 0 }.count))
     }
 
     /// Reports' mail review (roadmap 3.2, GamGUI's `mail_review`, #198): the forwarding that is on, and every mail delegate, of

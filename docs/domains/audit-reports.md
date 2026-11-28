@@ -361,9 +361,13 @@ GamGUI #178 (`82290f0`): each F2 named report is also a one-step run of its cata
 ## Reports: connected apps and agents
 A check of the whole tenant, not of an incident (the operator, 2026-10-22: it was on Incident's step 1 until then). New to
 this app; GamGUI has no such page. Reads only.
-- **The read** is `gam print tokens` for every account but the suspended ones (GAM's default), with the long timeout, when
-  the operator asks (Read Connected Apps, or ⌘R on its row): never on its own, as it is one Directory API call per account.
-  Kept for the tenant and generation it was read on (`ConnectedAppsRead`).
+- **The read** is each active person's `user <u> print tokens`, in GAM's parallel loop as the mail review reads (GamGUI #200,
+  `GamCommands.parallelPrintTokens`, `UserAccess.everyonesConnectedApps`): the people from a fresh directory read, ten workers,
+  each person decided by their worker's End line (`MailReview.ends`). One process visiting each in turn took ~2.6 hours at
+  20,000 people. A person whose worker didn't end with 0 is counted and said ("GAM couldn't read N people's apps"), never "no
+  apps"; nobody read with their workers failing (a refused admin token, 12) is GAM's own error; people read but no table is a
+  problem. Read when the operator asks (Read Connected Apps, or ⌘R on its row), kept for the tenant and generation
+  (`ConnectedAppsRead`). The mock's one-person read is GamGUI's (#200): its Getting line first, a refusal 12 with no titles.
 - **The list** is grouped as Incident had it: AI assistants and agents (by name: `looksLikeAI`), then the broadest access,
   then the rest, each app with what it may do in words and who granted it (six names, then "and N more"). The per-person
   list stays in Incident's Check Account.
