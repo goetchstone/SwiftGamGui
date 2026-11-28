@@ -60,10 +60,37 @@ public struct CatalogResult: Sendable, Equatable {
         }
     }
 
-    /// The rows whose text holds `text`, case aside (every row for none), by index: the filter covers the whole result.
-    public func matching(_ text: String) -> [Int] {
+    /// The rows whose text holds `text`, case aside (every row for none), by index: the filter covers the whole result. With
+    /// `externalTo`, only the rows External Only keeps (`isExternal`), so the count and the export follow it too.
+    public func matching(_ text: String, externalTo domains: [String]? = nil) -> [Int] {
         let wanted = text.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        return wanted.isEmpty ? Array(rows.indices) : rows.indices.filter { searchable[$0].contains(wanted) }
+        return rows.indices.filter { index in
+            let text = searchable[index]
+            return (wanted.isEmpty || text.contains(wanted)) && (domains.map { Self.isExternal(text, domains: $0) } ?? true)
+        }
+    }
+
+    /// GamGUI's `_EMAIL`, over a row's lowercased text.
+    nonisolated(unsafe) private static let email = try! Regex(#"[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}"#)
+
+    /// GamGUI's `_is_internal`: an address at one of the tenant's domains (primary, secondary, domain alias) or a subdomain of one.
+    public static func isInternal(_ address: String, domains: [String]) -> Bool {
+        let host = address.split(separator: "@", omittingEmptySubsequences: false).last.map(String.init) ?? address
+        return domains.contains { host == $0 || host.hasSuffix("." + $0) }
+    }
+
+    /// GamGUI's `_is_external`, External Only's lens over a row's lowercased text: it names "anyone" (a public or anyone-with-
+    /// the-link share), or an address outside the tenant's domains. With no domain known, only "anyone" counts.
+    public static func isExternal(_ text: String, domains: [String]) -> Bool {
+        if text.contains("anyone") { return true }
+        return !domains.isEmpty && text.matches(of: email).contains { !isInternal(String(text[$0.range]), domains: domains) }
+    }
+
+    /// The addresses in row `index`, in the order its columns show them, once each: what a click offers follow-ups for.
+    public func addresses(inRow index: Int) -> [String] {
+        var seen: Set<String> = []
+        let text = searchable[index]
+        return text.matches(of: Self.email).map { String(text[$0.range]) }.filter { seen.insert($0).inserted }
     }
 
     /// `rows` as a CSV's rows, the header first, each value as GamGUI's export writes it (its text; a structured value as JSON),

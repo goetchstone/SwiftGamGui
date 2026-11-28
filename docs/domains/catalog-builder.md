@@ -290,10 +290,18 @@ them), and the real model on demand, `SWIFTGAMGUI_MODEL=1 swift test --package-p
 (the dev split prints each case; the held-out split only its means). **Not proven offline:** that GAM accepts each read live (B1) and each curated command run from here (B2 to
 B4 in docs/live-verification.md).
 
+## A result's addresses and External Only (2.10's sweep, 2026-11-28)
+- **Follow-ups** (GamGUI's `ROW_ACTIONS`, `GamEngine/CuratedCommand.swift`'s `RowAction`): Control-click a row of a read's table
+  and each address in it (`CatalogResult.addresses`, GamGUI's `_EMAIL`, five at most) offers its follow-ups, as a person
+  (Delegates, Forwarding, Set vacation, Title / dept, Reset password, Suspend) or as a group (Add a member, Remove a member). One
+  opens that curated command with the address in its field, as Ask in Plain English opens a draft: nothing runs, and a change is
+  previewed and confirmed on its page.
+- **External Only** (GamGUI's `_is_external`): rows naming "anyone" or an address outside the tenant's domains or their
+  subdomains; the count and Export Matches… follow it. The domains are `UserAccess.tenantDomains` (GamGUI's `tenant_domains`):
+  the primary, then `print domains formatjson`'s every name (`AuditRuns.domainsFrom`), kept per tenant; a failed read is the
+  primary alone, read again after 10 minutes. Held to `CatalogResultTests`, `CuratedCommandTests`, `TenantDomainsTests`.
+
 ## Not built yet (later slices)
-- External Only (needs the
-  tenant's domains, as Who it reached has); a click on an address in a result for its curated follow-ups (GamGUI's
-  `ROW_ACTIONS`).
 - The curated "List a shared drive's files" read (plan §8): new to both apps, its argv checked against the grammar and run once
   live before it's relied on.
 - Sensitive reads (and message bodies), when the operator asks: reads are recorded now (plan F1), so `sensitive_read` is the
