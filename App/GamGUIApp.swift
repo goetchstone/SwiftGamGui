@@ -246,7 +246,7 @@ struct ContentView: View {
                         .navigationTitle("Shared Drives")
                 case .groups:
                     GroupsView(setup: services.setup, directory: services.directory, groups: services.groups,
-                               members: services.groupMembers, changes: services.groupChanges, requested: $groupsGroup)
+                               members: services.groupMembers, changes: services.groupChanges, settings: services.groupSettings, requested: $groupsGroup)
                         .navigationTitle("Groups")
                 case .calendars:
                     CalendarsView(setup: services.setup, directory: services.directory, reads: services.calendarReads,

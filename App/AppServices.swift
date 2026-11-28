@@ -90,6 +90,8 @@ struct AppServices {
     let inactiveSuspend: InactiveSuspend
     /// Shared drives and their members (roadmap 4.7).
     let sharedDrives: SharedDriveChanges
+    /// A group's settings from its page (roadmap 4.4).
+    let groupSettings: GroupSettingsChanges
     /// Reports' No 2SV / No recovery reminder emails.
     let bucketReminders: BucketReminders
     /// Users' Department for Many…: one department for a group's members or pasted addresses, each previewed write through the executor.
@@ -249,6 +251,7 @@ struct AppServices {
                            runSchedules: runSchedules,
                            inactiveSuspend: InactiveSuspend(executor: executor, setup: setup, directory: directory),
                            sharedDrives: SharedDriveChanges(executor: executor, setup: setup, access: UserAccess(setup: setup, runner: runner)),
+                           groupSettings: GroupSettingsChanges(executor: executor, setup: setup, access: UserAccess(setup: setup, runner: runner)),
                            bucketReminders: BucketReminders(executor: executor, setup: setup, directory: directory),
                            departmentForMany: DepartmentForMany(executor: executor, setup: setup, directory: directory, runner: runner),
                            licenses: LicenseChanges(executor: executor, setup: setup, access: UserAccess(setup: setup, runner: runner)),

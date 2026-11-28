@@ -75,6 +75,15 @@ struct GoldenArgvTests {
             return try string(key)
         }
 
+        /// A `{name: value}` of strings (GamGUI #182's changes).
+        func settings(_ key: String) throws -> [String: String] {
+            guard case .object(let object) = take(key) else { throw Missing.argument(key) }
+            return try object.mapValues { value in
+                guard case .string(let text) = value else { throw Missing.argument(key) }
+                return text
+            }
+        }
+
         func strings(_ key: String) throws -> [String] {
             guard case .strings(let value) = take(key) else { throw Missing.argument(key) }
             return value
@@ -176,8 +185,6 @@ struct GoldenArgvTests {
 
     /// GamGUI builders deliberately not ported.
     static let notPorted: [String: String] = [
-        "info_group_settings": "A group's settings from the Groups board (GamGUI #182): not built here yet; the mock refuses the read",
-        "update_group_settings": "A group's settings from the Groups board (GamGUI #182): not built here yet",
         "print_folder_files": "Move a folder into a shared drive (GamGUI #188, roadmap 4.8): not built here yet",
         "move_folder_to_shared_drive": "Move a folder into a shared drive (GamGUI #188, roadmap 4.8): not built here yet",
         "copy_rest_of_folder_to_shared_drive": "Move a folder into a shared drive (GamGUI #188, roadmap 4.8): not built here yet",
@@ -315,6 +322,8 @@ struct GoldenArgvTests {
         "delete_send_as": { try GamCommands.deleteSendAs(email: $0.string("email"), address: $0.string("address")) },
         "print_admins": { try GamCommands.printAdmins(user: $0.string("email")) },
         "print_tokens": { _ in try GamCommands.printTokens() },
+        "info_group_settings": { try GamCommands.infoGroupSettings(group: $0.string("group")) },
+        "update_group_settings": { try GamCommands.updateGroupSettings(group: $0.string("group"), changes: $0.settings("changes")) },
         "add_license": { try GamCommands.addLicense(email: $0.text("email"), productID: $0.text("product_id"), skuID: $0.text("sku_id")) },
         "swap_license": { try GamCommands.swapLicense(email: $0.text("email"), productID: $0.text("product_id"),
                                                       oldSKUID: $0.text("old_sku_id"), newSKUID: $0.text("new_sku_id")) },

@@ -59,18 +59,25 @@ public struct GamRunner: Sendable {
         stop(Set(children.withLock { $0.keys }), grace: grace)
     }
 
+    /// Signals gam and every process it started. gam leads a process group of its own (`spawn`), so this is gam and the
+    /// workers its parallel loops fork (`csv`, `batch`, auto-batch), each of which loads the credentials (failure-log
+    /// 2026-11-28, GamGUI #197).
+    static func signalGroup(_ pid: pid_t, _ signal: Int32) {
+        _ = killpg(pid, signal)
+    }
+
     /// Stops the given children (only ones this process started): SIGTERM, then SIGKILL after `grace`.
     static func stop(_ pids: Set<pid_t>, grace: Duration = .seconds(2)) {
         let mine = pids.intersection(children.withLock { $0.keys })
         guard !mine.isEmpty else { return }
         stopped.withLock { $0.formUnion(mine) }
-        for pid in mine { kill(pid, SIGTERM) }
+        for pid in mine { signalGroup(pid, SIGTERM) }
         let clock = ContinuousClock()
         let deadline = clock.now + grace
         while clock.now < deadline, !children.withLock({ Set($0.keys).isDisjoint(with: mine) }) {
             usleep(50_000)
         }
-        for pid in mine.intersection(children.withLock { $0.keys }) { kill(pid, SIGKILL) }
+        for pid in mine.intersection(children.withLock { $0.keys }) { signalGroup(pid, SIGKILL) }
     }
 
     /// Any argv. `package`, and called only by AuthenticatedRunner and GamVersion (`WriteRouteTests`):
@@ -110,6 +117,12 @@ public struct GamRunner: Sendable {
 
         let exit = ExitSignal()
         Thread {
+            // gam has exited and is not yet reaped, so its pid (its group's id) can't be anyone else's: kill whatever is
+            // left in its group, a worker that would run on with the credentials loaded while the directory is wiped, and
+            // hold gam's pipes open so the drains below wait it out (failure-log 2026-11-28). Then reap.
+            var info = siginfo_t()
+            while waitid(P_PID, id_t(pid), &info, WEXITED | WNOWAIT) == -1, errno == EINTR {}
+            Self.signalGroup(pid, SIGKILL)
             var status: Int32 = 0
             while waitpid(pid, &status, 0) == -1, errno == EINTR {}
             Self.children.withLock { _ = $0.removeValue(forKey: pid) }
@@ -124,7 +137,7 @@ public struct GamRunner: Sendable {
         let status = await withTaskCancellationHandler {
             await Self.wait(for: exit, pid: pid, timeout: timeout)
         } onCancel: {
-            kill(pid, SIGTERM)
+            Self.signalGroup(pid, SIGTERM)
         }
         _ = await outDrained
         _ = await errDrained
@@ -150,7 +163,7 @@ public struct GamRunner: Sendable {
     /// through the file-system representation, which decomposes "é" into "e" + U+0301 and aborts the
     /// app on a NUL. Here every argument and environment value goes to `gam` as its exact UTF-8 bytes
     /// (invariant 11), and a NUL is a thrown error. Only stdin (`/dev/null`), stdout and stderr are
-    /// inherited; signal dispositions and the mask are reset.
+    /// inherited; signal dispositions and the mask are reset; gam leads a process group of its own.
     private static func spawn(_ path: String, _ argv: [String], _ environment: [String: String], input: Bool = false) throws
         -> (pid: pid_t, out: Int32, err: Int32, input: Int32?) {
         let entries = environment.map { "\($0.key)=\($0.value)" }
@@ -191,8 +204,10 @@ public struct GamRunner: Sendable {
         var mask = sigset_t(0)
         posix_spawnattr_setsigdefault(&attributes, &defaults)
         posix_spawnattr_setsigmask(&attributes, &mask)
-        posix_spawnattr_setflags(&attributes,
-                                 Int16(POSIX_SPAWN_CLOEXEC_DEFAULT | POSIX_SPAWN_SETSIGDEF | POSIX_SPAWN_SETSIGMASK))
+        // A process group of its own, led by gam, so a cut-off reaches every worker gam forks (failure-log 2026-11-28).
+        posix_spawnattr_setpgroup(&attributes, 0)
+        posix_spawnattr_setflags(&attributes, Int16(POSIX_SPAWN_CLOEXEC_DEFAULT | POSIX_SPAWN_SETSIGDEF | POSIX_SPAWN_SETSIGMASK
+                                                    | POSIX_SPAWN_SETPGROUP))
 
         let cArgv = ([path] + argv).map { strdup($0) } + [nil]
         let cEnv = entries.map { strdup($0) } + [nil]
@@ -232,11 +247,11 @@ public struct GamRunner: Sendable {
                 group.cancelAll()
                 return status
             }
-            kill(pid, SIGTERM)
+            signalGroup(pid, SIGTERM)
             group.addTask {
                 // Cancelled means the child exited within the grace: its pid may already be reaped and reused, so no SIGKILL.
                 do { try await Task.sleep(for: terminationGrace) } catch { return .killed }
-                kill(pid, SIGKILL)
+                signalGroup(pid, SIGKILL)
                 return .killed
             }
             while let outcome = await group.next() {

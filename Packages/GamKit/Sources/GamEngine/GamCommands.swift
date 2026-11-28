@@ -714,6 +714,29 @@ public enum GamCommands {
                         "fields", SharedDrives.fileFields.joined(separator: ","), "formatjson"])
     }
 
+    /// A group's settings (roadmap 4.4, GamGUI's `info_group_settings`): `info group <g> quick fields <list> formatjson`, no
+    /// members or aliases, one JSON line. A list would read several, so the group is one address.
+    public static func infoGroupSettings(group: String) throws -> GamRead {
+        guard isOneAddress(group) else { throw Invalid.argument("'\(group)' isn't one group address") }
+        return GamRead(["info", "group", group, "quick", "fields", (["email"] + GroupSettings.table.map(\.key)).joined(separator: ","),
+                        "formatjson"])
+    }
+
+    /// `update group <g> <GroupAttribute>*` (GamGUI's `update_group_settings`): only the settings that change, in the table's
+    /// order, each value one the table offers. An abuse@ or postmaster@ group is refused (GAM writes none of its settings yet
+    /// says it did), and so is a list.
+    public static func updateGroupSettings(group: String, changes: [String: String]) throws -> GamWrite {
+        guard isOneAddress(group), !GroupSettings.skipped(group) else {
+            throw Invalid.argument("'\(group)' isn't a group whose settings GAM changes")
+        }
+        guard !changes.isEmpty else { throw Invalid.argument("no setting to change") }
+        for (key, value) in changes where GroupSettings.table.first(where: { $0.key == key })?.values.contains(value) != true {
+            throw Invalid.argument("'\(key)' '\(value)' isn't a group setting this app offers")
+        }
+        let argv = GroupSettings.table.compactMap { row in changes[row.key].map { [row.key, $0] } }.flatMap { $0 }
+        return GamWrite(["update", "group", group] + argv, action: .updateGroupSettings)
+    }
+
     // MARK: license seats (roadmap 4.3, GamGUI #175)
 
     /// GamGUI's `license_sku`: a seat as GAM's `nv:<productId>:<skuId>`, the IDs `print licenses` gave, so GAM's own SKU table never

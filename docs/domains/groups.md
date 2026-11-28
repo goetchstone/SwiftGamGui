@@ -205,3 +205,10 @@ Google refuses its token, so a drive write counts as done only when GAM printed 
 ID:" line (`GamWrite.notDone`). The Builder's curated "List a shared drive's files" reads as a member, `showownedby any`.
 The mock answers all of it as GamGUI's does (ported). Held to `SharedDriveChangesTests`. Not run live (a throwaway drive first).
 Still to come: the warning on the delete and Close Out about drives a leaver manages alone (#186).
+## Group settings (roadmap 4.4, 2026-11-27; GamGUI #182)
+Group Settings… on a group's page (`GroupSettingsSheet`, `Directory/GroupSettingsChanges.swift`, `GamEngine/GroupSettings.swift`):
+seven of Google's (who can post, join, see the members; outside members; moderation; web posting; history), read with `info
+group <g> quick fields … formatjson`. A record missing any is unread (GAM skips abuse@ and postmaster@ groups without a word;
+those are refused outright). Preview reads them again and holds only what changes, in the table's order; just before the run
+they're read once more and one changed since refuses it. Google's refusal (`Group: <g>, Update Failed: <why>`) is said in its
+words. The mock reads and writes `mock_gam/group_settings.tsv` (ported). Held to `GroupSettingsTests`. Not run live.

@@ -2250,6 +2250,85 @@ struct SharedDriveSheet: View {
     }
 }
 
+/// A group's settings (roadmap 4.4, GamGUI's settings card): the seven read now, each a picker; Preview reads them again and
+/// holds only what changes (old → new in words); Change reads them once more and writes only those. A value Google gives that
+/// isn't one offered is shown as Google's and left alone.
+struct GroupSettingsSheet: View {
+    let group: String
+    let model: GroupSettingsChanges
+    let close: () -> Void
+    @State private var wanted: [String: String] = [:]
+
+    var body: some View {
+        Form {
+            if let pending = model.sheetPending(for: group) {
+                Section {
+                    ForEach(pending.changes, id: \.key) { change in
+                        LabeledContent(change.label, value: "\(change.before) → \(change.after)")
+                    }
+                    Text("Only these change; Google keeps the rest. They're read once more before the change, and one changed since stops it.")
+                        .font(.callout).foregroundStyle(.secondary)
+                } header: {
+                    Text(pending.preview.title).accessibilityAddTraits(.isHeader)
+                }
+                Section {
+                    Text(pending.preview.steps.first?.commandLine ?? "").font(.caption.monospaced()).textSelection(.enabled)
+                    Button("Change") {
+                        let pending = pending, model = model
+                        Task { await model.confirm(pending, OperatorConfirmation(confirmed: true)) }
+                    }
+                    .disabled(model.isBusy)
+                    .keyboardShortcut(.return, modifiers: .command)
+                }
+            } else {
+                switch model.settings(of: group) {
+                case nil:
+                    HStack { ProgressView().controlSize(.small); Text("Reading the settings…") }
+                case .failure(let problem)?:
+                    Label("Couldn't read the settings: \(problem.summary)", systemImage: "exclamationmark.triangle.fill")
+                        .symbolRenderingMode(.multicolor)
+                case .success(let settings)?:
+                    Section(group) {
+                        ForEach(settings) { setting in
+                            Picker(setting.label, selection: Binding(get: { wanted[setting.key] ?? setting.value ?? "" },
+                                                                     set: { wanted[setting.key] = $0 })) {
+                                if setting.value == nil { Text(setting.shown).tag("") }
+                                ForEach(setting.choices, id: \.value) { Text($0.words).tag($0.value) }
+                            }
+                        }
+                    }
+                }
+                switch model.subject == group ? model.state : .idle {
+                case .checking: HStack { ProgressView().controlSize(.small); Text("Reading the settings again…") }
+                case .done(let words): Label(words, systemImage: "checkmark.circle.fill").symbolRenderingMode(.multicolor)
+                case .problem(let words): Label(words, systemImage: "exclamationmark.triangle.fill").symbolRenderingMode(.multicolor)
+                default: EmptyView()
+                }
+            }
+        }
+        .formStyle(.grouped)
+        .frame(minWidth: 520, minHeight: 420)
+        .task { await model.load(group) }
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+                Button(model.sheetPending(for: group) == nil ? "Done" : "Back") {
+                    if model.sheetPending(for: group) == nil { close() } else { model.dismiss() }
+                }
+                .disabled(model.isBusy)
+            }
+            if model.sheetPending(for: group) == nil {
+                ToolbarItem(placement: .primaryAction) {
+                    Button("Preview") {
+                        let wanted = wanted.filter { !$0.value.isEmpty }, model = model, group = group
+                        Task { await model.preview(group, wanted: wanted) }
+                    }
+                    .disabled(model.isBusy || wanted.isEmpty)
+                }
+            }
+        }
+    }
+}
+
 /// Close Out's review (roadmap 4.5, GamGUI's `_closeout_confirm.html`): each held step, a failed transfer named, the leaver's
 /// address typed, and the one button that runs exactly these steps.
 struct CloseOutReview: View {

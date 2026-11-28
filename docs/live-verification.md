@@ -33,6 +33,7 @@ Dates are 2026, and the last time the command ran from any screen.
 
 - **Not run:** remove several members at once (new 2026-11-27, roadmap 3.5; each the same removal that ran).
 - **Not run:** a shared drive's members, add, change, remove; a shared drive's files in the Builder (new 2026-11-27, roadmap 4.7).
+- **Not run:** a group's settings (new 2026-11-27, roadmap 4.4; a throwaway group first).
 ### Calendars
 - **Not run:** anything from this screen: share a calendar with a person, put it in their list, remove someone's access.
   Sharing a person's own calendar ran from Users.
