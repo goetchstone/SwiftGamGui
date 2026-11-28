@@ -132,6 +132,8 @@ public enum WriteAction: String, Sendable, CaseIterable {
     case updatePhones
     /// A shared drive's members (roadmap 4.7, GamGUI #185).
     case addDriveMember, setDriveMemberRole, removeDriveMember
+    /// A folder of mixed ownership into a shared drive (roadmap 4.8, GamGUI #188): the move, then a copy of what stayed.
+    case moveFolderToSharedDrive, copyFolderToSharedDrive
     /// A group's settings (roadmap 4.4, GamGUI #182).
     case updateGroupSettings
     /// Close Out (roadmap 4.5, GamGUI #183).

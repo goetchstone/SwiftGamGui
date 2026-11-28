@@ -147,6 +147,10 @@ extension CuratedCommand {
     /// GamGUI's curated commands, in its order, but for those not ported yet.
     public static let all: [CuratedCommand] = {
         let delegates = "Gmail - Delegates", forwarding = "Gmail - Forwarding", vacation = "Gmail - Vacation"
+        // A folder's move into a shared drive and its copy step take the same three (roadmap 4.8).
+        let folderFields = [person("email", "The folder's owner (a Manager of the drive)"),
+                            field("folder_id", "Folder ID", .text, placeholder: "1AbC\u{2026} (the end of the folder's Drive address)"),
+                            field("drive_id", "Shared drive ID", .text, placeholder: "0AB\u{2026}Uk9PVA (Shared drives lists each one's)")]
         return [
             CuratedCommand("build.add_delegate", "Users", delegates, "Add mailbox delegate", .change,
                            [person(), field("delegate", "Delegate", .email)],
@@ -262,6 +266,30 @@ extension CuratedCommand {
                            "Every file in a shared drive, read as one of its members: who changed each last and when. "
                            + "Someone who isn't a member gets Google's refusal.") { v in
                 .read(try GamCommands.printSharedDriveFiles(email: v("email"), driveID: PythonText.strip(v("drive_id"))))
+            },
+            // Roadmap 4.8 (GamGUI #188): a folder of mixed ownership into a shared drive, two steps queued in that order. The
+            // preview counts what the folder holds by owner and checks the person is a Manager of the drive (`BuilderChanges`).
+            // Neither has a dry run, and a run that stops partway can't be undone.
+            CuratedCommand("build.move_folder_to_shared_drive", "Shared Drives", "", "Move a folder into a shared drive", .destructive,
+                           folderFields,
+                           "gam user <email> move drivefile id:<FolderID> teamdriveparentid <SharedDriveID> retainsourcefolders "
+                           + "duplicatefolders merge duplicatefiles skip",
+                           "Step 1 of 2. Moves a folder's files into a shared drive, making its folders again there. Google won't move a "
+                           + "file owned outside the domain, or one whose owner isn't a member of the drive, so those stay where they are, "
+                           + "and the original folders stay to hold them: queue step 2 after this one to copy them. The person must own "
+                           + "the folder and be a Manager of the drive.") { v in
+                .write(try GamCommands.moveFolderToSharedDrive(email: v("email"), folderID: PythonText.strip(v("folder_id")),
+                                                               driveID: PythonText.strip(v("drive_id"))))
+            },
+            CuratedCommand("build.copy_rest_of_folder_to_shared_drive", "Shared Drives", "", "Copy what didn't move into a shared drive",
+                           .change, folderFields,
+                           "gam user <email> copy drivefile id:<FolderID> teamdriveparentid <SharedDriveID> recursive "
+                           + "copysubfilesownedby others duplicatefolders merge duplicatefiles skip excludetrashed suppressnotselectedmessages",
+                           "Step 2 of 2, after the move. Copies the files still in the folder that someone else owns into the same folders "
+                           + "in the drive. The originals stay with their owners. A file already there by name is skipped, so running it "
+                           + "again copies nothing twice.") { v in
+                .write(try GamCommands.copyRestOfFolderToSharedDrive(email: v("email"), folderID: PythonText.strip(v("folder_id")),
+                                                                     driveID: PythonText.strip(v("drive_id"))))
             },
             CuratedCommand("build.print_forwarding", "Users", forwarding, "List forwarding addresses", .read, [person()],
                            "gam user <email> print forwardingaddresses", "Show the addresses this user may forward mail to.") { v in
