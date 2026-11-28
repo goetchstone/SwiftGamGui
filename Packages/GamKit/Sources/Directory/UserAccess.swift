@@ -361,6 +361,49 @@ public final class UserAccess {
         return .success((table ? GamOutput.records(result.stdout) : [], accounted))
     }
 
+    /// Every shared drive, as the admin (roadmap 4.7, GamGUI's `shared_drives`). Exit 60 with the titles is GAM's own "none";
+    /// exit 0 with no row isn't (GAM writes the titles alone when Google refuses its token without a word), and neither is
+    /// output without the `id` titles: both are unread.
+    public func sharedDrives(in pinned: Domain? = nil) async -> Result<[SharedDrives.Drive], Problem> {
+        guard let domain = pinned ?? setup.active, let runner else { return .failure(Problem(summary: "Connect a domain on Setup first.")) }
+        let read = GamCommands.printSharedDrives()
+        let result: GamResult
+        do { result = try await runner.run(read, as: domain, extraEnvironment: environment) } catch {
+            return .failure(Problem(summary: SetupModel.message(for: error)))
+        }
+        guard result.exitCode == 0 || result.exitCode == 60 else {
+            return .failure(Problem(summary: GamError(exitCode: result.exitCode, stderr: result.stderr, argv: read.argv).message))
+        }
+        let lines = result.stdout.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
+        guard !result.stdoutTruncated, let start = lines.firstIndex(where: { line in
+            line.split(separator: ",", omittingEmptySubsequences: false).contains { PythonText.strip(String($0)) == "id" }
+        }) else {
+            return .failure(Problem(summary: "GAM ended without listing the shared drives, so they can't be told."))
+        }
+        let drives = GamOutput.records(lines[start...].joined(separator: "\n")).compactMap(SharedDrives.Drive.init(record:))
+        if drives.isEmpty, result.exitCode != 60 {
+            return .failure(Problem(summary: "GAM listed no shared drive without saying there are none, so they can't be told."))
+        }
+        return .success(drives.sorted { a, b in
+            let x = PythonText.lower(a.name), y = PythonText.lower(b.name)
+            return x != y ? x.unicodeScalars.lexicographicallyPrecedes(y.unicodeScalars) : a.id < b.id
+        })
+    }
+
+    /// One shared drive's members, read now: a run that didn't print that drive's one row is unread (`SharedDrives.members`).
+    public func driveMembers(_ driveID: String, in pinned: Domain? = nil) async -> Result<[SharedDrives.Member], Problem> {
+        guard let read = try? GamCommands.printDriveMembers(driveID: driveID) else {
+            return .failure(Problem(summary: "“\(driveID)” isn't a shared drive ID."))
+        }
+        switch await readNow(read, in: pinned, parse: { GamOutput.records($0) }) {
+        case .failure(let problem): return .failure(problem)
+        case .success(let records):
+            do throws(SharedDrives.Unread) { return .success(try SharedDrives.members(records, driveID: driveID)) } catch {
+                return .failure(Problem(summary: error.reason))
+            }
+        }
+    }
+
     /// A group's seven settings (roadmap 4.4), read now. A run without one record never answered; a record missing any setting
     /// (an abuse@ or postmaster@ group's, which GAM skips) is unread: neither is "the defaults".
     public func groupSettings(_ group: String, in pinned: Domain? = nil) async -> Result<[GroupSettings.Setting], Problem> {

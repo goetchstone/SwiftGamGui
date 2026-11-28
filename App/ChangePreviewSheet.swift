@@ -2220,6 +2220,36 @@ struct BulkCSVReview: View {
     }
 }
 
+/// A shared drive member change (roadmap 4.7): the question in words, the command, and Run; the members are read once more just
+/// before it runs, and a change since stops it.
+struct SharedDriveSheet: View {
+    let pending: SharedDriveChanges.Pending
+    let model: SharedDriveChanges
+
+    var body: some View {
+        Form {
+            Section(pending.change.question) {
+                Text(pending.preview.steps.first?.commandLine ?? "").font(.body.monospaced()).textSelection(.enabled)
+                Text("The members are read once more first: if they changed since, nothing runs.").font(.callout).foregroundStyle(.secondary)
+            }
+            if model.isBusy { Section { HStack { ProgressView().controlSize(.small); Text("Running…") } } }
+        }
+        .formStyle(.grouped)
+        .frame(minWidth: 460)
+        .interactiveDismissDisabled(model.isBusy)
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) { Button("Cancel") { model.dismiss() }.disabled(model.isBusy) }
+            ToolbarItem(placement: .primaryAction) {
+                Button(pending.change.action == .remove ? "Remove" : "Run", role: pending.change.action == .remove ? .destructive : nil) {
+                    let pending = pending, model = model
+                    Task { await model.confirm(pending, OperatorConfirmation(confirmed: true)) }
+                }
+                .disabled(model.isBusy)
+            }
+        }
+    }
+}
+
 /// A group's settings (roadmap 4.4, GamGUI's settings card): the seven read now, each a picker; Preview reads them again and
 /// holds only what changes (old → new in words); Change reads them once more and writes only those. A value Google gives that
 /// isn't one offered is shown as Google's and left alone.

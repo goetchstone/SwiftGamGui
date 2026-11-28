@@ -136,7 +136,7 @@ struct CommandKindTests {
             let verb = Self.verb(command.argv)
             #expect(verb.map(Self.readVerbs.contains) == true, "\(name) is a GamRead but its verb is \(verb ?? "unknown")")
         }
-        #expect(reads == 55 + Self.sharedBuilders.count, "the shared builder is a read")
+        #expect(reads == 57 + Self.sharedBuilders.count, "the shared builder is a read")
         for (name, read) in Self.appOnlyReads {
             let verb = Self.verb(read.argv)
             #expect(verb.map(Self.readVerbs.contains) == true, "\(name) is a GamRead but its verb is \(verb ?? "unknown")")
@@ -169,7 +169,7 @@ struct CommandKindTests {
             let verb = Self.verb(command.argv)
             #expect(!(verb.map(Self.readVerbs.contains) ?? false), "\(name) is a GamWrite but reads (\(verb ?? ""))")
         }
-        #expect(writes == 64)
+        #expect(writes == 67)
     }
 
     @Test func theVerbSetsAreGamGUIs() {
@@ -182,6 +182,7 @@ struct CommandKindTests {
     /// an undelete) would let a per-action rule allow the wrong write.
     static let actions: [String: WriteAction] = [
         "create_user": .createUser, "update_organization": .updateOrganization,
+        "add_drive_member": .addDriveMember, "set_drive_member_role": .setDriveMemberRole, "remove_drive_member": .removeDriveMember,
         "update_group_settings": .updateGroupSettings,
         "add_license": .addLicense, "swap_license": .swapLicense, "remove_license": .removeLicense,
         "rename_user": .renameUser, "delete_group": .deleteGroup, "create_admin": .createAdmin,
@@ -227,7 +228,7 @@ struct CommandKindTests {
                                 encoding: .utf8)
         let reads = source.matches(of: /-> GamRead\b/).count, writes = source.matches(of: /-> GamWrite\b/).count
         let mints = source.matches(of: /\bGam(Read|Write)\(/).count
-        #expect(reads == 56 && writes == 65, "a builder was added or removed: hold it here and in GoldenArgvTests (or appOnlyReads)")
+        #expect(reads == 58 && writes == 68, "a builder was added or removed: hold it here and in GoldenArgvTests (or appOnlyReads)")
         #expect(mints == reads + writes, "one builder per command made")
         // `catalogRead`, the Builder's door, is held over every catalog command instead (`CommandCatalogTests`: GamGUI's argv,
         // and every runnable one's first known verb a read verb).
