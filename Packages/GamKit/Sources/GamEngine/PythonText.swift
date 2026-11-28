@@ -4,6 +4,31 @@
 /// U+001C to U+001F; a `Character` can hold several scalars). Held to Python's own tables by the
 /// fixtures' constants.
 package enum PythonText {
+    /// Python's `str.splitlines()`: lines split at \n, \r, \r\n, \v, \f, \x1c-\x1e, \x85, U+2028 and U+2029, the breaks
+    /// dropped, no empty last line for a trailing break.
+    package static func splitlines(_ text: String) -> [String] {
+        var lines: [String] = [], current = String.UnicodeScalarView()
+        let scalars = Array(text.unicodeScalars)
+        var index = 0
+        while index < scalars.count {
+            let scalar = scalars[index]
+            index += 1
+            switch scalar.value {
+            case 0x0D:
+                if index < scalars.count, scalars[index] == "\n" { index += 1 }
+                lines.append(String(current))
+                current = String.UnicodeScalarView()
+            case 0x0A, 0x0B, 0x0C, 0x1C, 0x1D, 0x1E, 0x85, 0x2028, 0x2029:
+                lines.append(String(current))
+                current = String.UnicodeScalarView()
+            default:
+                current.append(scalar)
+            }
+        }
+        if !current.isEmpty { lines.append(String(current)) }
+        return lines
+    }
+
     /// `str.isspace()`.
     package static let whitespace: Set<UInt32> = [
         0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x1C, 0x1D, 0x1E, 0x1F, 0x20, 0x85, 0xA0, 0x1680,

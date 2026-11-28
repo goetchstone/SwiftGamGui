@@ -228,6 +228,8 @@ struct GoldenArgvTests {
         "set_signature": { try GamCommands.setSignature(email: $0.string("email"), signature: $0.string("signature"), html: $0.flag("html")) },
         "show_signature": { try GamCommands.showSignature(email: $0.string("email")) },
         "print_signature": { try GamCommands.printSignature(email: $0.string("email")) },
+        "print_signatures_from_stdin": { _ in GamCommands.printSignaturesFromStdin() },
+        "set_signatures_csv": { _ in GamCommands.setSignaturesCSV() },
         "add_delegate": { try GamCommands.addDelegate(email: $0.string("email"), delegate: $0.string("delegate")) },
         "remove_delegate": { try GamCommands.removeDelegate(email: $0.string("email"), delegate: $0.string("delegate")) },
         "print_delegates": { try GamCommands.printDelegates(email: $0.string("email")) },
@@ -387,10 +389,31 @@ struct GoldenArgvTests {
         #expect(ported.union(left) == Set(document.builders))
     }
 
+    /// Invariant 11's listed deviations: where GamGUI reads GAM wrongly, GAM's source is the oracle. Each holds GamGUI's argv
+    /// as its fixture has it, so a fixture regenerated after GamGUI's fix fails here and the entry goes.
+    /// - `set_signatures_csv` (roadmap 5.4, PR #218's review): GAM 7.52.05's `openCSVFileReader` checks `columndelimiter`,
+    ///   `noescapechar`, `quotechar` in that order, each once (GamCommands.txt's `gam csv` line too). GamGUI's
+    ///   `… quotechar " noescapechar true gam …` leaves `noescapechar` for the required `gam`: exit 2, nobody set.
+    static let deviations: [String: (gamgui: [String], ours: [String])] = [
+        "set_signatures_csv": (
+            ["csv", "-", "columndelimiter", ",", "quotechar", "\"", "noescapechar", "true",
+             "gam", "user", "~User", "signature", "~signature", "html"],
+            ["csv", "-", "columndelimiter", ",", "noescapechar", "true", "quotechar", "\"",
+             "gam", "user", "~User", "signature", "~signature", "html"]),
+    ]
+
+    @Test func eachDeviationIsStillGamGUIsAndOursIsGamsOrder() throws {
+        for (name, deviation) in Self.deviations {
+            let cases = document.cases.filter { $0.builder == name }
+            #expect(!cases.isEmpty && cases.allSatisfy { $0.argv == deviation.gamgui }, "\(name): GamGUI changed; drop the deviation")
+            for item in cases { #expect(try Self.implemented[name]!(Args(item.kwargs)).argv == deviation.ours, "\(name)") }
+        }
+    }
+
     @Test func everyPortedBuilderMatchesGamGUIOnEveryCase() throws {
         var checked = 0, refused = 0
         for item in document.cases {
-            guard let build = Self.implemented[item.builder] else { continue }
+            guard let build = Self.implemented[item.builder], Self.deviations[item.builder] == nil else { continue }
             let args = Args(item.kwargs)
             if let expected = item.argv {
                 // Bytes, not Strings: Swift's == treats "é" and "e" + U+0301 as equal; GAM doesn't.

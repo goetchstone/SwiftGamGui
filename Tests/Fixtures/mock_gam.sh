@@ -966,6 +966,14 @@ groupsenterprise|enterprisegroups|profile|ldap|directorysync|gcp|cloud|cloudsear
   exit 0
 fi
 
+# Ported from GamGUI's mock (#193).
+# GAM's loops over standard input (roadmap 5.4's signature fast path): `csv - … gam user ~User signature ~signature html`
+# and `file - print signature`. mock_gam_loops.py does GAM's looping and runs this mock once per row or person, so the
+# strict one-person handlers below answer each; any other `csv` or `file -` shape is refused there.
+if [ "${1:-}" = "csv" ] || { [ "${1:-}" = "file" ] && [ "${2:-}" = "-" ]; }; then
+  exec python3 "$(dirname "$0")/mock_gam_loops.py" "$0" "$@"
+fi
+
 # `gam user <email> show signature` (no formatjson) -> THAT address's signature, as text. Without
 # `primary` or `default`, printShowSignature gets the one send-as named by the address given, not the
 # list (gam/__init__.py:78862-78865), and _showSendAs prints it (78560-78591): `SendAs Address: <addr>`
@@ -3649,7 +3657,10 @@ if [ "${1:-}" = "user" ] && { [ "${3:-}" = "signature" ] || [ "${3:-}" = "sig" ]
     stored=$(gam_stored_signature "$body" "$html"); stored=${stored%.}
     printf '%s' "$stored" > "$GAM_MOCK_STATE/signature/$user"
   fi
-  echo "User: $user, SendAs Address: <$user>, Updated"
+  # setSignature → _processSendAs → entityActionPerformed([USER, user, SIGNATURE, user]) with Act.SET (glentity, glaction at the
+  # 7.52.05 tag): "Signature" and "Set". It once said "SendAs Address: <…>, Updated", copied from GamGUI's mock, which no GAM
+  # prints; nothing read it until the fast path (roadmap 5.4) did.
+  echo "User: $user, Signature: $user, Set"
   exit 0
 fi
 

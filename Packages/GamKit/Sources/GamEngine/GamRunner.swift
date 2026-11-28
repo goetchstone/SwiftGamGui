@@ -81,14 +81,29 @@ public struct GamRunner: Sendable {
         configDirectory: URL? = nil,
         timeout: Duration = GamRunner.defaultTimeout,
         extraEnvironment: [String: String] = [:],
-        launched: (@Sendable () -> Void)? = nil
+        launched: (@Sendable () -> Void)? = nil,
+        input: Data? = nil
     ) async throws -> GamResult {
         guard FileManager.default.isExecutableFile(atPath: binary.path) else {
             throw GamRunnerError.binaryNotExecutable(binary.path)
         }
         let environment = GamEnvironment.build(from: ProcessInfo.processInfo.environment,
                                                configDirectory: configDirectory, extra: extraEnvironment)
-        let (pid, outRead, errRead) = try Self.spawn(binary.path, argv, environment)
+        let (pid, outRead, errRead, inWrite) = try Self.spawn(binary.path, argv, environment, input: input != nil)
+        // GAM's standard input (roadmap 5.4): written on its own thread, then closed, so GAM sees its end. A write to a child
+        // that closed early fails (EPIPE), never a SIGPIPE that would end this app.
+        if let inWrite, let input {
+            Thread {
+                input.withUnsafeBytes { bytes in
+                    var offset = 0
+                    while offset < bytes.count {
+                        let wrote = Darwin.write(inWrite, bytes.baseAddress! + offset, bytes.count - offset)
+                        if wrote > 0 { offset += wrote } else if wrote < 0, errno == EINTR { continue } else { break }
+                    }
+                }
+                close(inWrite)
+            }.start()
+        }
         // GAM is running from here: whatever happens next, it may have done its work.
         launched?()
         Self.children.withLock { $0[pid] = binary.path }
@@ -136,8 +151,8 @@ public struct GamRunner: Sendable {
     /// app on a NUL. Here every argument and environment value goes to `gam` as its exact UTF-8 bytes
     /// (invariant 11), and a NUL is a thrown error. Only stdin (`/dev/null`), stdout and stderr are
     /// inherited; signal dispositions and the mask are reset.
-    private static func spawn(_ path: String, _ argv: [String], _ environment: [String: String]) throws
-        -> (pid: pid_t, out: Int32, err: Int32) {
+    private static func spawn(_ path: String, _ argv: [String], _ environment: [String: String], input: Bool = false) throws
+        -> (pid: pid_t, out: Int32, err: Int32, input: Int32?) {
         let entries = environment.map { "\($0.key)=\($0.value)" }
         for value in [path] + argv + entries where value.utf8.contains(0) {
             throw GamRunnerError.invalidArgument("contains a NUL byte")
@@ -149,6 +164,14 @@ public struct GamRunner: Sendable {
             close(out[0]); close(out[1])
             throw GamRunnerError.launchFailed("pipe: errno \(errno)")
         }
+        var stdin: [Int32] = [-1, -1]
+        if input {
+            guard pipe(&stdin) == 0 else {
+                close(out[0]); close(out[1]); close(err[0]); close(err[1])
+                throw GamRunnerError.launchFailed("pipe: errno \(errno)")
+            }
+            _ = fcntl(stdin[1], F_SETNOSIGPIPE, 1)
+        }
         var actions: posix_spawn_file_actions_t?
         var attributes: posix_spawnattr_t?
         posix_spawn_file_actions_init(&actions)
@@ -157,7 +180,11 @@ public struct GamRunner: Sendable {
             posix_spawn_file_actions_destroy(&actions)
             posix_spawnattr_destroy(&attributes)
         }
-        posix_spawn_file_actions_addopen(&actions, STDIN_FILENO, "/dev/null", O_RDONLY, 0)
+        if input {
+            posix_spawn_file_actions_adddup2(&actions, stdin[0], STDIN_FILENO)
+        } else {
+            posix_spawn_file_actions_addopen(&actions, STDIN_FILENO, "/dev/null", O_RDONLY, 0)
+        }
         posix_spawn_file_actions_adddup2(&actions, out[1], STDOUT_FILENO)
         posix_spawn_file_actions_adddup2(&actions, err[1], STDERR_FILENO)
         var defaults = sigset_t.max   // every signal back to its default disposition
@@ -177,11 +204,13 @@ public struct GamRunner: Sendable {
         let status = posix_spawn(&pid, path, &actions, &attributes, cArgv, cEnv)
         close(out[1])
         close(err[1])
+        if input { close(stdin[0]) }
         guard status == 0 else {
             close(out[0]); close(err[0])
+            if input { close(stdin[1]) }
             throw GamRunnerError.launchFailed("posix_spawn: errno \(status)")
         }
-        return (pid, out[0], err[0])
+        return (pid, out[0], err[0], input ? stdin[1] : nil)
     }
 
     private enum Outcome: Sendable {

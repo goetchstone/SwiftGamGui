@@ -90,6 +90,8 @@ struct AppServices {
     let inactiveSuspend: InactiveSuspend
     /// Shared drives and their members (roadmap 4.7).
     let sharedDrives: SharedDriveChanges
+    /// Reports' No 2SV / No recovery reminder emails.
+    let bucketReminders: BucketReminders
     /// Users' Department for Many…: one department for a group's members or pasted addresses, each previewed write through the executor.
     let departmentForMany: DepartmentForMany
     /// Onboard's From a CSV…: every row's hire held as one preview through the executor.
@@ -237,6 +239,7 @@ struct AppServices {
                            runSchedules: runSchedules,
                            inactiveSuspend: InactiveSuspend(executor: executor, setup: setup, directory: directory),
                            sharedDrives: SharedDriveChanges(executor: executor, setup: setup, access: UserAccess(setup: setup, runner: runner)),
+                           bucketReminders: BucketReminders(executor: executor, setup: setup, directory: directory),
                            departmentForMany: DepartmentForMany(executor: executor, setup: setup, directory: directory, runner: runner),
                            hiresFromCSV: HiresFromCSV(executor: executor, setup: setup, directory: directory),
                            auditURL: auditURL, savedFiles: savedFiles, lockVault: { await vault.lock() })

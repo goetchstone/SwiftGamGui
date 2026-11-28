@@ -13,7 +13,9 @@ an allowlisted environment, a timeout, and capped output capture.
     changed under it) and aborts the app on a NUL. Here arguments and environment go out as their
     exact UTF-8 bytes; a NUL throws `invalidArgument`.
   - The child inherits only stdin (`/dev/null`), stdout and stderr (`POSIX_SPAWN_CLOEXEC_DEFAULT`), with
-    signal dispositions and mask reset.
+    signal dispositions and mask reset. A command with `input` (`GamRead`/`GamWrite`, `package` only: roadmap 5.4's
+    `file -` and `csv -`) gets a pipe instead, written on its own thread and closed; `F_SETNOSIGPIPE` makes a child that
+    exits early an `EPIPE`, never a SIGPIPE. The input is never shown, logged or audited.
   - A thread drains each pipe with `read(2)` into a `CappedBuffer` (8 MiB per stream). A thread
     `waitpid`s: an exit gives its code, a signal its number.
   - A timeout sends SIGTERM, then SIGKILL after 5 s, and throws `timedOut`.

@@ -67,6 +67,15 @@ public struct WriteStep: Sendable {
         /// left as it is: the step is skipped, "Changed since that run". `restoring` is the kept run a Put Back sets again:
         /// the keeper never prunes it for this run, so whoever this run doesn't put back is still there to put back.
         case signature(email: String, setting: String, expectedNow: String?, restoring: String? = nil)
+        /// The fast path (roadmap 5.4): everyone's stored signature read in one call (`printSignaturesFromStdin`) and each kept,
+        /// with the body the step's rows set for them, before the one `csv` write. Anyone unread: nothing is written.
+        case signatures(people: [Person])
+
+        public struct Person: Sendable, Equatable {
+            public let email: String
+            public let setting: String
+            public init(email: String, setting: String) { (self.email, self.setting) = (email, setting) }
+        }
     }
 
     public init(_ write: GamWrite, target: String, summary: String, risk: Risk = .low, requires: [Int] = [],
@@ -158,6 +167,13 @@ public struct WriteStep: Sendable {
     }
 
     var change: Change { Change(target: target, summary: rawSummary, risk: risk, argv: write.argv) }
+
+    /// What the guard counts: one change per person a one-call signature run sets (roadmap 5.4), so its count, typed count
+    /// and hard cap are the people's, as the per-person run's are; one for any other step.
+    var changes: [Change] {
+        guard case .signatures(let people)? = keepFirst else { return [change] }
+        return people.map { Change(target: $0.email, summary: rawSummary, risk: risk, argv: write.argv) }
+    }
 }
 
 /// A step prints, dumps and reflects as the operator sees it (`shownArgv`), never its raw argv: a held
@@ -247,7 +263,7 @@ public struct HeldPreview: Sendable, Identifiable {
     let createdAt: ContinuousClock.Instant
     let precondition: (@Sendable () async throws -> Bool)?
 
-    var changes: [Change] { steps.map(\.change) }
+    var changes: [Change] { steps.flatMap(\.changes) }
 
     /// A Confirm click whatever the risk: the flow asked for one, or a model or Siri drafted it.
     public var needsConfirmClick: Bool { confirmStep || origin != .form }
@@ -258,6 +274,11 @@ public struct HeldPreview: Sendable, Identifiable {
             for element in step.write.argv {
                 hasher.update(data: Data(element.utf8))
                 hasher.update(data: Data([0]))
+            }
+            // What a step sends on GAM's standard input (roadmap 5.4's rows) is what it does too: two runs of one argv differ here.
+            if let input = step.write.input {
+                hasher.update(data: Data([0xFE]))
+                hasher.update(data: input)
             }
             hasher.update(data: Data([0xFF]))
         }
@@ -430,7 +451,7 @@ public actor Executor {
         // Gmail keeps no copy of a replaced signature: every signature write keeps the one it replaces, unless it's on an
         // account this run makes, which has none.
         if let index = steps.indices.first(where: {
-            steps[$0].action == .setSignature && steps[$0].keepFirst == nil && steps[$0].newAccountFrom == nil
+            [.setSignature, .setSignaturesFast].contains(steps[$0].action) && steps[$0].keepFirst == nil && steps[$0].newAccountFrom == nil
         }) {
             return .failure(.signatureNotKept(step: index))
         }
@@ -445,7 +466,7 @@ public actor Executor {
             || !steps.contains(where: { Self.key($0.target) == Self.key(typedAddress) }) {
             return .failure(.typedAddressNotATarget)
         }
-        let decision = Guard.evaluate(steps.map(\.change), typedCountAbove: typedCountAbove)
+        let decision = Guard.evaluate(steps.flatMap(\.changes), typedCountAbove: typedCountAbove)
         // The word to type is a real word, and the only one typed: the guard's `confirm` would share its field.
         if let typedExactWord, PythonText.strip(typedExactWord).isEmpty || decision.requiresTypedConfirmation {
             return .failure(.typedWordUnusable)
@@ -582,6 +603,11 @@ public actor Executor {
         case .signature(let email, let setting, _, _):
             return step.action == .setSignature && step.newAccountFrom == nil && step.listedTask == nil
                 && same(GamCommands.setSignature(email: email, signature: setting, html: true).argv, step.write.argv)
+        case .signatures(let people):
+            // The rows the step sends are exactly these people's, each with the body kept beside it.
+            let built = GamCommands.setSignaturesCSV(rows: people.map { ($0.email, $0.setting) })
+            return step.action == .setSignaturesFast && !people.isEmpty && step.newAccountFrom == nil && step.listedTask == nil
+                && same(built.argv, step.write.argv) && built.input == step.write.input
         }
     }
 
@@ -624,6 +650,35 @@ public actor Executor {
         order.removeAll { $0 == id }
     }
 
+    // MARK: exporting a sequence (roadmap 5.3)
+
+    /// A held preview's steps as a batch file (GamGUI's `/builder/sequence/export.txt`): the steps it holds, never what is queued
+    /// now, and the preview stays held so its Run still works. The file runs outside the guard and the audit, so the export is
+    /// audited first (`sequence_export`, each step's command and argv); a record that can't be written writes no file. `labels`
+    /// name each step in the file. Refused, in words, for a preview gone or expired, or a step `SequenceExport` refuses.
+    public func exportBatch(_ id: UUID, labels: [String]) -> Result<String, ExportRefusal> {
+        guard let preview = held[id], now() - preview.createdAt <= Self.previewLifetime else { return .failure(ExportRefusal(Self.expired)) }
+        guard labels.count == preview.steps.count else { return .failure(ExportRefusal("The sequence's steps changed: preview it again.")) }
+        let steps = zip(preview.steps, labels).map { (label: $1, argv: $0.write.argv) }
+        if let why = SequenceExport.whyNot(steps) { return .failure(ExportRefusal(why)) }
+        guard let file = SequenceExport.file(steps) else { return .failure(ExportRefusal("The sequence can't be written.")) }
+        let commands = preview.steps.map { JSONValue.string($0.about["command"] ?? "") }
+        let argvs = steps.map { JSONValue.array($0.argv.map(JSONValue.string)) }
+        do {
+            _ = try audit.record("sequence_export", target: "sequence", ok: true,
+                                 extra: ["steps": .number(String(steps.count)), "commands": .array(commands), "argvs": .array(argvs)],
+                                 domain: preview.domain.name)
+        } catch {
+            return .failure(ExportRefusal("The export couldn't be recorded in the audit log, so the file wasn't written."))
+        }
+        return .success(file)
+    }
+
+    public struct ExportRefusal: Error, Sendable, Equatable {
+        public let message: String
+        init(_ message: String) { self.message = message }
+    }
+
     // MARK: running
 
     static let expired = "That preview has expired or was already run — preview again."
@@ -657,8 +712,9 @@ public actor Executor {
         if let word = taken.typedExactWord, !PythonText.strip(confirmation.typedWord).utf8.elementsEqual(word.utf8) {
             return .refused("Type \(word) (exactly) to run this.")
         }
-        let targets = Set(taken.steps.map { Self.key($0.target) })
-        if let busy = taken.steps.first(where: { inFlight.contains(Self.key($0.target)) }) {
+        // Each person a step changes (a one-call signature run's are many), not its summary target.
+        let targets = Set(taken.changes.map { Self.key($0.target) })
+        if let busy = taken.changes.first(where: { inFlight.contains(Self.key($0.target)) }) {
             return .refused("A change to \(busy.target) is already running — wait for it to finish, then preview again.")
         }
         inFlight.formUnion(targets)
@@ -783,6 +839,44 @@ public actor Executor {
             if let expectedNow, !Self.same(previous, expectedNow) { return (.skipped(reason: Self.changedSince), nil) }
             do {
                 try kept.keep(email: email, previous: previous, setting: setting)
+            } catch {
+                KeepFailure.report("keep", error)
+                return (.skipped(reason: Self.notKept), Self.notKept)
+            }
+            return nil
+        case .signatures(let people):
+            guard let kept else { return (.skipped(reason: Self.notKept), Self.notKept) }
+            let emails = people.map(\.email)
+            let previous: [String: String]
+            do {
+                // GAM carries on past a person it can't read and exits with that warning's code: their lines say who.
+                let read = try await runner.run(GamCommands.printSignaturesFromStdin(emails: emails), as: preview.domain,
+                                                timeout: max(GamRunner.defaultTimeout, .seconds(5 * emails.count)),
+                                                extraEnvironment: extraEnvironment)
+                previous = SignaturesFast.readSignatures(stdout: read.stdout, stderr: read.stderr, emails: emails)
+            } catch is CancellationError {
+                return (.skipped(reason: Self.cancelledBeforeRun), Self.cancelledBeforeRun)
+            } catch {
+                let message = GamEngineMessage.of(error)
+                return (.failed(message: "\(Self.notRead) \(message)", kind: nil), nil)
+            }
+            let unread = emails.filter { previous[$0] == nil }
+            guard unread.isEmpty else {
+                return (.failed(message: "\(Self.notRead) \(unread.count) of \(emails.count) couldn't be read, so none was set: "
+                                + "run them one at a time.", kind: nil), nil)
+            }
+            // A domain switch during the read stops it before anything is written (GamGUI's review finding), and so does the
+            // jobs tray's Stop, asked during a read that can take minutes.
+            guard await isCurrent(preview) else {
+                let stop = await stopWords(for: preview)
+                return (.skipped(reason: stop), stop)
+            }
+            if stopRequests.contains(preview.id) { return (.skipped(reason: Self.stopped), Self.stopped) }
+            do {
+                // Kept as sent (GamGUI's `as_sent`): the bytes Gmail is given, so a Put Back compares against what it then holds.
+                for person in people {
+                    try kept.keep(email: person.email, previous: previous[person.email] ?? "", setting: SignaturesFast.asSent(person.setting))
+                }
             } catch {
                 KeepFailure.report("keep", error)
                 return (.skipped(reason: Self.notKept), Self.notKept)

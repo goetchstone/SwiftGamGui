@@ -22,6 +22,8 @@ struct ReportsView: View {
     /// The audit runs, and Inactive users' Suspend these….
     let runs: AuditRunner
     let suspend: InactiveSuspend
+    /// No 2SV / No recovery's reminder email (roadmap 3.3).
+    let reminders: BucketReminders
     /// The audit runs' schedules on the connected domain (plan F7a): when each is due, and what it keeps.
     let schedules: RunSchedules
     /// An audit run another screen asked to open (Home's due runs), by its key.
@@ -350,7 +352,7 @@ struct ReportsView: View {
         case .report(let key):
             if let reports = directory.reports {
                 if let report = reports.first(where: { $0.key == key }) {
-                    ReportPeople(report: report, selection: $person, open: openPerson)
+                    ReportPeople(report: report, selection: $person, open: openPerson, reminders: reminders)
                 }
             } else {
                 directoryStatus
@@ -519,6 +521,9 @@ private struct ReportPeople: View {
     let report: DirectoryReport
     @Binding var selection: GamUser.ID?
     let open: (String) -> Void
+    /// No 2SV and No recovery's Email Them a Reminder… (roadmap 3.3); nil for the other reports.
+    var reminders: BucketReminders? = nil
+    @State private var reminding = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -526,6 +531,14 @@ private struct ReportPeople: View {
                 Text(report.title).font(.title2.bold()).accessibilityAddTraits(.isHeader)
                 Text(report.description).foregroundStyle(.secondary)
                 Text("\(report.count.formatted()) account\(report.count == 1 ? "" : "s")")
+                if let reminders, BucketReminders.reminders[report.key] != nil, !report.users.isEmpty {
+                    Button("Email Them a Reminder\u{2026}") { reminding = true }
+                        .accessibilityHint("Writes a reminder to everyone on this list. The list is read again and shown before anything is sent.")
+                        .sheet(isPresented: $reminding) {
+                            ReminderSheet(key: report.key, model: reminders) { reminding = false }
+                                .interactiveDismissDisabled(reminders.isBusy)
+                        }
+                }
             }
             .padding()
             if report.users.isEmpty {
