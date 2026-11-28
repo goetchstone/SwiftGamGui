@@ -3,6 +3,7 @@ import Foundation
 @testable import Directory
 @testable import GamEngine
 import Setup
+import Synchronization
 import TestSupport
 import Testing
 import Vault
@@ -141,5 +142,43 @@ final class LicenseChangesTests {
         guard case .problem(let why) = many.state else { Issue.record("\(many.state)"); return }
         #expect(why.contains("bob@example.com hasn't finished") && writes().isEmpty)
     }
-}
 
+    private func seatReads() -> Int {
+        guard let data = try? Data(contentsOf: argvLog) else { return 0 }
+        var fields = data.split(separator: 0, omittingEmptySubsequences: false).map { String(decoding: $0, as: UTF8.self) }
+        var reads = 0
+        while let first = fields.first, let count = Int(first) {
+            if Array(fields[1...count]) == ["print", "licenses"] { reads += 1 }
+            fields.removeFirst(count + 1)
+        }
+        return reads
+    }
+
+    /// GamGUI #196: the card keeps the domain's seats for 5 minutes, so opening it person after person reads them once; Read
+    /// Again, a write, or 5 minutes later reads them fresh.
+    @Test func theCardReadsTheSeatsOnceEveryFiveMinutes() async throws {
+        try await connect()
+        access.environment["GAM_MOCK_ARGV_LOG"] = argvLog.path
+        let clock = Mutex(Date(timeIntervalSince1970: 1_800_000_000))
+        let changes = LicenseChanges(executor: executor, setup: setup, access: access, now: { clock.withLock { $0 } })
+        await changes.load("alice@example.com")
+        await changes.load("carol@example.com")
+        #expect(seatReads() == 1, "a second person's card read every seat again")
+        #expect(try changes.choices(for: "carol@example.com")?.get().held.isEmpty == false)
+        await changes.load("carol@example.com", fresh: true)
+        #expect(seatReads() == 2, "Read Again used the kept seats")
+        clock.withLock { $0 += LicenseChanges.seatsKept }
+        await changes.load("alice@example.com")
+        #expect(seatReads() == 3, "seats older than 5 minutes were used")
+
+        let alice = try user("alice@example.com")
+        let vault = try #require(try changes.choices(for: alice.primaryEmail)?.get().adds.first { $0.productID == "Google-Vault" })
+        await changes.preview(.add(vault), for: alice)
+        #expect(seatReads() == 4, "a preview reads fresh")
+        guard case .previewing(let add) = changes.state else { Issue.record("\(changes.state)"); return }
+        await changes.confirm(add, OperatorConfirmation(confirmed: true))
+        let afterWrite = seatReads()
+        await changes.load("carol@example.com")
+        #expect(seatReads() == afterWrite, "the card's read after the write is the one kept")
+    }
+}

@@ -63,6 +63,18 @@ final class MailReviewReadTests {
         #expect(review.forwardingAccounts.read == review.forwardingAccounts.listed && review.complete)
     }
 
+    /// GamGUI #198: each read is given the active people from a fresh directory read, the suspended left out, and each one is
+    /// accounted for from their own worker's lines.
+    @Test func eachReadIsGivenExactlyTheActivePeople() async throws {
+        try await connect()
+        let users = try String(contentsOf: Fixtures.mockGamData.appending(path: "print_users.json"), encoding: .utf8)
+        let active = users.split(separator: "\n").filter { $0.contains("primaryEmail") && !$0.contains(#""suspended": true"#) }.count
+        try #require(active > 1)
+        let review = try await review()
+        #expect(review.forwardingAccounts.listed == active && review.delegationAccounts.listed == active)
+        #expect(review.delegationAccounts.read == active)
+    }
+
     @Test func gmailOffForOneAccountKeepsTheOthersAndNamesIt() async throws {
         try await connect()
         try marker("nogmail", "carol@example.com")

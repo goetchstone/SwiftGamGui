@@ -77,11 +77,21 @@ public final class DirectoryStore {
     /// generation the write ran on (a write for an old tenant never touches a new tenant's list). The
     /// reports are counted again from the patched list.
     public func patch(_ email: String, on domain: Domain, generation: Int, _ change: (GamUser) -> GamUser) {
-        guard let snapshot, snapshot.domain == domain, snapshot.generation == generation,
-              let index = snapshot.users.firstIndex(where: { Guard.normalized($0.primaryEmail) == Guard.normalized(email) })
-        else { return }
-        var users = snapshot.users
-        users[index] = change(users[index])
+        patchMany([email], on: domain, generation: generation, change)
+    }
+
+    /// `patch` for each of `emails`, with the list rebuilt and the reports counted once (GamGUI #196's `patch_many`): a bulk
+    /// run patched once a person, each rebuilding the whole list and its reports, quadratic in the domain (GamGUI's 4,711-account
+    /// suspend spent ~320 s doing it at 20,000 people).
+    public func patchMany(_ emails: [String], on domain: Domain, generation: Int, _ change: (GamUser) -> GamUser) {
+        guard let snapshot, snapshot.domain == domain, snapshot.generation == generation else { return }
+        let wanted = Set(emails.map(Guard.normalized))
+        var users = snapshot.users, changed = false
+        for index in users.indices where wanted.contains(Guard.normalized(users[index].primaryEmail)) {
+            users[index] = change(users[index])
+            changed = true
+        }
+        guard changed else { return }
         revisions += 1
         self.snapshot = Snapshot(users: users, reports: DirectoryReport.build(users, now: snapshot.loadedAt),
                                  loadedAt: snapshot.loadedAt, domain: domain, generation: generation, revision: revisions)

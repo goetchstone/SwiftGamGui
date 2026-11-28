@@ -82,6 +82,30 @@ struct DirectoryReportTests {
         }
     }
 
+    /// GamGUI's `/reports/list.csv` and `/reports/fill-in.csv` (2.10's sweep): everyone a list counts, by address, in GamGUI's
+    /// columns; only the four completeness lists download to fill in.
+    @Test func aListExportsAsGamGUIsDo() throws {
+        let now = try #require(ISOTime.parse(document.now))
+        let reports = DirectoryReport.build(document.records.map { GamUser(record: $0.value) }, now: now,
+                                            inactiveDays: document.inactive_days)
+        #expect(Set(reports.map(\.key)).isSuperset(of: DirectoryReport.fillIn))
+        for report in reports {
+            let list = report.listRows, emails = report.users.map { PythonText.lower($0.primaryEmail) }
+            #expect(list.first == ["email", "name", "org_unit", "suspended"] && list.count == report.count + 1, "\(report.key)")
+            #expect(list.dropFirst().map { PythonText.lower($0[0]) }
+                    == emails.sorted { $0.unicodeScalars.lexicographicallyPrecedes($1.unicodeScalars) }, "\(report.key)")
+            #expect(list.dropFirst().allSatisfy { $0[3] == (report.key == "suspended" ? "yes" : "") }, "\(report.key)")
+            #expect(report.fileName == report.key.replacingOccurrences(of: "_", with: "-") + ".csv")
+        }
+        let noTitle = try #require(reports.first { $0.key == "no_title" })
+        let rows = noTitle.fillInRows
+        #expect(rows.first == ["email", "name", "title", "department", "phone", "location", "org_unit"])
+        for row in rows.dropFirst() {
+            let user = try #require(noTitle.users.first { $0.primaryEmail == row[0] })
+            #expect(row == [user.primaryEmail, user.fullName, user.title, user.department, user.phone, user.location, user.orgUnitPath])
+        }
+    }
+
     /// The Users list's search finds who GamGUI's `_filter_users` finds: Greek with its final sigma,
     /// Devanagari and Thai inside a cluster, a dotted capital I, an address, any scope.
     @Test func theSearchIsGamGUIs() {

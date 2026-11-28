@@ -12,6 +12,27 @@
 /// undeleted account may be named `uid:<digits>` instead, GAM's own remedy when deleted accounts share an address; an empty
 /// choice is its default (the form's picker starts there); a choice GamGUI doesn't list is refused; and a search doesn't show
 /// message bodies (`notYet`), as the Builder's other sensitive reads aren't run: the operator's choice, until asked.
+/// GamGUI's `ROW_ACTIONS`: the curated commands an address in a read's result offers (2.10's sweep). `field` is the one the address
+/// fills; `forGroup` splits the menu, since an address may be a user's or a group's and the operator picks which it is. Each only
+/// opens its command with the address filled in: a change is still previewed and confirmed there.
+public struct RowAction: Sendable, Equatable {
+    public let command: String
+    public let label: String
+    public let field: String
+    public let forGroup: Bool
+
+    public static let all: [RowAction] = [
+        RowAction(command: "build.print_delegates", label: "Delegates", field: "email", forGroup: false),
+        RowAction(command: "build.print_forwarding", label: "Forwarding", field: "email", forGroup: false),
+        RowAction(command: "build.set_vacation", label: "Set vacation", field: "email", forGroup: false),
+        RowAction(command: "build.set_organization", label: "Title / dept", field: "email", forGroup: false),
+        RowAction(command: "build.reset_password", label: "Reset password", field: "email", forGroup: false),
+        RowAction(command: "build.suspend_user", label: "Suspend", field: "email", forGroup: false),
+        RowAction(command: "build.add_group_member", label: "Add a member", field: "group", forGroup: true),
+        RowAction(command: "build.remove_group_member", label: "Remove a member", field: "group", forGroup: true),
+    ]
+}
+
 public struct CuratedCommand: Sendable, Identifiable {
     /// One field of the command's form (GamGUI's `CommandSlot`).
     public struct Field: Sendable, Hashable, Identifiable {

@@ -39,4 +39,24 @@ struct CatalogResultTests {
         #expect(named.matching("alice anders") == [0] && named.matching("fullname") == [0], "shown, and the field's raw form")
         #expect(named.csv([0])[1] == [#"{"fullName": "Alice Anders"}"#, #"["a@x.example"]"#])
     }
+
+    /// External Only, GamGUI's `_is_external` (2.10's sweep): "anyone" anywhere, or an address outside the tenant's domains and
+    /// their subdomains; the count and the CSV follow it. With no domain known, only "anyone" counts.
+    @Test func externalOnlyKeepsWhatGamGUIsLensKeeps() {
+        let result = CatalogResult(argv: [], stdout: "file,sharedWith\n"
+            + "a,alice@example.com\nb,anyone\nc,pat@partner.org\nd,bob@mail.example.com\ne,Carol@Example.Net\nf,\n")
+        let domains = ["example.com", "example.net"]
+        #expect(result.matching("", externalTo: domains) == [1, 2])
+        #expect(result.matching("partner", externalTo: domains) == [2], "the filter and the lens together")
+        #expect(result.matching("", externalTo: []) == [1], "no domain known: only anyone")
+        #expect(result.matching("", externalTo: nil).count == 6)
+        #expect(CatalogResult.isInternal("x@sub.example.com", domains: domains) && !CatalogResult.isInternal("x@notexample.com", domains: domains))
+    }
+
+    /// GamGUI's `ROW_ACTIONS` offer follow-ups for the addresses a row shows, once each, lowercased as its filter text is.
+    @Test func aRowsAddressesAreWhatItsFollowUpsAreFor() {
+        let result = CatalogResult(argv: [], stdout: "owner,with,again\nAlice@Example.com,team@example.com,alice@example.com\nnobody,,\n")
+        #expect(result.addresses(inRow: 0) == ["alice@example.com", "team@example.com"])
+        #expect(result.addresses(inRow: 1).isEmpty)
+    }
 }

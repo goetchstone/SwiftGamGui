@@ -164,4 +164,15 @@ struct CuratedCommandTests {
         guard case .write(let write) = try delete.built(["org_unit": "/Sales/East"]) else { Issue.record("not a write"); return }
         #expect(write.argv == ["delete", "org", "/Sales/East"])
     }
+
+    /// Each row follow-up (GamGUI's `ROW_ACTIONS`) is a curated command with the field it fills: a person's address for the eight
+    /// user ones, a group's for the two group ones.
+    @Test func eachRowFollowUpOpensACuratedCommandsField() throws {
+        #expect(RowAction.all.count == 8)
+        for action in RowAction.all {
+            let command = try #require(CuratedCommand.all.first { $0.id == action.command }, "\(action.command)")
+            #expect(command.fields.contains { $0.key == action.field }, "\(action.command) has no \(action.field)")
+            #expect(action.forGroup == (action.field == "group"))
+        }
+    }
 }

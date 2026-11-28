@@ -84,7 +84,7 @@ Rendered by CI from a demo domain and a mock of GAM, so every name is made up. [
 ## Status
 
 In daily use on a real domain; what has run live is in [docs/live-verification.md](docs/live-verification.md). It's
-free, and built for its author's own use. Still only in GamGUI: the Builder's sequences, hires from a CSV, and finding a calendar by name. What's next is in
+free, and built for its author's own use. Still only in GamGUI: finding a calendar by name. What's next is in
 [docs/plans/2026-11-05-filling-the-gaps.md](docs/plans/2026-11-05-filling-the-gaps.md).
 
 ## Build from source

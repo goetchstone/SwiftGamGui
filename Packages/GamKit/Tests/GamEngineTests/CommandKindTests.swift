@@ -73,9 +73,24 @@ struct CommandKindTests {
         "exportToSheet": "a read's argv, then todrive_args (GamGUI's export_to_sheet): SheetExportTests",
     ]
 
-    /// The first known verb in `argv`, GamGUI's way, or nil when none is known (uncertain).
+    /// The first known verb in `argv`, GamGUI's way, or nil when none is known (uncertain), after the words that come before a
+    /// command (`withoutPrefixes`).
     static func verb(_ argv: [String]) -> String? {
-        argv.prefix(6).first { verbSets.read.contains($0) || verbSets.destructive.contains($0) || verbSets.low.contains($0) }
+        withoutPrefixes(argv).prefix(6).first { verbSets.read.contains($0) || verbSets.destructive.contains($0) || verbSets.low.contains($0) }
+    }
+
+    /// The command after GamCommands.txt's `<Config>` (`config (<VariableName> <Value>)*`, here only `num_threads`) and
+    /// `<Redirect>` (`redirect csv <FileName> multiprocess`), in that order, and a `csv - [<options>] gam` loop's head (GamGUI
+    /// #198's `_without_prefixes`, which holds the first two to the grammar; the loop runs the command after `gam` a row).
+    static func withoutPrefixes(_ argv: [String]) -> [String] {
+        var rest = argv[...]
+        if rest.first == "config" {
+            rest = rest.dropFirst()
+            while rest.first == "num_threads", rest.count > 1 { rest = rest.dropFirst(2) }
+        }
+        if Array(rest.prefix(2)) == ["redirect", "csv"], rest.dropFirst(3).first == "multiprocess" { rest = rest.dropFirst(4) }
+        if rest.first == "csv", let gam = rest.firstIndex(of: "gam") { rest = rest[(gam + 1)...] }
+        return Array(rest)
     }
 
     /// Each builder called once with placeholder values (`<email>`), so no operator value can be

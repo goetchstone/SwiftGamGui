@@ -341,6 +341,10 @@ GamGUI #178 (`82290f0`): each F2 named report is also a one-step run of its cata
   "Admin" or "Suspended" in words outside the report about it, as GamGUI's badges). Show in Users (or a
   double-click) opens the person's page on Users (`UsersView.requested`). No GAM call of its own; ⌘R reloads
   the directory.
+- **Export CSV…** saves everyone a report counts (GamGUI's `/reports/list.csv`: email, name, org_unit, suspended), and the four
+  completeness reports' **Export to Fill In…** the columns Change from a CSV reads back (GamGUI's `/reports/fill-in.csv`,
+  `FILL_IN_COLUMNS`), both by address, formula-safe, private (0600), from the same cached directory
+  (`DirectoryReport.listRows`, `fillInRows`; 2.10's sweep). Held to `DirectoryReportTests`.
 - **The usage report** is GamGUI's `/reports/usage`: `report users date <D> parameters
   accounts:used_quota_in_mb,gmail:num_emails_received,gmail:num_emails_sent,drive:num_items_created`, D two
   days ago (UTC), then a day earlier while a day has no rows, six days at most; a failure stops the walk. The
@@ -510,15 +514,26 @@ Found here, true of GamGUI too; to be fixed there from a GamGUI-rooted session, 
 
 ## Forwarding & mail delegates (roadmap 3.2, 2026-11-27)
 GamGUI's #154. Reports → Access → Forwarding & mail delegates (`App/MailReviewView.swift`, `Directory/MailReviewRead.swift`,
-`UserAccess.mailReview`, pure `GamEngine/MailReview.swift`): `all users print forward enabledonly` and `all users print delegates
-shownames`, neither with `formatjson`. Read only when asked, kept per tenant and generation (a switch mid-read keeps nothing).
-- **Every account GAM listed is accounted for** (`MailReview.accountFor`, GamGUI's `account_for`): each "Getting … for <u>"
-  is read, a "User: <u>, …" warning is unread with fixed words (Gmail off, or couldn't read), and the rest of "Got N Users" were
-  skipped without a word (a refused token). "None" is said only of accounts read.
-- Exit codes are GAM's per-user ones (`MessageCopies.perUserExitCodes`); any other, no announced account, no table, or output
-  past the runner's cap is a problem, never "none".
+`UserAccess.mailReview`, pure `GamEngine/MailReview.swift`). Read only when asked, kept per tenant and generation (a switch
+mid-read keeps nothing).
+- **In parallel** (GamGUI #198, 2026-11-28): a fresh directory read gives the active people (not suspended), then each read is
+  GAM's own loop over them, `gamParallel` (10) workers at once: `config num_threads 10 redirect csv - multiprocess csv -
+  showcmds true gam user ~primaryEmail print forward enabledonly`, and the same with `print delegates shownames`, the people a
+  `primaryEmail` CSV on stdin (`MailReview.peopleCSV`). One GAM visiting each in turn took ~5 hours for both at 20,000 people and
+  was cut off at its hour. The limit is 120 s plus ~3 s a person a worker (`MailReview.parallelTimeout`); a cut-off stops every
+  worker (failure-log 2026-11-28). GamGUI confirmed it live: every active account was read in both reads.
+- **Every person given is accounted for** (`MailReview.accountForParallel`, GamGUI's `account_for_parallel`) from their own
+  worker's lines: GAM's showcmds End line "<ts>,<i>/<N>,End,<rc>,gam user <u> …", the worker's "Getting … for <u>" and its
+  Gmail-off warning. An End of 0 with "Getting" is read; a warning or another code is unread with fixed words; no End line, or an
+  End with no word (a refused token), is skipped. "None" is said only of people read.
+- The parent exits 0 whatever its workers did: any other exit, a directory read without its titles, people read but no table,
+  or output past the runner's cap is a problem, never "none".
+  Each person costs ~260 bytes of stderr (Start, End, Getting), so the 8 MiB cap is reached at roughly 30,000 active
+  people: the review then says not everyone was read. Not in GamGUI, which caps nothing.
 - Not covered, and the panel says so: Gmail filters that forward. Each row opens the person.
-- The mock answers as GamGUI's does (ported): Gmail off by `nogmail/<u>` (exit 73), a silent skip by `quiet/<u>`.
+- The mock answers as GamGUI's does (ported): `config` and `redirect` go to `mock_gam_loops.py`, which runs the one-person
+  reads (`enabledonly`, `shownames`) a row at a time with showcmds' lines and merges the CSV; Gmail off by `nogmail/<u>`
+  (exit 73), a silent skip by `quiet/<u>`.
 - Held to `MailReviewTests` and `MailReviewReadTests`. Not run live.
 ## No 2SV / No recovery → a reminder email (roadmap 3.3, 2026-11-27)
 GamGUI's #157. The two cards carry **Email Them a Reminder…** (`ReminderSheet` in `App/ChangePreviewSheet.swift`, model
