@@ -830,9 +830,15 @@ public enum GamCommands {
         return GamWrite(["update", "alias", alias, "user", to], action: .moveAlias)
     }
 
-    public static func printTokens(user: String? = nil) throws -> GamRead {
-        guard user.map(isOneAddress) ?? true else { throw Invalid.argument("“\(user ?? "")” isn't one email address") }
-        return GamRead((user.map { ["user", $0] } ?? []) + ["print", "tokens"])
+    public static func printTokens(user: String) throws -> GamRead {
+        guard isOneAddress(user) else { throw Invalid.argument("“\(user)” isn't one email address") }
+        return GamRead(["user", user, "print", "tokens"])
+    }
+
+    /// Connected apps (GamGUI's `parallel_print_tokens`, #200): each active person's own `user <u> print tokens`, `gamParallel` at
+    /// once (`inParallel`). CSV `user,clientId,displayText,anonymous,nativeApp,userKey,scopes`, merged.
+    public static func parallelPrintTokens(people: [String]) -> GamRead {
+        GamRead(inParallel(["print", "tokens"]), input: Data(MailReview.peopleCSV(people).utf8))
     }
 
     /// Every license seat (4498 `gam print licenses`; doPrintLicenses at the 7.52.04 tag), no product named: the audit runs'
@@ -982,9 +988,10 @@ public enum GamCommands {
         GamRead(["user", email, "print", "calendars", "fields", calendarFields, "formatjson"])
     }
 
-    /// Every user's calendar list, secondary calendars included.
-    public static func printAllCalendars() -> GamRead {
-        GamRead(["all", "users", "print", "calendars", "fields", calendarFields, "formatjson"])
+    /// The calendar index's read (GamGUI's `parallel_print_calendars`, #200): each active person's calendar list, as
+    /// `printUserCalendars` reads one, `gamParallel` at once. No screen here runs it yet: finding a calendar by name is GamGUI's.
+    public static func parallelPrintCalendars(people: [String]) -> GamRead {
+        GamRead(inParallel(["print", "calendars", "fields", calendarFields, "formatjson"]), input: Data(MailReview.peopleCSV(people).utf8))
     }
 
     /// The admin form: the ACLs of any calendar id (room or secondary), no impersonation.

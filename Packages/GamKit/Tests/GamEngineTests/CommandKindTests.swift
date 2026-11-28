@@ -38,7 +38,8 @@ struct CommandKindTests {
         // function is touched.
         // 7.52.04: v7.52.03...v7.52.04 touches neither function (its last hunk is infoDriveFileACLs', ~6,100 lines before).
         // 7.52.05: v7.52.04...v7.52.05 touches neither function (its last hunk is _showAsset's, ~3,700 lines before).
-        "find_message_copies": ("7.52.05","trash messages without doit: _processMessagesThreads lists and counts, then "
+        // 7.53.01: v7.52.05...v7.53.01 touches neither function (32 hunks, the last at line 13,719, ~62,000 lines before).
+        "find_message_copies": ("7.53.01","trash messages without doit: _processMessagesThreads lists and counts, then "
             + "continues past every user before a trash call"),
     ]
 
@@ -58,7 +59,6 @@ struct CommandKindTests {
     /// GamGUI builders that reach a Swift builder another one also reaches, so the source has one builder fewer for each.
     static let sharedBuilders: [String: String] = [
         "search_scheduled": "searchMessages, as search_messages, for in:scheduled",
-        "print_user_tokens": "printTokens(user:), as print_tokens without the user",
     ]
 
     /// GamGUI builders that make no command, only words a command ends with: neither a read nor a write, so no builder in the
@@ -136,7 +136,7 @@ struct CommandKindTests {
             let verb = Self.verb(command.argv)
             #expect(verb.map(Self.readVerbs.contains) == true, "\(name) is a GamRead but its verb is \(verb ?? "unknown")")
         }
-        #expect(reads == 54 + Self.sharedBuilders.count, "both shared builders are reads")
+        #expect(reads == 55 + Self.sharedBuilders.count, "the shared builder is a read")
         for (name, read) in Self.appOnlyReads {
             let verb = Self.verb(read.argv)
             #expect(verb.map(Self.readVerbs.contains) == true, "\(name) is a GamRead but its verb is \(verb ?? "unknown")")
@@ -227,7 +227,7 @@ struct CommandKindTests {
                                 encoding: .utf8)
         let reads = source.matches(of: /-> GamRead\b/).count, writes = source.matches(of: /-> GamWrite\b/).count
         let mints = source.matches(of: /\bGam(Read|Write)\(/).count
-        #expect(reads == 55 && writes == 65, "a builder was added or removed: hold it here and in GoldenArgvTests (or appOnlyReads)")
+        #expect(reads == 56 && writes == 65, "a builder was added or removed: hold it here and in GoldenArgvTests (or appOnlyReads)")
         #expect(mints == reads + writes, "one builder per command made")
         // `catalogRead`, the Builder's door, is held over every catalog command instead (`CommandCatalogTests`: GamGUI's argv,
         // and every runnable one's first known verb a read verb).

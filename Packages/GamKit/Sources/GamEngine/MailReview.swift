@@ -67,6 +67,29 @@ public struct MailReview: Sendable, Equatable {
     /// GAM's poolCallback, with showcmds: "<ts>,<i>/<N>,End,<rc>,gam user <u> …" once a worker is done.
     nonisolated(unsafe) private static let end = try! Regex(#"^[^,]*,\d+/\d+,End,(-?\d+),gam user (\S+)(?:\s|$)"#)
 
+    /// GAM's showcmds framing ("<ts>,<i>/<N>,Start|End,"), not what GAM said.
+    nonisolated(unsafe) private static let framing = try! Regex(#"^[^,]*,\d+/\d+,(?:Start|End),"#)
+
+    /// GamGUI's `parallel_ends` (#200): each person's worker's exit code in a parallel read, from GAM's showcmds End lines,
+    /// lowercased. A person with no End line never finished.
+    public static func ends(_ stderr: String) -> [String: Int] {
+        var ends: [String: Int] = [:]
+        for raw in stderr.replacingOccurrences(of: "\r", with: "\n").split(separator: "\n") {
+            let line = String(raw)
+            if let match = try? end.prefixMatch(in: line), let code = match.output[1].substring.flatMap({ Int($0) }),
+               let user = match.output[2].substring {
+                ends[PythonText.lower(String(user))] = code
+            }
+        }
+        return ends
+    }
+
+    /// A parallel read's stderr without GAM's showcmds framing: what the workers said, for an error.
+    public static func said(_ stderr: String) -> String {
+        stderr.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
+            .filter { (try? framing.prefixMatch(in: $0)) == nil }.joined(separator: "\n")
+    }
+
     /// The stdin of a parallel read (GamGUI's `people_csv`): a `primaryEmail` column, one address a row.
     public static func peopleCSV(_ emails: [String]) -> String {
         "primaryEmail\n" + emails.map { PythonText.strip($0) }.filter { !$0.isEmpty }.map { $0 + "\n" }.joined()

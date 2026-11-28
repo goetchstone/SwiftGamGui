@@ -28,7 +28,9 @@ import sys
 INNER_SIGNATURE = ["user", "~User", "signature", "~signature", "html"]
 # The parallel reads (docs/scale.md): each person's own read, `~primaryEmail` from the stdin CSV.
 INNER_READS = (["user", "~primaryEmail", "print", "forward", "enabledonly"],
-               ["user", "~primaryEmail", "print", "delegates", "shownames"])
+               ["user", "~primaryEmail", "print", "delegates", "shownames"],
+               ["user", "~primaryEmail", "print", "tokens"],
+               ["user", "~primaryEmail", "print", "calendars", "fields", "id,summary,accessrole,primary", "formatjson"])
 FILE_PRINT_SIGNATURE = ["file", "-", "print", "signature"]
 TRUE, FALSE = {"true", "on", "yes", "enabled", "1"}, {"false", "off", "no", "disabled", "0"}
 

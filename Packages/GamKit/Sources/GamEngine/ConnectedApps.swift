@@ -61,6 +61,17 @@ public enum ConnectedApps {
     }
 
     /// One app and everyone who granted it.
+    /// Everyone's apps from the parallel read (GamGUI #200), and how many active people weren't read (a worker that didn't end
+    /// cleanly): their apps aren't here, so the list is said to be incomplete, never "no apps" for them.
+    public struct Everyone: Sendable, Equatable {
+        public let apps: [App]
+        public let unread: Int
+        public init(apps: [App], unread: Int) {
+            self.apps = apps
+            self.unread = unread
+        }
+    }
+
     public struct App: Sendable, Equatable, Identifiable {
         public let id: String
         public let name: String

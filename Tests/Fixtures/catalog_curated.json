@@ -1,7 +1,7 @@
 {
  "source": {
-  "gamgui_commit": "63ef104",
-  "gam_version": "7.52.05",
+  "gamgui_commit": "83e5533",
+  "gam_version": "7.53.01",
   "generator": "scripts/gen_catalog_reads.py"
  },
  "commands": [

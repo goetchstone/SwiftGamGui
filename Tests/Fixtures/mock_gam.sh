@@ -312,7 +312,7 @@ acl_notify_tail() {
 
 case "${1:-}" in
   version)
-    echo "GAM 7.52.05 - mock"
+    echo "GAM 7.53.01 - mock"
     # As the real build does in a fresh config directory: its config line, then the cache it created.
     if [ -n "${GAMCFGDIR:-}" ]; then
       printf 'Config File: %s/gam.cfg, Section: DEFAULT\nCreated: %s/gamcache\n' "$GAMCFGDIR" "$GAMCFGDIR"
@@ -2200,6 +2200,38 @@ if [ "${1:-}" = "print" ] && [ "${2:-}" = "tokens" ] && [ "${3:-}" = "users" ]; 
   done
   exit $rc
 fi
+# Ported from GamGUI's mock (#200): the one-person read the parallel connected-apps read runs per person.
+# `gam user <u> print tokens` -> GAM's CSV (_printShowTokens), the grants in tokens.csv of that account; an account with none writes the
+# header and no row. An address that isn't a user is entityUnknownWarning: "User: <u>, Does not exist", 56; outside the domain "Service
+# not applicable", 73. GAM_MOCK_STATE/denied/tokens is ClientAPIAccessDeniedExit, 12. No option is modelled.
+if [ "${1:-}" = "user" ] && [ "${3:-}" = "print" ] && { [ "${4:-}" = "tokens" ] || [ "${4:-}" = "token" ]; }; then
+  owner=$(printf '%s' "$2" | tr '[:upper:]' '[:lower:]')
+  [ $# -eq 4 ] || not_modelled "print tokens with $5"
+  # _printShowTokens at the 7.52.05 tag: the person is announced (printGettingEntityItemForWhom, 74648) before the API call,
+  # as `print tokens` does for every account (failure-log 2026-10-30). A refused admin token is ClientAPIAccessDeniedExit,
+  # API_ACCESS_DENIED_RC 12, before writeCSVfile: no titles. A person who doesn't exist is entityUnknownWarning, then the
+  # titles as usual and 56 (73 outside the domain).
+  printf 'Getting Access Tokens for %s\n' "$owner" 1>&2
+  if [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/denied/tokens" ]; then
+    printf '\nERROR: Not Authorized to access this resource/api\n\nERROR: Reauthentication is needed, please run\n\ngam oauth create\n' 1>&2
+    exit 12
+  fi
+  if [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/tokens_gone/$owner" ]; then   # deleted mid-read
+    printf 'User: %s, Does not exist\n' "$owner" 1>&2; head -n 1 "$GAM_MOCK_FIXTURES/tokens.csv"; exit 56
+  fi
+  if ! in_directory "$owner"; then
+    case "$owner" in
+      *@example.com) printf 'User: %s, Does not exist\n' "$owner" 1>&2; head -n 1 "$GAM_MOCK_FIXTURES/tokens.csv"; exit 56 ;;
+      *) printf 'User: %s, Service not applicable/Does not exist\n' "$owner" 1>&2; head -n 1 "$GAM_MOCK_FIXTURES/tokens.csv"; exit 73 ;;
+    esac
+  fi
+  head -n 1 "$GAM_MOCK_FIXTURES/tokens.csv"
+  tail -n +2 "$GAM_MOCK_FIXTURES/tokens.csv" | while IFS= read -r line; do
+    if [ "${line%%,*}" = "$owner" ]; then printf '%s\n' "$line"; fi
+  done
+  exit 0
+fi
+
 if { [ "${1:-}" = "print" ] && { [ "${2:-}" = "tokens" ] || [ "${2:-}" = "token" ]; }; } \
     || { [ "${1:-}" = "user" ] && [ "${3:-}" = "print" ] && { [ "${4:-}" = "tokens" ] || [ "${4:-}" = "token" ]; }; }; then
   if [ "$1" = "user" ]; then owner=$(printf '%s' "$2" | tr '[:upper:]' '[:lower:]'); [ $# -eq 4 ] || not_modelled "print tokens with $5"

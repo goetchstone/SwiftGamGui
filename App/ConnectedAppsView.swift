@@ -29,7 +29,7 @@ struct ConnectedAppsPanel: View {
                 if !connected { Text("Connect a domain on Setup first.").foregroundStyle(.secondary).padding(.horizontal) }
                 Spacer()
             case .reading?:
-                HStack { ProgressView().controlSize(.small); Text("Reading every account's apps…").foregroundStyle(.secondary) }
+                HStack { ProgressView().controlSize(.small); Text("Reading the directory, then every active account's apps…").foregroundStyle(.secondary) }
                     .accessibilityElement(children: .combine)
                     .padding(.horizontal)
                 Spacer()
@@ -41,8 +41,8 @@ struct ConnectedAppsPanel: View {
                 }
                 .padding(.horizontal)
                 Spacer()
-            case .read(.success(let apps), let at)?:
-                list(apps, at: at)
+            case .read(.success(let everyone), let at)?:
+                list(everyone.apps, unread: everyone.unread, at: at)
             }
         }
     }
@@ -52,9 +52,16 @@ struct ConnectedAppsPanel: View {
         Task { await reads.read() }
     }
 
-    private func list(_ apps: [ConnectedApps.App], at: Date) -> some View {
+    private func list(_ apps: [ConnectedApps.App], unread: Int, at: Date) -> some View {
         let summary = ConnectedApps.Summary(apps)
         return Form {
+            if unread > 0 {
+                Section {
+                    Label("GAM couldn't read \(unread.formatted()) \(unread == 1 ? "person's" : "people's") apps, so this list may be missing "
+                          + "some. Read again to try them.", systemImage: "exclamationmark.triangle.fill")
+                        .symbolRenderingMode(.multicolor)
+                }
+            }
             Section {
                 ForEach(Array(summary.sentences.enumerated()), id: \.offset) { _, sentence in Text(sentence) }
             } header: {

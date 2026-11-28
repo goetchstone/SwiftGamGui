@@ -91,7 +91,8 @@ struct MockCSVTests {
         ["print", "orgs", "fields", "orgunitpath,name"],
         GamCommands.printCros().argv.filter { $0 != "formatjson" },
         GamCommands.printFileList(email: "alice@example.com").argv,
-        GamCommands.printAllCalendars().argv,
+        // Every user's calendar list in one call (GamGUI read it so until #200; nothing here sends it).
+        ["all", "users", "print", "calendars", "fields", "id,summary,accessrole,primary", "formatjson"],
         // Every event: GamGUI never asks for it (a search needs a title or days), so the mock refuses it.
         GamCommands.printEvents(calendarID: "c_team@group.calendar.google.com").argv,
         ["print", "groups", "fields", "email,name", "formatjson"],

@@ -135,6 +135,17 @@ an allowlisted environment, a timeout, and capped output capture.
   GamGUI's roster code stamps each zip with the day it was written, so `roster.json` and `roster_mapped.json` change
   with each run; this bump's zips differ from 8f9e766's first generation only in their date fields (checked by
   blanking them).
+- **Bump to 7.53.01 (2026-11-28):** attested and pinned by `bump_gam.py`, every fixture from the GamGUI clone at `83e5533`
+  (GamGUI's own bump is its #201). GAM's notes: 7.53.00 replaces OpenSSL with BoringSSL and fetches the IAM Credentials
+  discovery document without ADC; 7.53.01 fixes `enable apis`. The grammar gains only an optional `project <ProjectID>` on
+  `create gcpserviceaccount|signjwtserviceaccount` and `enable apis`, neither run here. The reviewed dry run holds: 32 hunks,
+  the last at line 13,719, ~62,000 lines before the Gmail functions. GamGUI's only commit at 7.53.01 includes its #200
+  (connected apps and the calendar index in parallel), so this bump ports it too: `print_tokens` and `print_all_calendars`
+  are gone from GamGUI, `parallel_print_tokens` and `parallel_print_calendars` are built (the second held by argv only: the
+  calendar index isn't built here). `gen_fixtures.py`'s NOT_MODELLED drops `info_group_settings` (the mock reads it since
+  4.4) and `print_all_calendars`. The TLS change reaches the bundle as one new binary; `check_app.sh` (CI) holds its
+  signature, hardened runtime and GAM's three entitlements, and runs it as 7.53.01: this Mac's credential hook won't start
+  anything inside a built app, so that check is CI's.
 - **Bump to 7.52.05 (2026-11-25):** attested and pinned by `bump_gam.py`, every fixture from the GamGUI clone at `63ef104`
   (GamGUI's own 7.52.05 bump is its #181). GAM's notes: `fields <DrivePermissionsFieldNameList>` on `create`, `update` and
   `info drivefileacl`; nothing here builds those. The reviewed dry run holds: the last source hunk is `_showAsset`'s, ~3,700
