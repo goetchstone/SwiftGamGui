@@ -634,17 +634,34 @@ public enum GamCommands {
     /// The apps people have given access to their account (9119-9128; _printShowTokens): every account but the suspended
     /// ones (GAM's default, all users), or one person's. CSV `user,clientId,displayText,anonymous,nativeApp,userKey,scopes`,
     /// the scopes space-joined (csv_output_field_delimiter's default). A refusal is ClientAPIAccessDeniedExit, exit 12.
-    /// Reports' mail review (roadmap 3.2, GamGUI's `all_users_print_forward`): every active account's forwarding that is on
-    /// (grammar `<UserTypeEntity> print forward [enabledonly]`). No formatjson: CSV `User,forwardEnabled,forwardTo,disposition`,
-    /// each account announced on stderr, which is how a skipped one is told apart (`MailReview.accountFor`).
-    public static func allUsersPrintForward() -> GamRead {
-        GamRead(["all", "users", "print", "forward", "enabledonly"])
+    /// How many GAM workers a parallel read runs at once (GamGUI's `GAM_PARALLEL`, its docs/scale.md). Each is a whole forked
+    /// GAM exchanging its own token, so a handful, not hundreds. GAM's dispatcher (`MultiprocessGAMCommands`) looks for a free
+    /// worker once a second when all are busy, so 10 manage about 10 people a second: ~33 minutes for 20,000, where one process
+    /// visiting each in turn took ~2.8 hours a read.
+    public static let gamParallel = 10
+
+    /// One read a person, `gamParallel` at once, by GAM 7.52.05's own loop (GamGUI's `_in_parallel`). `config num_threads N`
+    /// sets the worker pool for this call only (in memory; `save` never written). `redirect csv - multiprocess` merges every
+    /// worker's rows into one CSV, written once at the end on stdout. `csv - showcmds true` takes the addresses from stdin
+    /// (`primaryEmail`, one a row: `MailReview.peopleCSV`, each builder's `input`) and writes "<ts>,<i>/<N>,Start,0,<cmd>" and "<ts>,<i>/<N>,End,<rc>,
+    /// <cmd>" on stderr for each, which is how each person's outcome is told: the parent exits 0 whatever its workers did.
+    /// `<Config>` then `<Redirect>`, in that order, before the command (GamCommands.txt). Each worker loads the credentials, so
+    /// a cut-off stops them all (`GamRunner.signalGroup`, failure-log 2026-11-28).
+    static func inParallel(_ read: [String]) -> [String] {
+        ["config", "num_threads", String(gamParallel), "redirect", "csv", "-", "multiprocess",
+         "csv", "-", "showcmds", "true", "gam", "user", "~primaryEmail"] + read
     }
 
-    /// Every active account's mail delegates (`<UserTypeEntity> print delegates [shownames]`). No formatjson: CSV
-    /// `User,delegateName,delegateAddress,delegationStatus`, each account announced ("Getting all Delegates for <u>").
-    public static func allUsersPrintDelegates() -> GamRead {
-        GamRead(["all", "users", "print", "delegates", "shownames"])
+    /// Reports' mail review (roadmap 3.2, GamGUI's `parallel_print_forward`, #198): each active person's own `user <u> print
+    /// forward enabledonly`, in parallel (`inParallel`). No formatjson: CSV `User,forwardEnabled,forwardTo,disposition`.
+    public static func parallelPrintForward(people: [String]) -> GamRead {
+        GamRead(inParallel(["print", "forward", "enabledonly"]), input: Data(MailReview.peopleCSV(people).utf8))
+    }
+
+    /// Each active person's mail delegates (`user <u> print delegates shownames`), in parallel as `parallelPrintForward`. CSV
+    /// `User,delegateName,delegateAddress,delegationStatus`.
+    public static func parallelPrintDelegates(people: [String]) -> GamRead {
+        GamRead(inParallel(["print", "delegates", "shownames"]), input: Data(MailReview.peopleCSV(people).utf8))
     }
 
     // MARK: many signatures in one call (roadmap 5.4, GamGUI #193)

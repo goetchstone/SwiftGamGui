@@ -142,7 +142,12 @@ struct MockCompromisedTests {
                 #expect(try await run(read("stranger@example.com").argv).exitCode == 50)
             }
         }
-        #expect(try await run(["user", "carol@example.com", "print", "forward", "enabledonly"]).exitCode == 2)
+        // `enabledonly` is the parallel mail review's read (GamGUI #198): only a forwarding that is on is a row.
+        let on = try await run(["user", "carol@example.com", "print", "forward", "enabledonly"])
+        #expect(on.exitCode == 0 && records(on).count == 1)
+        let off = try await run(["user", "alice@example.com", "print", "forward", "enabledonly"])
+        #expect(off.exitCode == 0 && records(off).isEmpty && off.stdout.contains("User,forwardEnabled,forwardTo,disposition"))
+        #expect(try await run(["user", "carol@example.com", "print", "forward", "enabledonly", "extra"]).exitCode == 2)
         #expect(try await run(["user", "carol@example.com", "print", "sendas"]).exitCode == 2)
     }
 

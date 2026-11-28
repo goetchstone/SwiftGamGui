@@ -1083,7 +1083,7 @@ fi
 # GAM's loops over standard input (roadmap 5.4's signature fast path): `csv - … gam user ~User signature ~signature html`
 # and `file - print signature`. mock_gam_loops.py does GAM's looping and runs this mock once per row or person, so the
 # strict one-person handlers below answer each; any other `csv` or `file -` shape is refused there.
-if [ "${1:-}" = "csv" ] || { [ "${1:-}" = "file" ] && [ "${2:-}" = "-" ]; }; then
+if [ "${1:-}" = "csv" ] || [ "${1:-}" = "config" ] || { [ "${1:-}" = "file" ] && [ "${2:-}" = "-" ]; }; then
   exec python3 "$(dirname "$0")/mock_gam_loops.py" "$0" "$@"
 fi
 
@@ -3016,18 +3016,22 @@ fi
 # and disposition only while on. carol@ forwards to her own address; with GAM_MOCK_STATE, `forward` below keeps what it set.
 if [ "${1:-}" = "user" ] && [ "${3:-}" = "print" ] && [ "${4:-}" = "forward" ]; then
   user=$(lower "$2")
-  [ $# -eq 4 ] || not_modelled "print forward with $5"
+  enabledonly=""
+  # `enabledonly`: the parallel mail review's per-person read (GamGUI #198): only a forwarding that is on is a row.
+  if [ $# -eq 5 ] && [ "$(lower "$5")" = "enabledonly" ]; then enabledonly=1
+  elif [ $# -ne 4 ]; then not_modelled "print forward with $5"; fi
   titles='User,forwardEnabled,forwardTo,disposition'
   gmail_read "$user" "Forward Enabled" "$titles"
-  printf '%s\n' "$titles"
   if [ -n "${GAM_MOCK_STATE:-}" ] && [ -f "$GAM_MOCK_STATE/forward/$user" ]; then
-    printf '%s,%s\n' "$user" "$(cat "$GAM_MOCK_STATE/forward/$user")"
+    row="$user,$(cat "$GAM_MOCK_STATE/forward/$user")"
   else
     case "$user" in
-      carol@example.com) printf '%s,True,carol.home@example.org,leaveInInbox\n' "$user" ;;
-      *) printf '%s,False,,\n' "$user" ;;
+      carol@example.com) row="$user,True,carol.home@example.org,leaveInInbox" ;;
+      *) row="$user,False,," ;;
     esac
   fi
+  printf '%s\n' "$titles"
+  case "$row" in "$user,True,"*) printf '%s\n' "$row" ;; *) [ -n "$enabledonly" ] || printf '%s\n' "$row" ;; esac
   exit 0
 fi
 
@@ -3218,6 +3222,19 @@ fi
 # serviceNotAvailable (gamlib/glgapi.py:311) and reported by userGmailServiceNotEnabledWarning (:2533,
 # :2498-2502), exit 73; the CSV header is still written, with no rows.
 if [ "${1:-}" = "user" ] && [ "${3:-}" = "print" ] && [ "${4:-}" = "delegates" ]; then
+  # `shownames`: the parallel mail review's per-person read (GamGUI #198), names as `all users … shownames` gives them.
+  if [ $# -eq 5 ] && [ "$(lower "$5")" = "shownames" ]; then
+    user=$(lower "$2")
+    titles='User,delegateName,delegateAddress,delegationStatus'
+    gmail_read "$user" "all Delegates" "$titles"
+    printf '%s\n' "$titles"
+    for d in $(delegates_of "$user"); do
+      name=$(sed -n "s/.*\"primaryEmail\": \"$d\", \"name\": {\"givenName\": \"\([^\"]*\)\", \"familyName\": \"\([^\"]*\)\".*/\1 \2/p" \
+        "$GAM_MOCK_FIXTURES/print_users.json")
+      printf '%s,%s,%s,accepted\n' "$user" "${name:-$d}" "$d"
+    done
+    exit 0
+  fi
   [ $# -eq 4 ] || invalid_arg "$5"
   need_user "$2" Print "User,delegateAddress,delegationStatus"
   printf 'Getting all Delegates for %s\n' "$2" 1>&2
