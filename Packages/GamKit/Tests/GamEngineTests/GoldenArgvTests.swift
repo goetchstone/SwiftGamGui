@@ -185,11 +185,6 @@ struct GoldenArgvTests {
 
     /// GamGUI builders deliberately not ported.
     static let notPorted: [String: String] = [
-        "print_drive_members": "A shared drive's members (GamGUI #185, roadmap 4.7): not built here yet; the mock refuses the read",
-        "add_drive_member": "A shared drive's members (GamGUI #185, roadmap 4.7): not built here yet",
-        "set_drive_member_role": "A shared drive's members (GamGUI #185, roadmap 4.7): not built here yet",
-        "remove_drive_member": "A shared drive's members (GamGUI #185, roadmap 4.7): not built here yet",
-        "print_shared_drive_files": "A shared drive's files (GamGUI #187, roadmap 4.7): not built here yet; the mock refuses the read",
         "print_folder_files": "Move a folder into a shared drive (GamGUI #188, roadmap 4.8): not built here yet",
         "move_folder_to_shared_drive": "Move a folder into a shared drive (GamGUI #188, roadmap 4.8): not built here yet",
         "copy_rest_of_folder_to_shared_drive": "Move a folder into a shared drive (GamGUI #188, roadmap 4.8): not built here yet",
@@ -350,6 +345,13 @@ struct GoldenArgvTests {
         "print_tokens_of": { try GamCommands.printTokens(users: $0.strings("users")) },
         "print_all_admins": { _ in GamCommands.printAllAdmins() },
         "print_shared_drives": { _ in GamCommands.printSharedDrives() },
+        "print_drive_members": { try GamCommands.printDriveMembers(driveID: $0.string("drive_id")) },
+        "add_drive_member": { try GamCommands.addDriveMember(driveID: $0.string("drive_id"), kind: $0.string("kind"), email: $0.string("email"),
+                                                             role: $0.string("role")) },
+        "set_drive_member_role": { try GamCommands.setDriveMemberRole(driveID: $0.string("drive_id"), permissionID: $0.string("permission_id"),
+                                                                      role: $0.string("role")) },
+        "remove_drive_member": { try GamCommands.removeDriveMember(driveID: $0.string("drive_id"), permissionID: $0.string("permission_id")) },
+        "print_shared_drive_files": { try GamCommands.printSharedDriveFiles(email: $0.string("email"), driveID: $0.string("drive_id")) },
         "print_shared_drive_acls": { _ in GamCommands.printSharedDriveACLs() },
         "print_user_tokens": { try GamCommands.printTokens(user: $0.string("user")) },
         "print_chrome_profiles": { try GamCommands.printChromeProfiles(user: $0.string("user")) },

@@ -46,6 +46,8 @@ enum Screen: String, CaseIterable, Identifiable {
     case home = "Home"
     case users = "Users"
     case groups = "Groups"
+    /// Shared drives and their members (roadmap 4.7).
+    case drives = "Shared Drives"
     case calendars = "Calendars"
     /// Google Classroom, read only: find a class by name or teacher, see who is in it.
     case classroom = "Classroom"
@@ -70,6 +72,7 @@ enum Screen: String, CaseIterable, Identifiable {
         case .home: "house"
         case .users: "person.2"
         case .groups: "person.3"
+        case .drives: "externaldrive.connected.to.line.below"
         case .calendars: "calendar"
         case .classroom: "graduationcap"
         case .signatures: "signature"
@@ -89,7 +92,9 @@ enum Screen: String, CaseIterable, Identifiable {
     static var initial: Screen {
         #if DEBUG
         if let name = ProcessInfo.processInfo.environment["SWIFTGAMGUI_SCREEN"],
-           let screen = allCases.first(where: { $0.rawValue.lowercased() == name.lowercased() }) { return screen }
+           let screen = allCases.first(where: { $0.rawValue.lowercased().replacingOccurrences(of: " ", with: "") == name.lowercased() }) {
+            return screen
+        }
         #endif
         return .home
     }
@@ -236,6 +241,9 @@ struct ContentView: View {
                                   screen = .classroom
                               })
                     .navigationTitle("Users")
+                case .drives:
+                    SharedDrivesView(setup: services.setup, model: services.sharedDrives)
+                        .navigationTitle("Shared Drives")
                 case .groups:
                     GroupsView(setup: services.setup, directory: services.directory, groups: services.groups,
                                members: services.groupMembers, changes: services.groupChanges, settings: services.groupSettings, requested: $groupsGroup)
