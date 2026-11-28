@@ -23,6 +23,8 @@ Dates are 2026, and the last time the command ran from any screen.
   title kept, with Stop and Retry. The argv is the one-person editor's, which ran (10-24); GamGUI's bulk page has no live run either.
 
 - **Not run:** move to another org unit, one or many (new 2026-11-27, roadmap 4.2; a throwaway unit first).
+- **Not run:** change from a CSV, title, department, phone and org unit (new 2026-11-28, roadmap 4.6; a throwaway account
+  with a second organization and two phones first: both must come back as they were).
 ### Groups
 - **Ran:** add people as members (11-13), remove a member (10-13).
 - **Not run:** add people as managers or owners.

@@ -27,6 +27,8 @@ struct UsersView: View {
     let departments: DepartmentForMany
     /// Org Unit for Many… (roadmap 4.2).
     let orgUnitMoves: OrgUnitForMany
+    /// Change from a CSV… (roadmap 4.6).
+    let bulkCSV: BulkCSVChanges
     /// The groups Department for Many… chooses from.
     let groups: GroupStore
     /// A person another screen asked to open (Reports' Show in Users), cleared once their page is open.
@@ -53,6 +55,7 @@ struct UsersView: View {
     @State private var selection: GamUser.ID?
     @State private var settingDepartments = false
     @State private var movingMany = false
+    @State private var changingFromCSV = false
 
     var body: some View {
         content
@@ -79,6 +82,11 @@ struct UsersView: View {
                     .accessibilityIdentifier("users.load")
                 }
                 ToolbarItem {
+                    Button("Change from a CSV\u{2026}", systemImage: "tablecells") { changingFromCSV = true }
+                        .help("Change many people's title, department, phone or org unit from a CSV")
+                        .disabled(directory.users == nil)
+                }
+                ToolbarItem {
                     Button("Org Unit for Many\u{2026}", systemImage: "building.2") { movingMany = true }
                         .help("Move a group's members or a list of addresses to one org unit")
                         .disabled(directory.users == nil)
@@ -88,6 +96,10 @@ struct UsersView: View {
                         .help("Set one department for a group's members or a list of addresses")
                         .disabled(directory.users == nil)
                 }
+            }
+            .sheet(isPresented: $changingFromCSV) {
+                BulkCSVSheet(model: bulkCSV) { changingFromCSV = false }
+                    .interactiveDismissDisabled(bulkCSV.isBusy)
             }
             .sheet(isPresented: $movingMany) {
                 OrgUnitForManySheet(model: orgUnitMoves, access: access, groups: groups) { movingMany = false }

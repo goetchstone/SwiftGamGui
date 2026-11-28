@@ -1,6 +1,7 @@
 import ChangeCore
 import Directory
 import GamEngine
+import Stores
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -2009,6 +2010,92 @@ struct OrgUnitForManyReview: View {
             }
             .keyboardShortcut(.return, modifiers: .command)
             .accessibilityHint("Moves exactly the people shown, once.")
+        }
+    }
+}
+
+/// Change many people from a CSV: the review (roadmap 4.6, GamGUI's `_bulk_csv_preview.html`). Each person's value now and
+/// after, the rows refused and why, what the file said, the undo to save, the count typed past 25, and the one button that
+/// runs exactly this.
+struct BulkCSVReview: View {
+    let pending: BulkCSVChanges.Pending
+    let model: BulkCSVChanges
+    let saveBefore: () -> Void
+    @State private var typedCount = ""
+
+    static let shown = 200
+
+    var body: some View {
+        let n = pending.changes.count
+        Section {
+            Text("Change \(n) \(n == 1 ? "person" : "people")? A blank cell left a value alone. Each person is read again just "
+                 + "before their change, and nothing changes for anyone whose profile changed since.")
+            if pending.unchanged > 0 {
+                Label("\(pending.unchanged) already \(pending.unchanged == 1 ? "has" : "have") what the file says: left as "
+                      + "\(pending.unchanged == 1 ? "it is" : "they are").", systemImage: "info.circle")
+            }
+            ForEach(pending.notes, id: \.self) { Label($0, systemImage: "info.circle") }
+        } header: {
+            Text(pending.preview.title).accessibilityAddTraits(.isHeader)
+        }
+        Section("What changes") {
+            ForEach(pending.changes.prefix(Self.shown), id: \.email) { change in
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(change.name == change.email ? change.email : "\(change.name) \u{B7} \(change.email)").bold()
+                    ForEach(Self.lines(change), id: \.self) { line in
+                        Text(line.shown).font(.callout).accessibilityLabel(line.spoken)
+                    }
+                }
+                .accessibilityElement(children: .combine)
+            }
+            if n > Self.shown { Text("\u{2026} and \(n - Self.shown) more.").foregroundStyle(.secondary) }
+        }
+        if !pending.refused.isEmpty {
+            Section("Left out (\(pending.refused.count))") {
+                ForEach(pending.refused.prefix(Self.shown), id: \.self) { Text($0).font(.callout) }
+            }
+        }
+        Section {
+            Button("Save the Before File\u{2026}", action: saveBefore)
+                .accessibilityHint("Saves everyone's values as they are now, as a CSV to upload as the undo.")
+            if pending.blanks > 0 {
+                Label("\(pending.blanks) value\(pending.blanks == 1 ? " was" : "s were") empty before, so the before file can't put "
+                      + "\(pending.blanks == 1 ? "it" : "them") back: a blank cell changes nothing.", systemImage: "info.circle")
+            }
+        } footer: {
+            Text("The before file is the undo: upload it here to set those values back.")
+        }
+        Section {
+            if pending.needsCount {
+                TextField("Number of changes", text: $typedCount, prompt: Text(verbatim: String(pending.writes)))
+                    .accessibilityLabel("Type the number of changes, \(pending.writes), to confirm")
+                    .onChange(of: typedCount) { model.typingChanged() }
+            }
+            if let problem = model.typedProblem {
+                Label(problem, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.red)
+            }
+            Button("Change \(n) \(n == 1 ? "Person" : "People")") {
+                let pending = pending, model = model, typed = typedCount
+                Task { await model.confirm(pending, OperatorConfirmation(confirmed: true, typedCount: pending.needsCount ? typed : "")) }
+            }
+            .keyboardShortcut(.return, modifiers: .command)
+            .accessibilityHint("Changes exactly the people shown, once.")
+        }
+    }
+
+    static func shown(_ value: String) -> String { value.isEmpty ? "(empty)" : value }
+
+    struct Line: Hashable {
+        let shown: String
+        let spoken: String
+    }
+
+    /// Each changed column as "Title: now → after", and spoken "Title from now to after".
+    static func lines(_ change: BulkCSV.Change) -> [Line] {
+        BulkCSV.columns.compactMap { column -> Line? in
+            guard let after = change.after[column], let label = BulkCSV.labels[column] else { return nil }
+            let before = shown(change.before[column] ?? "")
+            return Line(shown: "\(label): \(before) \u{2192} \(after)", spoken: "\(label) from \(before) to \(after)")
         }
     }
 }
