@@ -22,6 +22,8 @@ Dates are 2026, and the last time the command ran from any screen.
 - **Not run:** Department for Many… (new 2026-11-27, roadmap 2.1): one department for a group's members or a pasted list, each
   title kept, with Stop and Retry. The argv is the one-person editor's, which ran (10-24); GamGUI's bulk page has no live run either.
 
+- **Not run:** a person's licenses, add, change and remove, and Suspended → remove their licenses (new 2026-11-27, roadmap
+  4.3; a spare seat first).
 - **Not run:** move to another org unit, one or many (new 2026-11-27, roadmap 4.2; a throwaway unit first).
 - **Not run:** change from a CSV, title, department, phone and org unit (new 2026-11-28, roadmap 4.6; a throwaway account
   with a second organization and two phones first: both must come back as they were).

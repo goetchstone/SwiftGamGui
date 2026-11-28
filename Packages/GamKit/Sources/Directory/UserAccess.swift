@@ -247,6 +247,14 @@ public final class UserAccess {
         return .success((GamOutput.records(result.stdout), accounted))
     }
 
+    /// Every license seat (roadmap 4.3), read now: `print licenses`, no product named. It passes over a product Google won't let
+    /// it read without a word, so only what it lists is acted on (`Licenses`).
+    public func licenses(in pinned: Domain? = nil) async -> Result<[Licenses.Seat], Problem> {
+        await readNow(GamCommands.printLicenses(), in: pinned, timeout: ActivityLogs.timeout) {
+            GamOutput.records($0).map(Licenses.Seat.init(record:))
+        }
+    }
+
     /// The org unit tree (roadmap 4.2): every path, the root first. Output without GAM's titles never answered: a problem,
     /// never "only /".
     public func orgUnits(in pinned: Domain? = nil) async -> Result<[String], Problem> {

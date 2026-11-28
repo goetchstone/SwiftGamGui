@@ -154,7 +154,7 @@ struct CommandKindTests {
             let verb = Self.verb(command.argv)
             #expect(!(verb.map(Self.readVerbs.contains) ?? false), "\(name) is a GamWrite but reads (\(verb ?? ""))")
         }
-        #expect(writes == 57)
+        #expect(writes == 60)
     }
 
     @Test func theVerbSetsAreGamGUIs() {
@@ -167,8 +167,7 @@ struct CommandKindTests {
     /// an undelete) would let a per-action rule allow the wrong write.
     static let actions: [String: WriteAction] = [
         "create_user": .createUser, "update_organization": .updateOrganization,
-        "move_user_to_org_unit": .moveOrgUnit, "create_org_unit": .createOrgUnit, "rename_org_unit": .renameOrgUnit,
-        "delete_org_unit": .deleteOrgUnit,
+        "add_license": .addLicense, "swap_license": .swapLicense, "remove_license": .removeLicense,
         "rename_user": .renameUser, "delete_group": .deleteGroup, "create_admin": .createAdmin,
         "add_calendar_acl": .addCalendarACL, "add_calendar_acl_cal": .addCalendarACL,
         "delete_calendar_acl": .deleteCalendarACL, "delete_calendar_acl_cal": .deleteCalendarACL,
@@ -187,6 +186,7 @@ struct CommandKindTests {
         "imap_off": .imapOff, "pop_off": .popOff, "delete_send_as": .deleteSendAs, "block_device_user": .blockDeviceUser, "delete_device_user": .deleteDeviceUser, "delete_messages": .deleteMessages, "trash_message": .trashMessage,
         "trash_messages": .trashMessage,
         "set_password": .setPassword, "update_phones": .updatePhones, "set_signatures_csv": .setSignaturesFast, "update_profile": .updateProfile,
+        "move_user_to_org_unit": .moveOrgUnit, "create_org_unit": .createOrgUnit, "rename_org_unit": .renameOrgUnit, "delete_org_unit": .deleteOrgUnit,
     ]
 
     @Test func everyWriteNamesExactlyItsOwnAction() throws {
@@ -211,7 +211,7 @@ struct CommandKindTests {
                                 encoding: .utf8)
         let reads = source.matches(of: /-> GamRead\b/).count, writes = source.matches(of: /-> GamWrite\b/).count
         let mints = source.matches(of: /\bGam(Read|Write)\(/).count
-        #expect(reads == 54 && writes == 58, "a builder was added or removed: hold it here and in GoldenArgvTests (or appOnlyReads)")
+        #expect(reads == 54 && writes == 61, "a builder was added or removed: hold it here and in GoldenArgvTests (or appOnlyReads)")
         #expect(mints == reads + writes, "one builder per command made")
         // `catalogRead`, the Builder's door, is held over every catalog command instead (`CommandCatalogTests`: GamGUI's argv,
         // and every runnable one's first known verb a read verb).

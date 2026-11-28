@@ -256,6 +256,23 @@ It reads only through `DirectoryStore`, so it shares Home's tenant rules. Writes
 - **A department for many people** (GamGUI `web/routes/users.py`, `bulk_store.html`: a group or a pasted list, a preview, a
   run, retry the failed ones): a bulk job, so after the jobs tray. Build it only when asked, as with signatures for many.
 
+## Licenses (roadmap 4.3, 2026-11-27; GamGUI #175, #177)
+- **The read** (`UserAccess.licenses`, `GamEngine/Licenses.swift`): `print licenses`, no product named. GAM passes over a product
+  Google won't let it read without a word, so only what it lists is acted on, and the screen says so.
+- **A person's seats** (`Directory/LicenseChanges.swift`, the Licenses section on Profile): read when asked; Change… within the
+  same product (a license someone in the domain holds), Add a License… of a product they hold none of, Remove…. Each previewed
+  from a fresh read; a seat is `nv:<productId>:<skuId>` (`GamCommands.licenseSKU`, refusing IDs GAM would split or strip).
+  A removal is destructive, needs their address typed, quotes Google ("you might lose their data"), and is refused while a
+  transfer from them is unfinished or unreadable, at the preview and again just before it runs; a failed one is named.
+  Never `sync`, never `archive`.
+- **Suspended → Remove Their Licenses…** (`Directory/SuspendedLicenses.swift`): the directory and seats read again; each seat on
+  a suspended account held, except a person whose transfers are unfinished, failed or unread (`Licenses.manyRefusal`), listed.
+  Their transfers are read again for everyone just before the run, and any change refuses it (GamGUI reads each as the job
+  reaches them; here the preview holds what runs). Word typed at ten, count past 25.
+- The mock keeps its seats once a write changes them and refuses what Google refuses (ported from GamGUI #175); the domain's
+  SKUs are `mock_gam/license_skus.csv`.
+- Held to `LicenseChangesTests`. Not run live (a spare seat first: `print licenses countsonly`).
+
 ## Org units (roadmap 4.2, 2026-11-27; GamGUI #169)
 - **The tree** (`UserAccess.orgUnits`, `GamEngine/OrgUnits.swift`): `print orgs fields orgunitpath,name,description`, plain CSV;
   the titles line is the answer (a notice before it skipped; none at all is unread, never "only /"); lines split on "\n" only.
