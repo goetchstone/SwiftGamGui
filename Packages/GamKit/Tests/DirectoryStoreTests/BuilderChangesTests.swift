@@ -139,7 +139,7 @@ final class BuilderChangesTests {
             #expect(BuilderChanges.risk(curated) == max(gamgui, write.action.minimumRisk), "\(expected.id)")
             #expect(WriteStep(write, target: "x", summary: "", risk: BuilderChanges.risk(curated)).risk == BuilderChanges.risk(curated))
         }
-        #expect(writes == 24)
+        #expect(writes == 26)
     }
 
     /// A read isn't held (the Builder runs it), and the form's refusals are said before anything is held.
@@ -354,5 +354,26 @@ final class BuilderChangesTests {
         guard case .problem(let why) = try await runHeld() else { Issue.record("\(changes.state)"); return }
         #expect(why.contains("may not have happened"))
         #expect(throws: GamCommands.Invalid.self) { try GamCommands.createAdmin(email: "dana@example.com", role: "_SEED_ADMIN_ROLE", orgUnit: "//") }
+    }
+
+    /// GamGUI #189's shared drive pair (roadmap 5.1 part B): each one call, run as held; a drive Google doesn't have or a person
+    /// who isn't a user is GAM's refusal; a blank name, a name for an ID, or a list is refused before anything is held.
+    @Test func aSharedDriveIsCreatedAndRenamedAsHeld() async throws {
+        try await connect()
+        try FileManager.default.createDirectory(at: scratch.appending(path: "mock-state"), withIntermediateDirectories: true)
+        await changes.preview(try command("build.create_shared_drive"), values: ["email": "alice@example.com", "name": "Finance 2027"])
+        guard case .done = try await runHeld() else { Issue.record("\(changes.state)"); return }
+        #expect(calls().contains(["user", "alice@example.com", "create", "shareddrive", "Finance 2027"]))
+        await changes.preview(try command("build.rename_shared_drive"), values: ["drive_id": "0AFINANCEuk9PVA", "name": "Finance (closed)"])
+        guard case .done = try await runHeld() else { Issue.record("\(changes.state)"); return }
+        #expect(calls().contains(["update", "shareddrive", "shareddriveid", "0AFINANCEuk9PVA", "name", "Finance (closed)"]))
+        await changes.preview(try command("build.rename_shared_drive"), values: ["drive_id": "0AGONEuk9PVA", "name": "X"])
+        guard case .problem = try await runHeld() else { Issue.record("\(changes.state)"); return }
+        #expect(throws: GamCommands.Invalid.self) { try GamCommands.createSharedDrive(email: "alice@example.com", name: " ") }
+        #expect(throws: GamCommands.Invalid.self) { try GamCommands.createSharedDrive(email: "all users", name: "Finance") }
+        #expect(throws: GamCommands.Invalid.self) { try GamCommands.renameSharedDrive(driveID: "shareddrive:Finance", name: "New") }
+        #expect(throws: GamCommands.Invalid.self) { try GamCommands.renameSharedDrive(driveID: "0A FIN", name: "New") }
+        #expect(try GamCommands.renameSharedDrive(driveID: "0AFINANCEuk9PVA", name: "X").notDone(output: "Shared Drive ID: 0AOTHER") != nil,
+                "another drive's line doesn't confirm this one")
     }
 }

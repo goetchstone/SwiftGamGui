@@ -169,7 +169,7 @@ struct CommandKindTests {
             let verb = Self.verb(command.argv)
             #expect(!(verb.map(Self.readVerbs.contains) ?? false), "\(name) is a GamWrite but reads (\(verb ?? ""))")
         }
-        #expect(writes == 67)
+        #expect(writes == 69)
     }
 
     @Test func theVerbSetsAreGamGUIs() {
@@ -186,6 +186,7 @@ struct CommandKindTests {
         "update_group_settings": .updateGroupSettings,
         "add_license": .addLicense, "swap_license": .swapLicense, "remove_license": .removeLicense,
         "rename_user": .renameUser, "delete_group": .deleteGroup, "create_admin": .createAdmin,
+        "create_shared_drive": .createSharedDrive, "rename_shared_drive": .renameSharedDrive,
         "add_calendar_acl": .addCalendarACL, "add_calendar_acl_cal": .addCalendarACL,
         "delete_calendar_acl": .deleteCalendarACL, "delete_calendar_acl_cal": .deleteCalendarACL,
         "subscribe_calendar": .subscribeCalendar, "remove_calendar": .removeCalendar, "delete_event": .deleteEvent,
@@ -228,7 +229,7 @@ struct CommandKindTests {
                                 encoding: .utf8)
         let reads = source.matches(of: /-> GamRead\b/).count, writes = source.matches(of: /-> GamWrite\b/).count
         let mints = source.matches(of: /\bGam(Read|Write)\(/).count
-        #expect(reads == 57 && writes == 68, "a builder was added or removed: hold it here and in GoldenArgvTests (or appOnlyReads)")
+        #expect(reads == 57 && writes == 70, "a builder was added or removed: hold it here and in GoldenArgvTests (or appOnlyReads)")
         #expect(mints == reads + writes, "one builder per command made")
         // `catalogRead`, the Builder's door, is held over every catalog command instead (`CommandCatalogTests`: GamGUI's argv,
         // and every runnable one's first known verb a read verb).

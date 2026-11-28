@@ -88,7 +88,7 @@ Dates are 2026, and the last time the command ran from any screen.
   welcome email, which ran).
 
 ### Builder
-- **Not run:** rename a user, delete a group, add an admin role (new 2026-11-27, roadmap 5.1).
+- **Not run:** rename a user, delete a group, add an admin role (new 2026-11-27, roadmap 5.1); create and rename a shared drive (new 2026-11-28, 5.1 part B; a throwaway drive first).
 - **Not run:** any change from this screen (the log marks a Builder run, and has none), nor a sequence (new 2026-11-27,
   roadmap 2.5; each step is one of the changes below, held and run together).
   - **B3:** the changes that ran from other screens: add or remove a delegate, auto-reply on and off, add or remove a group

@@ -816,6 +816,25 @@ public enum GamCommands {
 
     // MARK: the closed list of Builder writes (roadmap 5.1, GamGUI #189)
 
+    /// `<user> create shareddrive <Name>` (createSharedDrive at the 7.52.05 tag): created as that person, its only Manager. One
+    /// address (a bare name would get GAM's domain). The name is read by position before any option, so a blank one would make
+    /// the next word the name: refused. No restrictions, theme or org unit: each is a second call that can fail once it exists.
+    public static func createSharedDrive(email: String, name: String) throws -> GamWrite {
+        guard isOneAddress(email) else { throw Invalid.argument("'\(email)' isn't one email address") }
+        guard !PythonText.strip(name).isEmpty else { throw Invalid.argument("a shared drive needs a name") }
+        return GamWrite(["user", email, "create", "shareddrive", name], action: .createSharedDrive)
+    }
+
+    /// `update shareddrive shareddriveid <ID> name <Name>` as the admin (updateSharedDrive, useDomainAdminAccess): the drive by
+    /// `shareddriveid`, since a bare word could be a keyword that makes the next word a drive *name*, matched without case.
+    public static func renameSharedDrive(driveID: String, name: String) throws -> GamWrite {
+        guard SharedDrives.isItemID(driveID) else {
+            throw Invalid.argument("a shared drive ID is letters, digits, - and _ (Shared Drives lists each drive's)")
+        }
+        guard !PythonText.strip(name).isEmpty else { throw Invalid.argument("a shared drive needs a name") }
+        return GamWrite(["update", "shareddrive", "shareddriveid", driveID, "name", name], action: .renameSharedDrive)
+    }
+
     /// `update user <u> primaryemail <new> noactionifalias`: an alias is refused by GAM (51) rather than rename its owner; a new
     /// name `vfe` is GAM's "make one up", refused here.
     public static func renameUser(email: String, newEmail: String) throws -> GamWrite {

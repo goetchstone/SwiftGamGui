@@ -188,8 +188,6 @@ struct GoldenArgvTests {
         "print_folder_files": "Move a folder into a shared drive (GamGUI #188, roadmap 4.8): not built here yet",
         "move_folder_to_shared_drive": "Move a folder into a shared drive (GamGUI #188, roadmap 4.8): not built here yet",
         "copy_rest_of_folder_to_shared_drive": "Move a folder into a shared drive (GamGUI #188, roadmap 4.8): not built here yet",
-        "create_shared_drive": "Create a shared drive (GamGUI #189, roadmap 5.1): not built here yet",
-        "rename_shared_drive": "Rename a shared drive (GamGUI #189, roadmap 5.1): not built here yet",
     ]
 
     /// GamGUI's `todrive_args` makes no command, only the words a read ends with to go to a Sheet (`exportToSheet` appends them):
@@ -337,6 +335,8 @@ struct GoldenArgvTests {
         "rename_org_unit": { GamCommands.renameOrgUnit(orgUnit: try $0.text("org_unit"), name: try $0.text("name")) },
         "delete_org_unit": { GamCommands.deleteOrgUnit(orgUnit: try $0.text("org_unit")) },
         "rename_user": { try GamCommands.renameUser(email: $0.string("email"), newEmail: $0.string("new_email")) },
+        "create_shared_drive": { try GamCommands.createSharedDrive(email: $0.string("email"), name: $0.string("name")) },
+        "rename_shared_drive": { try GamCommands.renameSharedDrive(driveID: $0.string("drive_id"), name: $0.string("name")) },
         "delete_group": { try GamCommands.deleteGroup(group: $0.string("group")) },
         "create_admin": { try GamCommands.createAdmin(email: $0.string("email"), role: $0.string("role"), orgUnit: $0.text("org_unit")) },
         "parallel_print_forward": { _ in GamCommands.parallelPrintForward(people: []) },

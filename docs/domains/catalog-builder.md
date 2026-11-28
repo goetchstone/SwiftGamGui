@@ -324,8 +324,11 @@ and a record that can't be written gives none. The file runs outside the guard a
 Rename a user (`update user <u> primaryemail <new> noactionifalias`), delete a group (`delete group <g> noactionifalias`) and add
 an admin role (`create admin <holder> <role> customer|org_unit <unit>`), each destructive and curated. `noactionifalias` makes GAM
 refuse an alias (51), said as `alias_refused`; a rename is a cut-off (`GamWrite.cutsOff`), so the connected admin is refused; a
-run that exits 0 without GAM's own line reads as unconfirmed (`GamWrite.notDone`). Create and rename a shared drive follow once
-the Shared Drives screen (4.7) is in. Held to `BuilderChangesTests`. Not run live.
+run that exits 0 without GAM's own line reads as unconfirmed (`GamWrite.notDone`). Create a shared drive (`user <u> create
+shareddrive <name>`, as that person, its only Manager) and rename one (`update shareddrive shareddriveid <id> name <name>`, as
+the admin) followed with 4.7: low risk, a blank name and a drive named rather than by ID refused, each done only when GAM
+printed its "Shared Drive ID:" line (for the rename, that drive's). The mock's handlers are GamGUI's (#189). Held to
+`BuilderChangesTests`. Not run live (a throwaway drive first).
 
 ## A step takes its values from an earlier read (roadmap 5.2, 2026-11-28; GamGUI #194's `core/sequence_binds.py`)
 A curated read can now join a sequence (Add to Sequence on a read's page), and a later change's field can take
