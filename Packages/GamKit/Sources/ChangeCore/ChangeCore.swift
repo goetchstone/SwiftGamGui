@@ -273,6 +273,9 @@ public struct HeldPreview: Sendable, Identifiable {
     public let typedExactWord: String?
     let createdAt: ContinuousClock.Instant
     let precondition: (@Sendable () async throws -> Bool)?
+    /// Accounts the run may cut off whatever its steps' own `cutsOff` say (Close Out: the leaver, whose groups, roles and
+    /// aliases can sign the app out too): the connected-admin check reads each, by account ID, at the preview and the run.
+    let guarded: [String]
 
     var changes: [Change] { steps.flatMap(\.changes) }
 
@@ -448,7 +451,8 @@ public actor Executor {
     public func preview(_ steps: [WriteStep], origin: Origin = .form, confirmStep: Bool = false,
                         typedCountAbove: Int? = nil, expecting: (domain: Domain, generation: Int)? = nil,
                         stopsAtAccountWideFailure: Bool = true, typedAddress: String? = nil, typedExactWord: String? = nil,
-                        title: String = "", precondition: (@Sendable () async throws -> Bool)? = nil) async -> Result<HeldPreview, PreviewRefusal> {
+                        title: String = "", precondition: (@Sendable () async throws -> Bool)? = nil,
+                        guarding: [String] = []) async -> Result<HeldPreview, PreviewRefusal> {
         guard !steps.isEmpty else { return .failure(.nothingToRun) }
         for (index, step) in steps.enumerated()
         where step.requires.contains(where: { $0 < 0 || $0 >= index }) || !Self.listedTaskHolds(step, at: index, in: steps)
@@ -465,6 +469,14 @@ public actor Executor {
             [.setSignature, .setSignaturesFast].contains(steps[$0].action) && steps[$0].keepFirst == nil && steps[$0].newAccountFrom == nil
         }) {
             return .failure(.signatureNotKept(step: index))
+        }
+        // `update alias` takes the alias from whoever holds it: every move reads it as its owner's first (Close Out's review).
+        if let index = steps.indices.first(where: {
+            guard steps[$0].action == .moveAlias else { return false }
+            if case .aliasOf? = steps[$0].keepFirst { return false }
+            return true
+        }) {
+            return .failure(.aliasNotChecked(step: index))
         }
         // GamGUI's sweep alone tolerates, and only its benign per-user notices: never a 403, a scope or an unknown line.
         if let index = steps.firstIndex(where: {
@@ -487,7 +499,7 @@ public actor Executor {
             return .failure(.tenantChanged)
         }
         // The connected-admin check's half that needs no read, so its plain case never reaches a confirm: the run reads the rest.
-        let cutOff = steps.compactMap(\.write.cutsOff)
+        let cutOff = steps.compactMap(\.write.cutsOff) + guarding
         if !cutOff.isEmpty {
             guard let admin = await connectedAdmin() else { return .failure(.adminUnconfirmed) }
             if let own = cutOff.first(where: { Self.key($0) == Self.key(admin.address) }) {
@@ -506,7 +518,8 @@ public actor Executor {
             generation: current.generation, origin: origin,
             decision: decision,
             confirmStep: confirmStep, typedCountAbove: typedCountAbove, stopsAtAccountWideFailure: stopsAtAccountWideFailure,
-            typedAddress: typedAddress, typedExactWord: typedExactWord.map { PythonText.strip($0) }, createdAt: now(), precondition: precondition)
+            typedAddress: typedAddress, typedExactWord: typedExactWord.map { PythonText.strip($0) }, createdAt: now(), precondition: precondition,
+            guarded: guarding)
         dropExpired()
         dropOtherThan(current)
         while order.count >= Self.previewsKept { held[order.removeFirst()] = nil }
@@ -544,6 +557,8 @@ public actor Executor {
         case badKeep(step: Int)
         /// A signature write that would keep nothing: no `KeepFirst`, and not on an account the run makes.
         case signatureNotKept(step: Int)
+        /// An alias move with no `KeepFirst.aliasOf`: it could take the alias from someone else.
+        case aliasNotChecked(step: Int)
 
         public var message: String {
             switch self {
@@ -554,6 +569,7 @@ public actor Executor {
             case .badTolerance(let step): "Step \(step + 1) would count a failure as done, and only the calendar sweep's notices can be."
             case .badKeep(let step): "Step \(step + 1) would keep a signature other than the one it replaces."
             case .signatureNotKept(let step): "Step \(step + 1) would replace a signature without keeping the one it replaces."
+            case .aliasNotChecked(let step): "Step \(step + 1) would move an alias without reading whose it is first."
             case .typedAddressNotATarget: "The address to type isn't one this change acts on."
             case .typedWordUnusable: "The word to type to confirm this can't be asked for here."
             case .adminUnconfirmed:
@@ -619,11 +635,11 @@ public actor Executor {
             let built = GamCommands.setSignaturesCSV(rows: people.map { ($0.email, $0.setting) })
             return step.action == .setSignaturesFast && !people.isEmpty && step.newAccountFrom == nil && step.listedTask == nil
                 && same(built.argv, step.write.argv) && built.input == step.write.input
-        case .aliasOf(_, let alias):
-            // The alias the step's own `update alias <alias> user <to>` moves.
+        case .aliasOf(let email, let alias):
+            // The alias the step's own `update alias <alias> user <to>` moves, read as the account the step acts on.
             let argv = step.write.argv
-            return step.action == .moveAlias && argv.count == 5 && same(argv[2], alias) && step.newAccountFrom == nil
-                && step.listedTask == nil
+            return step.action == .moveAlias && argv.count == 5 && same(argv[2], alias) && same(step.target, email)
+                && step.newAccountFrom == nil && step.listedTask == nil
         }
     }
 
@@ -1093,8 +1109,19 @@ public actor Executor {
     /// earlier step would make; a spelling GAM rewrites), refuses, and costs nothing, since GAM would refuse the write too
     /// (the review of 2026-10-29: "no such user" let three plans through).
     private func lockoutRefusal(_ preview: HeldPreview) async -> String? {
+        await lockout(preview.steps.compactMap(\.write.cutsOff) + preview.guarded, in: preview.domain)
+    }
+
+    /// Why a change to `address` could cut off the account this app signs in as, by account ID (an alias or a renamed admin
+    /// reads as the account behind it), or nil. A screen asks it before it offers anything (Close Out's check); the run asks
+    /// again for its own preview.
+    package func lockout(of address: String, in domain: Domain) async -> String? {
+        await lockout([address], in: domain)
+    }
+
+    private func lockout(_ addresses: [String], in domain: Domain) async -> String? {
         var cutOff: [String] = []
-        for address in preview.steps.compactMap(\.write.cutsOff) where !cutOff.contains(where: { Self.same($0, address) }) {
+        for address in addresses where !cutOff.contains(where: { Self.same($0, address) }) {
             cutOff.append(address)
         }
         guard !cutOff.isEmpty else { return nil }
@@ -1102,7 +1129,7 @@ public actor Executor {
         for address in cutOff {
             let refusal = PreviewRefusal.cutsOffConnectedAdmin(PythonText.strip(address), admin: admin.address).message
             if Self.key(address) == Self.key(admin.address) { return refusal }
-            switch await account(of: address, in: preview.domain, fields: ["primaryEmail", "id"]) {
+            switch await account(of: address, in: domain, fields: ["primaryEmail", "id"]) {
             case .success(nil):
                 return "GAM has no account \(PythonText.strip(address)), so nothing ran — preview again."
             case .success(let user?):

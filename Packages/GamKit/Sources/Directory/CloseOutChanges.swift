@@ -102,22 +102,12 @@ public final class CloseOutChanges {
         init(_ words: String) { self.words = words }
     }
 
-    /// Why `user` can't be closed out because it may be the admin this app signs in as, or nil: by account ID, asked as the
-    /// account's suspend would be (GamGUI's `_own_account`). Nothing is held.
+    /// Why `user` can't be closed out because it may be the admin this app signs in as, or nil: by account ID (an alias or a
+    /// renamed admin reads as the account behind it), and an admin this app can't confirm refuses too (GamGUI's
+    /// `_own_account`). The held preview guards `user` the same way at the run (`guarding:`), whatever is picked.
     private func ownAccount(_ user: String, expecting: (domain: Domain, generation: Int)) async -> String? {
-        guard let executor else { return nil }
-        let probe = WriteStep(GamCommands.setSuspended(email: user, suspended: true), target: user, summary: "Close out")
-        switch await executor.preview([probe], expecting: expecting) {
-        case .success(let held):
-            await executor.discard(held.id)
-            return nil
-        case .failure(let refusal):
-            // It is the connected admin, or the connected admin isn't confirmed: either refuses (GamGUI's).
-            switch refusal {
-            case .cutsOffConnectedAdmin, .adminUnconfirmed: return refusal.message
-            default: return nil
-            }
-        }
+        guard let executor else { return "This build has no GAM." }
+        return await executor.lockout(of: user, in: expecting.domain)
     }
 
     /// Everything Close Out offers for `user`'s account, each read on its own: one that fails is said and offers nothing.
@@ -274,7 +264,7 @@ public final class CloseOutChanges {
             return true
         }
         let held = await executor.preview(writes, confirmStep: true, expecting: tenant, typedAddress: user,
-                                          title: "Closing out \(user)", precondition: precondition)
+                                          title: "Closing out \(user)", precondition: precondition, guarding: [user])
         guard serial == self.serial else {
             if case .success(let preview) = held { await executor.discard(preview.id) }
             return
@@ -306,11 +296,12 @@ public final class CloseOutChanges {
             state = .idle
             return
         }
-        state = .done(Self.done(pending, outcome.steps, note: outcome.auditProblem.map { " \($0)" } ?? ""))
+        state = .done(Self.done(pending, outcome.steps, began: outcome.began, note: outcome.auditProblem.map { " \($0)" } ?? ""))
     }
 
-    /// Each step's result: done, or why not; a failed alias move says the alias may be on nobody.
-    nonisolated static func done(_ pending: Pending, _ steps: [RunOutcome.Step], note: String) -> Done {
+    /// Each step's result: done, or why not; a failed alias move GAM was launched for (`began`) says the alias may be on
+    /// nobody, since the add may have failed after the delete. One refused before it began moved nothing.
+    nonisolated static func done(_ pending: Pending, _ steps: [RunOutcome.Step], began: Set<Int>, note: String) -> Done {
         var done = 0, failures: [String] = []
         for (index, step) in pending.steps.enumerated() {
             switch index < steps.count ? steps[index] : nil {
@@ -318,7 +309,7 @@ public final class CloseOutChanges {
             case .failed(let message, let kind)?:
                 var why = kind.map { $0 == .unknown ? message : $0.remediation } ?? message
                 // The check before the move refused it: nothing moved. Otherwise the move itself failed, maybe after the delete.
-                if let alias = step.alias, kind != nil || !message.contains(alias) {
+                if let alias = step.alias, began.contains(index) {
                     why = CloseOut.aliasMayBeOnNobody(alias, user: pending.user, manager: pending.manager) + " " + why
                 }
                 failures.append("\(step.label) \u{2014} \(why)")

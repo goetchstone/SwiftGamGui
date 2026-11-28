@@ -229,11 +229,47 @@ final class CloseOutChangesTests {
         try await connect()
         await changes.preview(Self.alice, asked { $0.aliases = ["a.anders@example.com"] }, manager: "bob@example.com")
         let pending = try pending()
-        let failed = CloseOutChanges.done(pending, [.failed(message: "Add Failed: Invalid alias", kind: .unknown)], note: "")
+        let failed = CloseOutChanges.done(pending, [.failed(message: "Add Failed: Invalid alias", kind: .unknown)], began: [0], note: "")
         #expect(failed.failures.first?.contains("a.anders@example.com may now be on nobody") == true)
         // Refused by the check before it: nothing moved, and it doesn't say so.
         let checked = CloseOutChanges.done(pending, [.failed(message: "a.anders@example.com isn't alice@example.com's alias any more, "
-                                                             + "so it wasn't moved.", kind: nil)], note: "")
+                                                             + "so it wasn't moved.", kind: nil)], began: [], note: "")
+        // Refused before GAM ran (a begin record that couldn't be written): nothing moved either.
+        let unstarted = CloseOutChanges.done(pending, [.failed(message: "The audit log couldn't record this.", kind: nil)], began: [], note: "")
+        #expect(unstarted.failures.first?.contains("on nobody") == false)
         #expect(checked.failures.first?.contains("on nobody") == false)
+    }
+
+    /// Close Out's review: the app signing in as an address that is now an alias of the leaver (a renamed admin) is still
+    /// the leaver, by account ID, whatever is picked: nothing is offered, held or run.
+    @Test func anAdminSignedInAsAnAliasIsNeverClosedOut() async throws {
+        let folder = scratch.appending(path: "config-renamed")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        try Data(#"{"type": "service_account", "client_email": "gam@p.iam.gserviceaccount.com", "client_id": "1"}"#.utf8)
+            .write(to: folder.appending(path: "oauth2service.json"))
+        try Data(#"{"decoded_id_token": {"email": "a.anders@example.com", "sub": "100000000000000000001"}, "refresh_token": "placeholder"}"#.utf8)
+            .write(to: folder.appending(path: "oauth2.txt"))
+        await setup.importFolder(folder, as: "example.com")
+        await setup.checkAccess(Domain("example.com")!)
+        await changes.check(Self.alice)
+        #expect(problem() != nil, "\(changes.state)")
+        await changes.preview(Self.alice, asked {
+            $0.groups = ["staff@example.com"]
+            $0.roles = ["9170001"]
+        }, manager: "")
+        #expect(problem() != nil, "\(changes.state)")
+        #expect(writes().isEmpty)
+    }
+
+    /// An alias move without its check, or with one for another account, is refused before anything is held.
+    @Test func anAliasMoveAlwaysReadsTheAliasAsTheirsFirst() async throws {
+        try await connect()
+        let move = try GamCommands.moveAlias(alias: "a.anders@example.com", to: "bob@example.com")
+        let bare = WriteStep(move, target: Self.alice, summary: "", risk: .destructive)
+        guard case .failure(.aliasNotChecked(step: 0)) = await executor.preview([bare]) else { Issue.record("held without its check"); return }
+        let other = WriteStep(move, target: Self.alice, summary: "", risk: .destructive,
+                              keepFirst: .aliasOf(email: "carol@example.com", alias: "a.anders@example.com"))
+        guard case .failure(.badKeep(step: 0)) = await executor.preview([other]) else { Issue.record("held for another account"); return }
+        #expect(writes().isEmpty)
     }
 }

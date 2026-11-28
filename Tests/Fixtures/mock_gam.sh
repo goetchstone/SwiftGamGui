@@ -692,7 +692,8 @@ if [ "${1:-}" = "info" ] && [ "${2:-}" = "user" ]; then
     record="{\"phones\": $(tr -d '\n' < "$GAM_MOCK_STATE/phones/$addr"), ${record#\{}"
   fi
   # Close Out's check asks for `archived` (roadmap 4.5): the Directory API answers it for every account, false unless one is
-  # archived ($GAM_MOCK_STATE/archived/<user>, or `update user <u> archived on` under GAM_MOCK_STATE). No fixture record has it.
+  # archived ($GAM_MOCK_STATE/archived/<user>, set by a test: the mock's `update user … archived on` keeps no state, as its
+  # suspend keeps none). No fixture record has it.
   case " $* " in *archived*)
     case "$record" in *'"archived":'*) ;; *)
       if [ -n "${GAM_MOCK_STATE:-}" ] && [ -e "$GAM_MOCK_STATE/archived/$addr" ]; then flag=true; else flag=false; fi
