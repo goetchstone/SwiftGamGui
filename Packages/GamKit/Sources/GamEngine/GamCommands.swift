@@ -656,8 +656,7 @@ public enum GamCommands {
 
     /// GAM's own `csv` loop sets each row's signature, the rows (`User`, `signature`) on standard input. The delimiter, no
     /// escape character and quote are said here, not left to gam.cfg (a `\\` escape would eat backslashes), in the order
-    /// `openCSVFileReader` checks them, each once: GamGUI's order leaves `noescapechar` unread and GAM exits 2 (a listed
-    /// deviation, `GoldenArgvTests.deviations`). `~User` and
+    /// `openCSVFileReader` checks them, each once: another order leaves one unread and GAM exits 2 (failure-log 2026-11-27). `~User` and
     /// `~signature` are whole-argument substitutions. An empty cell would clear a signature: `SignaturesFast.refusal` refuses one.
     public static func setSignaturesCSV(rows: [(email: String, body: String)] = []) -> GamWrite {
         GamWrite(["csv", "-", "columndelimiter", ",", "noescapechar", "true", "quotechar", "\"",
@@ -787,6 +786,31 @@ public enum GamCommands {
     public static func deleteGroup(group: String) throws -> GamWrite {
         guard isOneAddress(group) else { throw Invalid.argument("'\(group)' isn't one group address") }
         return GamWrite(["delete", "group", group, "noactionifalias"], action: .deleteGroup)
+    }
+
+    // MARK: Close Out (roadmap 4.5, GamGUI #183)
+
+    /// `archived` is a boolean of `update user` (getUserAttributes). Google swaps the person's license for an Archived User
+    /// one, and refuses without one to give.
+    public static func setArchived(email: String) -> GamWrite {
+        GamWrite(["update", "user", email, "archived", "on"], action: .archiveUser)
+    }
+
+    /// `delete admin <RoleAssignmentId>` (doDeleteAdmin): the ID `print admins` lists, digits only. A failure is a warning,
+    /// exit 50.
+    public static func deleteAdminRole(assignmentID: String) throws -> GamWrite {
+        guard !assignmentID.isEmpty, assignmentID.unicodeScalars.allSatisfy({ ("0"..."9").contains($0) }) else {
+            throw Invalid.argument("a role assignment is named by its numeric ID")
+        }
+        return GamWrite(["delete", "admin", assignmentID], action: .deleteAdminRole)
+    }
+
+    /// `update alias <a> user <u>` (doCreateUpdateAliases at the 7.52.04 tag): checks the new owner exists, deletes the alias
+    /// from whoever holds it, waits 2s, then adds it to `to`. An add that fails after the delete leaves the alias on nobody,
+    /// exit 50. Both are one address: a list here would move them all.
+    public static func moveAlias(alias: String, to: String) throws -> GamWrite {
+        guard isOneAddress(alias), isOneAddress(to) else { throw Invalid.argument("an alias is moved to one account, each one address") }
+        return GamWrite(["update", "alias", alias, "user", to], action: .moveAlias)
     }
 
     public static func printTokens(user: String? = nil) throws -> GamRead {

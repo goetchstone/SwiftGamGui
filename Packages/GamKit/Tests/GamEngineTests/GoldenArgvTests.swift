@@ -185,9 +185,6 @@ struct GoldenArgvTests {
 
     /// GamGUI builders deliberately not ported.
     static let notPorted: [String: String] = [
-        "set_archived": "Close out a leaver (GamGUI #183, roadmap 4.5): not built here yet",
-        "move_alias": "Close out a leaver (GamGUI #183, roadmap 4.5): not built here yet",
-        "delete_admin_role": "Close out a leaver (GamGUI #183, roadmap 4.5): not built here yet",
         "print_drive_members": "A shared drive's members (GamGUI #185, roadmap 4.7): not built here yet; the mock refuses the read",
         "add_drive_member": "A shared drive's members (GamGUI #185, roadmap 4.7): not built here yet",
         "set_drive_member_role": "A shared drive's members (GamGUI #185, roadmap 4.7): not built here yet",
@@ -338,6 +335,9 @@ struct GoldenArgvTests {
         "remove_license": { try GamCommands.removeLicense(email: $0.text("email"), productID: $0.text("product_id"), skuID: $0.text("sku_id")) },
         "print_org_units": { _ in GamCommands.printOrgUnits() },
         "move_user_to_org_unit": { GamCommands.moveUserToOrgUnit(orgUnit: try $0.text("org_unit"), email: try $0.text("email")) },
+        "set_archived": { GamCommands.setArchived(email: try $0.string("email")) },
+        "move_alias": { try GamCommands.moveAlias(alias: $0.string("alias"), to: $0.string("to")) },
+        "delete_admin_role": { try GamCommands.deleteAdminRole(assignmentID: $0.string("assignment_id")) },
         "create_org_unit": { GamCommands.createOrgUnit(path: try $0.text("path"), description: try $0.text("description")) },
         "rename_org_unit": { GamCommands.renameOrgUnit(orgUnit: try $0.text("org_unit"), name: try $0.text("name")) },
         "delete_org_unit": { GamCommands.deleteOrgUnit(orgUnit: try $0.text("org_unit")) },
@@ -443,16 +443,8 @@ struct GoldenArgvTests {
 
     /// Invariant 11's listed deviations: where GamGUI reads GAM wrongly, GAM's source is the oracle. Each holds GamGUI's argv
     /// as its fixture has it, so a fixture regenerated after GamGUI's fix fails here and the entry goes.
-    /// - `set_signatures_csv` (roadmap 5.4, PR #218's review): GAM 7.52.05's `openCSVFileReader` checks `columndelimiter`,
-    ///   `noescapechar`, `quotechar` in that order, each once (GamCommands.txt's `gam csv` line too). GamGUI's
-    ///   `… quotechar " noescapechar true gam …` leaves `noescapechar` for the required `gam`: exit 2, nobody set.
-    static let deviations: [String: (gamgui: [String], ours: [String])] = [
-        "set_signatures_csv": (
-            ["csv", "-", "columndelimiter", ",", "quotechar", "\"", "noescapechar", "true",
-             "gam", "user", "~User", "signature", "~signature", "html"],
-            ["csv", "-", "columndelimiter", ",", "noescapechar", "true", "quotechar", "\"",
-             "gam", "user", "~User", "signature", "~signature", "html"]),
-    ]
+    /// None now: `set_signatures_csv`'s option order (PR #218's review) was one until GamGUI #195 took GAM's order.
+    static let deviations: [String: (gamgui: [String], ours: [String])] = [:]
 
     @Test func eachDeviationIsStillGamGUIsAndOursIsGamsOrder() throws {
         for (name, deviation) in Self.deviations {

@@ -163,8 +163,42 @@ public final class UserAccess {
     }
 
     /// The data transfers from the person, read now and not kept: deleting them before one finishes loses what hasn't moved.
+    /// GAM writes the `id` title even with no transfer: output without it never answered, and is unread, never "none"
+    /// (GamGUI #183, invariant 10).
     public func dataTransfers(of email: String) async -> Result<[Offboarding.DataTransfer], Problem> {
-        await readNow(GamCommands.printDataTransfers(oldOwner: email)) { GamOutput.records($0).map(Offboarding.DataTransfer.init(record:)) }
+        switch await readNow(GamCommands.printDataTransfers(oldOwner: email), parse: { GamOutput.titled($0, column: "id") }) {
+        case .success(let records?): .success(records.map(Offboarding.DataTransfer.init(record:)))
+        case .success(nil): .failure(Problem(summary: "GAM answered without the data transfers."))
+        case .failure(let problem): .failure(problem)
+        }
+    }
+
+    // MARK: Close Out (roadmap 4.5, GamGUI #183): each read strict, its titles required
+
+    /// The groups `email` is a direct member of. GAM writes the `email` title even for none; output without it never
+    /// answered, and is unread, never "in no group".
+    public func closeOutGroups(of email: String, in pinned: Domain? = nil) async -> Result<[String], Problem> {
+        switch await readNow(GamCommands.printGroups(member: email), in: pinned, parse: { GamOutput.titled($0, column: "email") }) {
+        case .success(let records?):
+            .success(records.map { PythonText.strip($0["email"]?.string ?? "") }.filter { $0.contains("@") })
+        case .success(nil): .failure(Problem(summary: "GAM answered without \(email)'s groups, so which they're in can't be told."))
+        case .failure(let problem): .failure(problem)
+        }
+    }
+
+    /// The admin roles assigned to `email` directly. Without the titles the read never answered, and a row without its
+    /// assignment ID could never be removed by name, so it fails the read too.
+    public func closeOutRoles(of email: String, in pinned: Domain? = nil) async -> Result<[Compromised.AdminRole], Problem> {
+        switch await readNow(GamCommands.printAdmins(user: email), in: pinned, parse: { GamOutput.titled($0, column: "roleAssignmentId") }) {
+        case .success(let records?):
+            let roles = records.map(Compromised.AdminRole.init(record:))
+            guard roles.allSatisfy({ !$0.id.isEmpty && $0.id.unicodeScalars.allSatisfy { ("0"..."9").contains($0) } }) else {
+                return .failure(Problem(summary: "GAM listed an admin role of \(email)'s without its assignment ID, so it can't be named."))
+            }
+            return .success(roles)
+        case .success(nil): return .failure(Problem(summary: "GAM answered without \(email)'s admin roles, so which they hold can't be told."))
+        case .failure(let problem): return .failure(problem)
+        }
     }
 
     // MARK: Check Account (the compromised-account response): each read now, not kept, GAM's own words when it fails

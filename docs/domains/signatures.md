@@ -169,8 +169,8 @@ in one GAM call** runs it (`confirmFast`), after a dialog: it can't be stopped.
   (`SignaturesFast.updated`, `GamWrite.noted`'s `set`, in the audit). Anyone else is failed (`notSaid`) with a per-person
   Retry. Audited once as `set_signatures_fast` with `count` and `set`.
 - The reader takes GAM's `Getting Signatures for` (plural, `Ent.SIGNATURE`'s entity word) and GamGUI's singular.
-- **Argv order** is GAM's, not GamGUI's (`columndelimiter , noescapechar true quotechar "`): `openCSVFileReader` checks
-  them in that order, each once, and GamGUI's order exits 2 (a listed deviation; failure-log 2026-11-27). The digest
+- **Argv order** is GAM's (`columndelimiter , noescapechar true quotechar "`): `openCSVFileReader` checks them in that
+  order, each once, and any other exits 2 (failure-log 2026-11-27; GamGUI #195 took the same order). The digest
   covers the input; Stop during the read stops it before the write; the in-flight lock is each person.
 - Not run live yet.
 

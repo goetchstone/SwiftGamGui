@@ -67,6 +67,8 @@ Dates are 2026, and the last time the command ran from any screen.
   reminder, hide from the directory. Each step's effect was checked in Google on 10-16. The sweep ends in exit 50 each
   time and the run tolerates it: a calendar's owner can't be removed from their own calendar.
 - **Not run:** hand over secondary calendars, remove filters that forward.
+- **Not run:** Close Out (new 2026-11-28, roadmap 4.5): a throwaway account after its transfer: a group, a direct role, an
+  org unit, suspend or archive, a license, an alias to a manager.
 
 - **Not run:** the options (new 2026-11-27, roadmap 3.4): another recipient, Looker Studio, releasing rooms, the auto-reply's
   end day, no manager. GamGUI's haven't run either.

@@ -262,7 +262,7 @@ struct ContentView: View {
                                 hasGam: services.executor != nil)
                         .navigationTitle("Onboard")
                 case .offboard:
-                    OffboardView(setup: services.setup, directory: services.directory, changes: services.offboardChanges,
+                    OffboardView(setup: services.setup, directory: services.directory, changes: services.offboardChanges, closeOut: services.closeOut,
                                  templates: services.offboardTemplates, hasGam: services.executor != nil)
                         .navigationTitle("Offboard")
                 case .compromised:
