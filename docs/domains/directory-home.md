@@ -284,3 +284,24 @@ It reads only through `DirectoryStore`, so it shares Home's tenant rules. Writes
   listed; the count typed past 25; Stop and Retry.
 - The mock answers the tree, the move, and the Builder's create, rename and delete as GamGUI's does (ported).
 - Held to `OrgUnitMoveTests`. Not run live (the operator's tenant has no units: the check creates one first).
+
+## Change from a CSV (roadmap 4.6, 2026-11-28; GamGUI #184)
+- **The file** (`Stores/BulkCSV.swift`, Users → Change from a CSV…): an `email` column plus any of title, department, phone
+  and org_unit, read as GamGUI's `csv.reader` reads it (`RosterCSV` with `strict: false`, `;` when the first line has one and
+  no comma), UTF-8 with a byte-order mark dropped, 1 MB and 2000 rows. Headers read loosely (`Org Unit`, `Work Phone`); `name`
+  and `location` said and not applied. **A blank cell leaves a value alone; nothing clears one.** This app's formula guard
+  (`'=`) is undone; a bare `=` is refused as a formula; a cell over two lines refuses the whole file.
+- **The plan** (`BulkCSV.plan`): from the directory read fresh (`cacheFields`, never the cache: its lists aren't patched)
+  and, when a row names one, the org units. Unknown people, aliases (named with their account) and units are refused by
+  line; a value already as asked is left alone. Organizations and phones go back **whole, as read** (`GamEngine/BulkProfile`,
+  `GamCommands.updateProfile`): a list GAM couldn't send back unchanged refuses that person.
+- **The run**: per person the profile, then the move (needing it). The first carries `KeepFirst.unchanged`: the person read
+  again just before (`info user … primaryEmail,organizations,phones,orgUnitPath`), and nothing changes for them if their lists
+  or unit moved since (`BulkProfile.held`). **Deviation:** Swift's guard counts writes, GamGUI's people, so past 25 the number
+  of changes is typed (never fewer than GamGUI asks), and the review says how many changes for how many people. A Stop
+  between a person's profile and their move says what changed (the executor stops before any step; GamGUI only between
+  people). Two harmless reader departures: a file with two byte-order marks is read (`RosterLines` drops a second; GamGUI
+  refuses it), and a NUL byte refuses the whole file in the roster reader's words (GamGUI refuses that row).
+- **The undo**: Save the Before File… writes each changed value as it was, in the same columns, guarded; Files lists it. An
+  empty value before can't be put back, and the review counts those.
+- Held to `BulkCSVTests` and `BulkCSVChangesTests`. Not run live (a throwaway account with a second organization first).

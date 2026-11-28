@@ -3351,7 +3351,7 @@ fi
 # <UserAttribute>* plus the notify clause, as `gam create|add user` / `gam update user` take them. Only
 # the attributes GamGUI emits are modelled; anything else is an invalid argument.
 check_user_attrs() {
-  phone_primary=""
+  phone_primary="" org_primary=""
   while [ $# -gt 0 ]; do
     case "$1" in
       phone|phones)
@@ -3418,11 +3418,27 @@ check_user_attrs() {
       organization)
         shift
         if [ "${1:-}" = "clear" ]; then shift; continue; fi
-        while :; do  # (organization [<field> <String>]* notprimary|primary)
+        # Grammar `organization clear`, or `organization [type domain_only|school|unknown|work] [customtype <String>] [<field>
+        # <String>]* [fulltimeequivalent <Integer>] notprimary|primary`, as getUserAttributes reads it: the type one of its four
+        # (any other is refused here), fulltimeequivalent an integer 0..100000, and a second primary a usage error (ported
+        # from GamGUI #184).
+        while :; do
           case "${1:-}" in
-            type|customtype|name|title|department|symbol|costcenter|location|description|domain|fulltimeequivalent)
+            type)
+              need_value $# "organization type"
+              case "$(printf '%s' "$2" | tr '[:upper:]' '[:lower:]')" in domain_only|school|unknown|work) ;; *) invalid_choice "$2" "domain_only|school|unknown|work" ;; esac
+              shift 2 ;;
+            fulltimeequivalent)
+              need_value $# "Integer"
+              case "$2" in ""|*[!0-9]*) invalid_arg "Expected <0<=x<=100000>" ;; esac
+              [ "$2" -le 100000 ] || invalid_arg "Expected <0<=x<=100000>"
+              shift 2 ;;
+            customtype|name|title|department|symbol|costcenter|costcentre|location|description|domain)
               need_value $# "String"; shift 2 ;;
-            primary|notprimary) shift; break ;;
+            primary)
+              [ -z "${org_primary:-}" ] || usage_error "Multiple organizations are marked primary, only one can be primary"
+              org_primary=1; shift; break ;;
+            notprimary) shift; break ;;
             "") missing_arg "notprimary|primary" ;;
             *) invalid_arg "$1" ;;
           esac
