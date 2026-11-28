@@ -236,17 +236,24 @@ public final class UserAccess {
         }
     }
 
-    /// Reports' mail review (roadmap 3.2, GamGUI's `mail_review`): every active account's forwarding that is on, and every mail
-    /// delegate, two domain-wide reads. GAM carries on past an account it can't read and exits with that warning's code: its
-    /// lines say which (`MailReview.accountFor`). Any other exit, a run that announced no account or wrote no table (GAM writes
-    /// the titles even with no row), or stderr cut off at the runner's cap is a problem, never "none".
+    /// Reports' mail review (roadmap 3.2, GamGUI's `mail_review`, #198): the forwarding that is on, and every mail delegate, of
+    /// each active person, from a fresh directory read. Two reads, one Gmail call a person each, `gamParallel` at once: one GAM
+    /// process visiting each person in turn took ~5 hours for both at 20,000 people and was cut off at its hour.
+    /// `MailReview.accountForParallel` accounts for every person from each worker's own lines; the parent's own failure, a
+    /// directory read that failed, or stderr cut off at the runner's cap is a problem, and someone it never finished is
+    /// skipped, never "none" (invariant 10).
     public func mailReview(in pinned: Domain? = nil) async -> Result<MailReview, Problem> {
-        let forward = await mailRead(GamCommands.allUsersPrintForward(), "forwarding", in: pinned)
+        let people: [String]
+        switch await activePeople(in: pinned) {
+        case .success(let found): people = found
+        case .failure(let problem): return .failure(problem)
+        }
+        let forward = await mailRead(GamCommands.parallelPrintForward(people: people), people: people, "forwarding", in: pinned)
         guard case .success(let (forwarding, forwardingAccounts)) = forward else {
             if case .failure(let problem) = forward { return .failure(problem) }
             return .failure(Self.interrupted)
         }
-        let delegates = await mailRead(GamCommands.allUsersPrintDelegates(), "delegates", in: pinned)
+        let delegates = await mailRead(GamCommands.parallelPrintDelegates(people: people), people: people, "delegates", in: pinned)
         guard case .success(let (delegations, delegationAccounts)) = delegates else {
             if case .failure(let problem) = delegates { return .failure(problem) }
             return .failure(Self.interrupted)
@@ -255,12 +262,27 @@ public final class UserAccess {
                                    delegations: MailReview.delegations(delegations), delegationAccounts: delegationAccounts))
     }
 
-    private func mailRead(_ read: GamRead, _ what: String, in pinned: Domain?)
+    /// The active people (not suspended), from a fresh directory read: the list each parallel read is given. A read without
+    /// the `primaryEmail` title never answered, so it is a problem, never nobody.
+    private func activePeople(in pinned: Domain?) async -> Result<[String], Problem> {
+        let read = GamCommands.printUsers(fields: GamCommands.cacheFields)
+        let found = await readNow(read, in: pinned, timeout: GamRunner.domainWideTimeout) { stdout in
+            GamOutput.titled(stdout, column: "primaryEmail").map { $0.map(GamUser.init(record:)) }
+        }
+        switch found {
+        case .success(let users?): return .success(users.filter { !$0.suspended }.map(\.primaryEmail))
+        case .success(nil): return .failure(Problem(summary: "GAM answered without the directory, so whose mail to review can't be told."))
+        case .failure(let problem): return .failure(problem)
+        }
+    }
+
+    private func mailRead(_ read: GamRead, people: [String], _ what: String, in pinned: Domain?)
         async -> Result<([GamOutput.Record], MailReview.Accounted), Problem> {
         guard let domain = pinned ?? setup.active, let runner else { return .failure(Problem(summary: "Connect a domain on Setup first.")) }
         let result: GamResult
         do {
-            result = try await runner.run(read, as: domain, timeout: ActivityLogs.timeout, extraEnvironment: environment)
+            result = try await runner.run(read, as: domain, timeout: MailReview.parallelTimeout(people: people.count),
+                                          extraEnvironment: environment)
         } catch is CancellationError {
             return .failure(Self.interrupted)
         } catch GamRunnerError.timedOut {
@@ -268,17 +290,20 @@ public final class UserAccess {
         } catch {
             return .failure(Problem(summary: SetupModel.message(for: error)))
         }
-        guard MessageCopies.perUserExitCodes.contains(result.exitCode) else {
+        // The parent's own exit: a usage error, its sign-in. A worker's failure never sets it; its End line says it.
+        guard result.exitCode == 0 else {
             return .failure(Problem(summary: GamError(exitCode: result.exitCode, stderr: result.stderr, argv: read.argv).message))
         }
         guard !result.stdoutTruncated, !result.stderrTruncated else {
             return .failure(Problem(summary: "GAM printed more than this app reads at once, so not every account's \(what) was read."))
         }
-        guard let accounted = MailReview.accountFor(result.stderr), !PythonText.strip(result.stdout).isEmpty else {
-            return .failure(Problem(summary: "GAM exited without reading any account's \(what), so it can't be told. Its sign-in may "
-                + "have been refused: check the service account on Setup."))
+        let accounted = MailReview.accountForParallel(result.stderr, people: people)
+        let table = !PythonText.strip(result.stdout).isEmpty
+        // The merged CSV is written once at the end, titles and all, when anyone was read: no table then isn't "none".
+        if accounted.read > 0, !table {
+            return .failure(Problem(summary: "GAM read accounts' \(what) but wrote no table, so it can't be told."))
         }
-        return .success((GamOutput.records(result.stdout), accounted))
+        return .success((table ? GamOutput.records(result.stdout) : [], accounted))
     }
 
     /// Every license seat (roadmap 4.3), read now: `print licenses`, no product named. It passes over a product Google won't let

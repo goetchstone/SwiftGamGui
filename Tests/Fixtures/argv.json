@@ -1,6 +1,6 @@
 {
  "source": {
-  "gamgui_commit": "f0a085f",
+  "gamgui_commit": "a0dfba4",
   "gam_version": "7.52.05",
   "generator": "scripts/gen_fixtures.py"
  },
@@ -13,8 +13,6 @@
   "add_forwarding_address",
   "add_group_member",
   "add_license",
-  "all_users_print_delegates",
-  "all_users_print_forward",
   "block_device_user",
   "check_svcacct",
   "clear_recovery",
@@ -53,6 +51,8 @@
   "move_alias",
   "move_folder_to_shared_drive",
   "move_user_to_org_unit",
+  "parallel_print_delegates",
+  "parallel_print_forward",
   "pop_off",
   "print_admins",
   "print_all_admins",
@@ -245,8 +245,6 @@
     "name": "sku_id"
    }
   ],
-  "all_users_print_delegates": [],
-  "all_users_print_forward": [],
   "block_device_user": [
    {
     "name": "name"
@@ -567,6 +565,8 @@
     "name": "email"
    }
   ],
+  "parallel_print_delegates": [],
+  "parallel_print_forward": [],
   "pop_off": [
    {
     "name": "email"
@@ -6585,28 +6585,6 @@
     "add",
     "license",
     "nv:Google-Apps:1010020028"
-   ]
-  },
-  {
-   "builder": "all_users_print_delegates",
-   "kwargs": {},
-   "argv": [
-    "all",
-    "users",
-    "print",
-    "delegates",
-    "shownames"
-   ]
-  },
-  {
-   "builder": "all_users_print_forward",
-   "kwargs": {},
-   "argv": [
-    "all",
-    "users",
-    "print",
-    "forward",
-    "enabledonly"
    ]
   },
   {
@@ -14496,6 +14474,52 @@
     "move",
     "user",
     "日本語のテキスト"
+   ]
+  },
+  {
+   "builder": "parallel_print_delegates",
+   "kwargs": {},
+   "argv": [
+    "config",
+    "num_threads",
+    "10",
+    "redirect",
+    "csv",
+    "-",
+    "multiprocess",
+    "csv",
+    "-",
+    "showcmds",
+    "true",
+    "gam",
+    "user",
+    "~primaryEmail",
+    "print",
+    "delegates",
+    "shownames"
+   ]
+  },
+  {
+   "builder": "parallel_print_forward",
+   "kwargs": {},
+   "argv": [
+    "config",
+    "num_threads",
+    "10",
+    "redirect",
+    "csv",
+    "-",
+    "multiprocess",
+    "csv",
+    "-",
+    "showcmds",
+    "true",
+    "gam",
+    "user",
+    "~primaryEmail",
+    "print",
+    "forward",
+    "enabledonly"
    ]
   },
   {

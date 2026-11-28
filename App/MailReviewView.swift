@@ -29,7 +29,7 @@ struct MailReviewPanel: View {
                 if !connected { Text("Connect a domain on Setup first.").foregroundStyle(.secondary).padding(.horizontal) }
                 Spacer()
             case .reading?:
-                HStack { ProgressView().controlSize(.small); Text("Reading every account's forwarding and delegates\u{2026}").foregroundStyle(.secondary) }
+                HStack { ProgressView().controlSize(.small); Text("Reading the directory, then every active account's forwarding and delegates\u{2026}").foregroundStyle(.secondary) }
                     .accessibilityElement(children: .combine)
                     .padding(.horizontal)
                 Spacer()
