@@ -255,3 +255,15 @@ It reads only through `DirectoryStore`, so it shares Home's tenant rules. Writes
 ## Not built yet (GamGUI has them; parity audit 2026-10-28)
 - **A department for many people** (GamGUI `web/routes/users.py`, `bulk_store.html`: a group or a pasted list, a preview, a
   run, retry the failed ones): a bulk job, so after the jobs tray. Build it only when asked, as with signatures for many.
+
+## Org units (roadmap 4.2, 2026-11-27; GamGUI #169)
+- **The tree** (`UserAccess.orgUnits`, `GamEngine/OrgUnits.swift`): `print orgs fields orgunitpath,name,description`, plain CSV;
+  the titles line is the answer (a notice before it skipped; none at all is unread, never "only /"); lines split on "\n" only.
+- **One person** (`UserChanges.previewMoveOrgUnit`, the person page's Move to Another Org Unit…): the tree and the account read
+  again; a unit not in the tree, or their own, refused; a record without their unit unread; the primary address held.
+  `update org <unit> move user <email>` (GAM resolves the unit first). The preview says settings follow the unit.
+- **Many** (`Directory/OrgUnitForMany.swift`, Users → Org Unit for Many…): a group's USER members or pasted addresses,
+  suspended accounts included, a nested group or the whole organization named, not expanded; addresses with no account
+  listed; the count typed past 25; Stop and Retry.
+- The mock answers the tree, the move, and the Builder's create, rename and delete as GamGUI's does (ported).
+- Held to `OrgUnitMoveTests`. Not run live (the operator's tenant has no units: the check creates one first).

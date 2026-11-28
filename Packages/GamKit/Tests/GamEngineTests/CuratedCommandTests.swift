@@ -47,9 +47,6 @@ struct CuratedCommandTests {
         "build.rename_shared_drive": "Rename a shared drive (GamGUI #189, roadmap 5.1): not built here yet",
         "build.move_folder_to_shared_drive": "Move a folder into a shared drive (GamGUI #188, roadmap 4.8): not built here yet",
         "build.copy_rest_of_folder_to_shared_drive": "Move a folder into a shared drive (GamGUI #188, roadmap 4.8): not built here yet",
-        "build.create_org_unit": "Org units (GamGUI #169): not built here yet",
-        "build.rename_org_unit": "Org units (GamGUI #169): not built here yet",
-        "build.delete_org_unit": "Org units (GamGUI #169): not built here yet",
     ]
 
     /// GamGUI's commands in its order, each here or not ported yet, said why; and no other.
@@ -156,5 +153,15 @@ struct CuratedCommandTests {
         #expect(try Self.command("build.delete_alias").target(values) == "c@example.com")
         #expect(try Self.command("build.transfer_data").target(values) == "leaver@example.com")
         #expect(try Self.command("build.find_users").target(values) == "(command)")
+    }
+
+    /// GamGUI's `_org_unit`: the root by any of its names is refused, never renamed or deleted.
+    @Test func anOrgUnitSlotNeverNamesTheRoot() throws {
+        let delete = try Self.command("build.delete_org_unit")
+        for root in ["/", " root ", "ROOT", ""] {
+            #expect(throws: GamCommands.Invalid.self, "\(root)") { try delete.built(["org_unit": root]) }
+        }
+        guard case .write(let write) = try delete.built(["org_unit": "/Sales/East"]) else { Issue.record("not a write"); return }
+        #expect(write.argv == ["delete", "org", "/Sales/East"])
     }
 }

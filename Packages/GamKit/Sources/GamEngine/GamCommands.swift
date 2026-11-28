@@ -632,6 +632,34 @@ public enum GamCommands {
                         "fields", SharedDrives.fileFields.joined(separator: ","), "formatjson"])
     }
 
+    // MARK: org units (roadmap 4.2, GamGUI #169)
+
+    /// The org unit tree (`print orgs ... fields <OrgUnitFieldNameList>`): plain CSV, no formatjson; the root is never a row.
+    public static func printOrgUnits() -> GamRead {
+        GamRead(["print", "orgs", "fields", "orgunitpath,name,description"])
+    }
+
+    /// `update org <OrgUnitItem> move <UserTypeEntity>` (doUpdateOrgs): GAM resolves the unit first and refuses one it can't
+    /// find before touching anyone. The screens offer only paths the tree read just returned.
+    public static func moveUserToOrgUnit(orgUnit: String, email: String) -> GamWrite {
+        GamWrite(["update", "org", orgUnit, "move", "user", email], action: .moveOrgUnit)
+    }
+
+    /// `create org <OrgUnitPath> [description <String>]` (doCreateOrg): no `buildpath`, so a mistyped parent is refused.
+    public static func createOrgUnit(path: String, description: String = "") -> GamWrite {
+        GamWrite(["create", "org", path] + (description.isEmpty ? [] : ["description", description]), action: .createOrgUnit)
+    }
+
+    /// `update org <OrgUnitItem> name <String>`: its path changes with its name, and so do its children's.
+    public static func renameOrgUnit(orgUnit: String, name: String) -> GamWrite {
+        GamWrite(["update", "org", orgUnit, "name", name], action: .renameOrgUnit)
+    }
+
+    /// `delete org <OrgUnitItem>`: Google refuses a unit that still holds people, devices or units.
+    public static func deleteOrgUnit(orgUnit: String) -> GamWrite {
+        GamWrite(["delete", "org", orgUnit], action: .deleteOrgUnit)
+    }
+
     // MARK: the closed list of Builder writes (roadmap 5.1, GamGUI #189)
 
     /// `update user <u> primaryemail <new> noactionifalias`: an alias is refused by GAM (51) rather than rename its owner; a new

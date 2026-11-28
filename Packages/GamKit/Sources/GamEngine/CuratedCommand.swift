@@ -285,6 +285,28 @@ extension CuratedCommand {
                            + "refuses one of its aliases rather than delete the group behind it.") { v in
                 .write(try GamCommands.deleteGroup(group: v("group")))
             },
+            // Org units (roadmap 4.2, GamGUI #169): moving people is on Users; these shape the tree.
+            CuratedCommand("build.create_org_unit", "Organizational Units", "", "Create an org unit", .change,
+                           [field("path", "Path", .text, placeholder: "/Sales/East"),
+                            field("description", "Description", .text, required: false)],
+                           "gam create org <path> description <desc>",
+                           "Create an org unit at a full path. Its parent must already exist; settings it inherits come from that parent.") { v in
+                .write(GamCommands.createOrgUnit(path: try orgUnit(v("path")), description: v("description")))
+            },
+            CuratedCommand("build.rename_org_unit", "Organizational Units", "", "Rename an org unit", .change,
+                           [field("org_unit", "Org unit", .text, placeholder: "/Sales/East"), field("name", "New name", .text)],
+                           "gam update org <org unit> name <name>",
+                           "Rename an org unit. Its path changes, and so do the paths of the units inside it.") { v in
+                .write(GamCommands.renameOrgUnit(orgUnit: try orgUnit(v("org_unit")), name: v("name")))
+            },
+            // Destructive: the unit's own settings go with it. Google refuses one that still holds people, devices or units.
+            CuratedCommand("build.delete_org_unit", "Organizational Units", "", "Delete an org unit", .destructive,
+                           [field("org_unit", "Org unit", .text, placeholder: "/Sales/East")],
+                           "gam delete org <org unit>",
+                           "Delete an empty org unit, and the settings made on it. Google refuses one that still holds people, devices "
+                           + "or other units: move them out first.") { v in
+                .write(GamCommands.deleteOrgUnit(orgUnit: try orgUnit(v("org_unit"))))
+            },
             CuratedCommand("build.set_organization", "Users", "Profile", "Set title / department", .change,
                            [person(), field("title", "Title", .text, required: false),
                             field("department", "Department", .text, required: false)],
@@ -369,6 +391,16 @@ extension CuratedCommand {
 
     private static func person(_ key: String = "email", _ label: String = "User") -> Field {
         field(key, label, .targetUser)
+    }
+
+    /// GamGUI's `_org_unit`: a Builder org-unit slot, refused when it names the root. GAM reads `root` (and `/`) as the top-level
+    /// unit, so a unit someone means to call "root" would rename or delete the whole organization's.
+    static func orgUnit(_ value: String) throws -> String {
+        let stripped = PythonText.strip(value)
+        if stripped.isEmpty || stripped == "/" || PythonText.lower(stripped) == "root" {
+            throw GamCommands.Invalid.argument("That is the top-level org unit. Name the unit by its full path, such as /Sales/East")
+        }
+        return value
     }
 
     private static func field(_ key: String, _ label: String, _ kind: Field.Kind, required: Bool = true, choices: [String] = [],

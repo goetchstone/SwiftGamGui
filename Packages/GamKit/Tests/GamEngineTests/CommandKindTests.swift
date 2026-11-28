@@ -121,7 +121,7 @@ struct CommandKindTests {
             let verb = Self.verb(command.argv)
             #expect(verb.map(Self.readVerbs.contains) == true, "\(name) is a GamRead but its verb is \(verb ?? "unknown")")
         }
-        #expect(reads == 54 + Self.sharedBuilders.count, "both shared builders are reads")
+        #expect(reads == 55 + Self.sharedBuilders.count, "both shared builders are reads")
         for (name, read) in Self.appOnlyReads {
             let verb = Self.verb(read.argv)
             #expect(verb.map(Self.readVerbs.contains) == true, "\(name) is a GamRead but its verb is \(verb ?? "unknown")")
@@ -154,7 +154,7 @@ struct CommandKindTests {
             let verb = Self.verb(command.argv)
             #expect(!(verb.map(Self.readVerbs.contains) ?? false), "\(name) is a GamWrite but reads (\(verb ?? ""))")
         }
-        #expect(writes == 55)
+        #expect(writes == 59)
     }
 
     @Test func theVerbSetsAreGamGUIs() {
@@ -186,6 +186,7 @@ struct CommandKindTests {
         "imap_off": .imapOff, "pop_off": .popOff, "delete_send_as": .deleteSendAs, "block_device_user": .blockDeviceUser, "delete_device_user": .deleteDeviceUser, "delete_messages": .deleteMessages, "trash_message": .trashMessage,
         "trash_messages": .trashMessage,
         "set_password": .setPassword, "update_phones": .updatePhones, "set_signatures_csv": .setSignaturesFast,
+        "move_user_to_org_unit": .moveOrgUnit, "create_org_unit": .createOrgUnit, "rename_org_unit": .renameOrgUnit, "delete_org_unit": .deleteOrgUnit,
     ]
 
     @Test func everyWriteNamesExactlyItsOwnAction() throws {
@@ -210,7 +211,7 @@ struct CommandKindTests {
                                 encoding: .utf8)
         let reads = source.matches(of: /-> GamRead\b/).count, writes = source.matches(of: /-> GamWrite\b/).count
         let mints = source.matches(of: /\bGam(Read|Write)\(/).count
-        #expect(reads == 55 && writes == 56, "a builder was added or removed: hold it here and in GoldenArgvTests (or appOnlyReads)")
+        #expect(reads == 56 && writes == 60, "a builder was added or removed: hold it here and in GoldenArgvTests (or appOnlyReads)")
         #expect(mints == reads + writes, "one builder per command made")
         // `catalogRead`, the Builder's door, is held over every catalog command instead (`CommandCatalogTests`: GamGUI's argv,
         // and every runnable one's first known verb a read verb).
