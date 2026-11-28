@@ -18,6 +18,9 @@ an allowlisted environment, a timeout, and capped output capture.
     exits early an `EPIPE`, never a SIGPIPE. The input is never shown, logged or audited.
   - A thread drains each pipe with `read(2)` into a `CappedBuffer` (8 MiB per stream). A thread
     `waitpid`s: an exit gives its code, a signal its number.
+  - gam leads a process group of its own (`POSIX_SPAWN_SETPGROUP`), and every cut-off signal goes to
+    the whole group (`signalGroup`): GAM's `csv`, `batch` and auto-batch fork workers that each load the credentials.
+    When gam exits, anything left in its group is killed before gam is reaped (failure-log 2026-11-28, GamGUI #197).
   - A timeout sends SIGTERM, then SIGKILL after 5 s, and throws `timedOut`.
   - `children` tracks every live `gam` for `stopAll()` at quit.
 - `GamEnvironment.swift` — `allowlist` (GamGUI's `ENV_ALLOWLIST`, exact names) and `mockOnly` (debug

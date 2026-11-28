@@ -113,4 +113,65 @@ struct RunnerTests {
             try await missing.runRaw(["version"])
         }
     }
+
+    // A cut-off takes gam's workers with it (failure-log 2026-11-28, GamGUI #197). GAM's parallel loops (`csv`, `batch`,
+    // auto-batch) fork workers that each load the credentials; killing gam alone left them running while the directory was
+    // wiped, and since they hold gam's pipes, the run waited them out: a "timed out" run went on to its end. The stand-in
+    // forks a worker that sleeps 600 s and records its pid; each run must return far sooner, and the worker must be gone.
+    // The bounds are far from both ends, on `SuspendingClock` (failure-log 2026-10-20 and 2026-10-25).
+
+    /// A stand-in gam that forks a long-lived worker, records its pid in `pidFile`, then `then` (waits on it, or exits).
+    private func gamWithAWorker(then: String) throws -> (gam: GamRunner, pidFile: URL, cleanUp: () -> Void) {
+        let dir = FileManager.default.temporaryDirectory.appending(path: "gam-worker-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let pidFile = dir.appending(path: "worker.pid"), script = dir.appending(path: "gam")
+        try Data("#!/bin/sh\n/bin/sleep 600 &\necho $! > '\(pidFile.path)'\n\(then)\n".utf8).write(to: script)
+        chmod(script.path, 0o755)
+        return (GamRunner(binary: script), pidFile, { try? FileManager.default.removeItem(at: dir) })
+    }
+
+    private func worker(_ pidFile: URL) throws -> pid_t {
+        let text = try String(contentsOf: pidFile, encoding: .utf8).trimmingCharacters(in: .whitespacesAndNewlines)
+        return try #require(pid_t(text), "the stand-in never recorded its worker")
+    }
+
+    /// Gone, once launchd has reaped it (a killed orphan is a zombie for a moment, and `kill(_, 0)` still finds a zombie).
+    private func expectGone(_ pid: pid_t, sourceLocation: SourceLocation = #_sourceLocation) async throws {
+        try await yieldWhile(every: .milliseconds(20), sourceLocation: sourceLocation) { kill(pid, 0) == 0 }
+    }
+
+    @Test func aTimeoutStopsGamsWorkersToo() async throws {
+        let (gam, pidFile, cleanUp) = try gamWithAWorker(then: "wait")
+        defer { cleanUp() }
+        let clock = SuspendingClock(), started = clock.now
+        await #expect(throws: GamRunnerError.timedOut(seconds: 5)) { try await gam.runRaw([], timeout: .seconds(5)) }
+        #expect(clock.now - started < .seconds(60), "the run waited out gam's worker")
+        try await expectGone(try worker(pidFile))
+    }
+
+    @Test func aCancelStopsGamsWorkersToo() async throws {
+        let (gam, pidFile, cleanUp) = try gamWithAWorker(then: "wait")
+        defer { cleanUp() }
+        let run = Task { try await gam.runRaw([]) }
+        defer { run.cancel() }
+        try await yieldWhile(every: .milliseconds(20)) { (try? worker(pidFile)) == nil }
+        let pid = try worker(pidFile)
+        let clock = SuspendingClock(), started = clock.now
+        run.cancel()
+        await #expect(throws: CancellationError.self) { try await run.value }
+        #expect(clock.now - started < .seconds(60), "the cancel waited out gam's worker")
+        try await expectGone(pid)
+    }
+
+    /// Stronger than GamGUI, which kills the group only on a cut-off: whatever is left in gam's group when gam exits is
+    /// killed too, so a worker gam left behind can't run on, or hold the pipes open, after its run.
+    @Test func whatGamLeavesRunningWhenItExitsIsStopped() async throws {
+        let (gam, pidFile, cleanUp) = try gamWithAWorker(then: "exit 0")
+        defer { cleanUp() }
+        let clock = SuspendingClock(), started = clock.now
+        let result = try await gam.runRaw([])
+        #expect(result.exitCode == 0)
+        #expect(clock.now - started < .seconds(60), "the run waited out the worker gam left behind")
+        try await expectGone(try worker(pidFile))
+    }
 }
