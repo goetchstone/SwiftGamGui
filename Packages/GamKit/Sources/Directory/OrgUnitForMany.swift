@@ -256,9 +256,9 @@ public final class OrgUnitForMany {
             return
         }
         let (domain, generation) = (pending.preview.domain, pending.preview.generation)
-        for (person, step) in zip(pending.people, outcome.steps) where step.isSucceeded {
-            directory.patch(person.primaryEmail, on: domain, generation: generation) { $0.with(orgUnitPath: pending.orgUnit) }
-        }
+        // Once for the whole run, not once a person (GamGUI #196).
+        let moved = zip(pending.people, outcome.steps).filter { $0.1.isSucceeded }.map { $0.0.primaryEmail }
+        directory.patchMany(moved, on: domain, generation: generation) { $0.with(orgUnitPath: pending.orgUnit) }
         if outcome.steps.count < pending.count || !outcome.steps.allSatisfy(\.isSucceeded), setup.isConnected(to: pending.preview) {
             let directory = directory
             Task { await directory.load() }

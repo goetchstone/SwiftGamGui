@@ -115,6 +115,9 @@ It reads only through `DirectoryStore`, so it shares Home's tenant rules. Writes
 - **On success** the cached user is patched (`GamUser.with`, `DirectoryStore.patch`: GamGUI's
   `patch_user`), only while the cache still belongs to the tenant and generation the write ran on;
   the reports are counted again. A failure patches nothing and says why, with GAM's remediation.
+  A bulk run (inactive suspend, org unit or department for many) patches everyone it changed at once
+  (`DirectoryStore.patchMany`, GamGUI #196's `patch_many`): once a person rebuilt the list and its reports each time,
+  quadratic in the domain (GamGUI's 4,711-account suspend spent ~320 s on it at 20,000 people).
 - **The screen** (`UsersView`): the detail panel's **Edit Title and Department…**, **Edit Phone…** and **Suspend… /
   Unsuspend…** open a preview sheet: the change in words, the command as GAM gets it (masked), and
   how much it can hurt. A destructive confirm is never the Return-key default.
@@ -259,7 +262,9 @@ It reads only through `DirectoryStore`, so it shares Home's tenant rules. Writes
 ## Licenses (roadmap 4.3, 2026-11-27; GamGUI #175, #177)
 - **The read** (`UserAccess.licenses`, `GamEngine/Licenses.swift`): `print licenses`, no product named. GAM passes over a product
   Google won't let it read without a word, so only what it lists is acted on, and the screen says so.
-- **A person's seats** (`Directory/LicenseChanges.swift`, the Licenses section on Profile): read when asked; Change… within the
+- **A person's seats** (`Directory/LicenseChanges.swift`, the Licenses section on Profile): read when asked, the domain's
+  seats kept 5 minutes for the next person's card (GamGUI #196: one domain-wide read a card), dropped by any licence write
+  here; Read Again and every preview read fresh; Change… within the
   same product (a license someone in the domain holds), Add a License… of a product they hold none of, Remove…. Each previewed
   from a fresh read; a seat is `nv:<productId>:<skuId>` (`GamCommands.licenseSKU`, refusing IDs GAM would split or strip).
   A removal is destructive, needs their address typed, quotes Google ("you might lose their data"), and is refused while a

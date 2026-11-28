@@ -246,4 +246,21 @@ struct DirectoryStoreTests {
         let left = try FileManager.default.contentsOfDirectory(atPath: base.path).filter { $0.hasPrefix("gamcfg-") }
         #expect(left.isEmpty, "the version's config directory is wiped")
     }
+
+    /// GamGUI #196: a bulk run's patches land at once, the list rebuilt and its reports counted once, not once a person.
+    @Test func manyPatchesAreOneRebuild() async throws {
+        try await connect("example.com", admin: "admin@example.com")
+        await store.load()
+        let users = try #require(store.users)
+        let targets = users.prefix(3).map(\.primaryEmail)
+        try #require(targets.count == 3)
+        let before = try #require(store.revision)
+        store.patchMany(targets.map { $0.uppercased() }, on: example, generation: setup.generation) { $0.with(title: "Patched Title") }
+        #expect(store.revision == before + 1, "one rebuild for the whole run")
+        #expect(store.users?.filter { $0.title == "Patched Title" }.map(\.primaryEmail).sorted() == targets.sorted())
+        store.patchMany(["nobody@example.com"], on: example, generation: setup.generation) { $0.with(title: "X") }
+        #expect(store.revision == before + 1, "nothing matched, nothing rebuilt")
+        store.patchMany(targets, on: example, generation: setup.generation + 1) { $0.with(title: "Other") }
+        #expect(store.users?.contains { $0.title == "Other" } == false, "another generation's run never touches this list")
+    }
 }

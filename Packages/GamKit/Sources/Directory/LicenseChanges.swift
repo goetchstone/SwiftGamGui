@@ -49,13 +49,21 @@ public final class LicenseChanges {
     private let executor: Executor?
     private let setup: SetupModel
     private let access: UserAccess
+    private let now: @Sendable () -> Date
+    /// The domain's seats, as the card last read them (GamGUI #196): a card opened person after person reads every seat in the
+    /// domain once, not once a person. Kept `seatsKept`, for the tenant read; any licence write here drops them; a preview, and
+    /// Read Again, always read fresh.
+    private var seats: (domain: Domain, generation: Int, at: Date, seats: [Licenses.Seat])?
+    public nonisolated static let seatsKept: TimeInterval = 5 * 60
 
-    public init(executor: Executor?, setup: SetupModel, access: UserAccess) {
+    public init(executor: Executor?, setup: SetupModel, access: UserAccess, now: @escaping @Sendable () -> Date = Date.init) {
         self.executor = executor
         self.setup = setup
         self.access = access
+        self.now = now
         setup.onTenantChange { [weak self] in
             guard let self, !self.isBusy else { return }
+            self.seats = nil
             self.read = nil
             self.state = .idle
         }
@@ -68,11 +76,21 @@ public final class LicenseChanges {
         }
     }
 
-    /// The seats read now, for `email`'s card.
-    public func load(_ email: String) async {
+    /// The seats for `email`'s card: the ones kept from the last read of the last `seatsKept`, unless `fresh` (Read Again).
+    public func load(_ email: String, fresh: Bool = false) async {
         isReading = true
         defer { isReading = false }
-        let result = await access.licenses()
+        guard let tenant = access.tenant else {
+            read = (email, .failure(UserAccess.Problem(summary: "Connect a domain on Setup first.")))
+            return
+        }
+        if !fresh, let kept = seats, kept.domain == tenant.domain, kept.generation == tenant.generation,
+           now().timeIntervalSince(kept.at) < Self.seatsKept {
+            read = (email, .success(Licenses.choices(kept.seats, for: email)))
+            return
+        }
+        let result = await access.licenses(in: tenant.domain)
+        if case .success(let found) = result { seats = (tenant.domain, tenant.generation, now(), found) } else { seats = nil }
         read = (email, result.map { Licenses.choices($0, for: email) })
     }
 
@@ -172,6 +190,7 @@ public final class LicenseChanges {
             state = .problem(refusal)
             return
         }
+        seats = nil   // a seat may have moved: the next card reads them again
         let note = outcome.auditProblem.map { " \($0)" } ?? ""
         switch outcome.steps.first {
         case .succeeded?: state = .done("Done: \(pending.preview.steps.first?.summary ?? pending.preview.title).\(note)")
@@ -179,7 +198,7 @@ public final class LicenseChanges {
         case .skipped(let why)?, .waiting(let why)?: state = .problem(why + note)
         case nil: state = .problem("Nothing ran.")
         }
-        if setup.isConnected(to: pending.preview) { await load(pending.email) }
+        if setup.isConnected(to: pending.preview) { await load(pending.email, fresh: true) }
     }
 
     /// The preview `email`'s page shows in its sheet: held or running.
